@@ -1,0 +1,383 @@
+(kicad_symbol_lib
+	(version 20241209)
+	(generator "gpsdo-pynq-z2")
+	(generator_version "9.0")
+(symbol "TPS7A2033PDBVR"
+(exclude_from_sim no)
+(in_bom yes)
+(on_board yes)
+(embedded_fonts no)
+	(property "Reference" "U"
+(at -3.81 6.35 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Value" "LP5907MFX-3.3"
+(at 6.35 6.35 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Footprint" "Package_TO_SOT_SMD:SOT-23-5"
+(at 0 8.89 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "Datasheet" "http://www.ti.com/lit/ds/symlink/lp5907.pdf"
+(at 0 12.7 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "Description" "250-mA Ultra-Low-Noise Low-IQ LDO, 3.3V, SOT-23"
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "ki_keywords" "Single Output LDO Low-Noise"
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "ki_fp_filters" "SOT?23*"
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(symbol "TPS7A2033PDBVR_0_1"
+		(rectangle
+(start -5.08 -5.08)
+(end 5.08 5.08)
+			(stroke
+(width 0.254)
+(type default)
+			)
+			(fill
+(type background)
+			)
+		)
+		(pin power_in line
+(at -7.62 2.54 0)
+(length 2.54)
+			(name "IN"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "1"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin input line
+(at -7.62 0 0)
+(length 2.54)
+			(name "EN"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "3"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 0 -7.62 90)
+(length 2.54)
+			(name "GND"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "2"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin passive line
+(at 5.08 0 180)
+(length 2.54)
+(hide yes)
+			(name "NR/SS"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "4"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_out line
+(at 7.62 2.54 180)
+(length 2.54)
+			(name "OUT"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "5"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+	)
+)
+(symbol "DS2482S-100"
+(exclude_from_sim no)
+(in_bom yes)
+(on_board yes)
+	(property "Reference" "U"
+(at -7.62 8.89 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Value" "DS2482S-100"
+(at 7.62 8.89 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Footprint" ""
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "Datasheet" "datasheets/ds2482-100.pdf"
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "Description" "I2C to 1-Wire bridge, single channel, SO-8"
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(symbol "DS2482S-100_0_1"
+		(rectangle
+(start -7.62 7.62)
+(end 7.62 -7.62)
+			(stroke
+(width 0.254)
+(type default)
+			)
+			(fill
+(type background)
+			)
+		)
+	)
+	(symbol "DS2482S-100_1_1"
+		(pin input line
+(at -10.16 2.54 0)
+(length 2.54)
+			(name "SCL"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "4"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin bidirectional line
+(at -10.16 0 0)
+(length 2.54)
+			(name "SDA"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "5"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin input line
+(at -10.16 -2.54 0)
+(length 2.54)
+			(name "AD1"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "7"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin input line
+(at -10.16 -5.08 0)
+(length 2.54)
+			(name "AD0"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "8"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin bidirectional line
+(at 10.16 2.54 180)
+(length 2.54)
+			(name "IO"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "2"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 -2.54 180)
+(length 2.54)
+			(name "~{PCTLZ}"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "6"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 0 10.16 270)
+(length 2.54)
+			(name "VCC"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "1"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 0 -10.16 90)
+(length 2.54)
+			(name "GND"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "3"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+	)
+)
+)
