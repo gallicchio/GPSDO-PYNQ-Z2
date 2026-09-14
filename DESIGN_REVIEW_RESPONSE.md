@@ -32,23 +32,23 @@ wrong (two of them are, below).
 
 | # | Sev | Agree | Finding | Confirmed by | Disposition |
 |---|-----|-------|---------|--------------|-------------|
-| 1 | **Blocker** | C G Ge Gr | No I2C device software; the Si5351 is never programmed, so no helper, no beats | `gateware/driver/dmtd.py` says so; PYNQ selftest in round 27 showed 0 Hz | **TO FIX this round (see log)**: `gateware/driver/i2c_devices.py` (Si5351, TMP1075, MCP4725, DS2482/DS18B20), host unit tests, and `gateware/board/bringup.py`.  AxiIIC path exercised on the live PYNQ (bus scan; nothing attached, all NAK, as expected) |
-| 2 | **Blocker** | C G Ge | A via drilled *inside* J5001 pin 13 (0.000 mm hole-to-hole) and a via 0.238 mm from J4001 pin 4's hole (rule 0.25) | `filled-drc.rpt` hole_to_hole x4; coordinates verified in the .kicad_pcb | **TO FIX this round (see log)** in the router: PTH drills now carry a no-via zone; rebuilt and DRC'd |
+| 1 | **Blocker** | C G Ge Gr | No I2C device software; the Si5351 is never programmed, so no helper, no beats | `gateware/driver/dmtd.py` says so; PYNQ selftest in round 27 showed 0 Hz | **FIXED**: `gateware/driver/i2c_devices.py` (Si5351 with the exact PLL ratio 32 + 1543/390625, TMP1075, MCP4725/Heater, DS2482/DS18B20), 20 host unit tests, and `gateware/board/bringup.py`.  Run on the live PYNQ through the real `axi_iic` with nothing attached: every device reported absent, as it should.  Untested against real parts until a board exists |
+| 2 | **Blocker** | C G Ge | A via drilled *inside* J5001 pin 13 (0.000 mm hole-to-hole) and a via 0.238 mm from J4001 pin 4's hole (rule 0.25) | `filled-drc.rpt` hole_to_hole x4; coordinates verified in the .kicad_pcb | **FIXED in the router** (a no-via zone round every through-hole drill, applied even to the routing net's own pads -- build 1 missed that case, build 2 has it) and `hole_to_hole` is now a DRC *error* so the build's own check would catch a recurrence.  See the log for build 2's DRC |
 | 3 | High | Ge (C confirms) | MCP4725 ships with EEPROM at mid-scale (0x800 → 1.65 V on the FET gates at power-up) | MCP4725 datasheet Table 5-3, in `datasheets/` | Software + procedure: the bring-up script's first act is Write-DAC-and-EEPROM = 0 with PD=01; 15 V is not connected until then.  Schematic note updated (it asked for exactly this confirmation) |
 | 4 | High | Ge (C confirms, differs on remedy) | Three pass FETs in linear mode share one gate; Vth is 1.0–3.0 V (datasheet) so the split between the three banks is a lottery, and the loop gain of Vth tempco × Rθ at half current exceeds 1, so a bank snaps to full-on rather than sitting at 0.8 W | DMN6068SE datasheet; arithmetic in §2.4 | **No board change for Rev A.** Operate the heater as on/off at full drive with slow (≥ 30 s) duty cycling: all 24 heaters switch together, the FETs run at 3 mW instead of 0.8 W, and uniformity is preserved.  Gemini's 3.3 Ω source resistors do not work with a 3.3 V DAC (§2.4).  Rev B recipe: one op-amp current sink per FET, from the 15 V rail |
-| 5 | High | G Gr (C confirms) | The 1 pps cannot resolve the 100 ns wrap: pps is timestamped in the same 100 ns helper domain as the beats; `sheet_unit.py` promises a 200 MHz / 5 ns domain that does not exist | `dmtd_capture.v` puts beat and pps through one synchroniser; `phases_ps()` ignores pps | **FIXED in gateware v1.1**: every pps also gets a 64-bit PS-clock (10 ns) timestamp, plus a (helper, PS) counter pair so software maps one to the other; driver `pps_offsets_ns()`; testbench extended.  Note corrected.  (If this entry still says "planned" in the log, it was not finished.) |
+| 5 | High | G Gr (C confirms) | The 1 pps cannot resolve the 100 ns wrap: pps is timestamped in the same 100 ns helper domain as the beats; `sheet_unit.py` promises a 200 MHz / 5 ns domain that does not exist | `dmtd_capture.v` puts beat and pps through one synchroniser; `phases_ps()` ignores pps | **FIXED in gateware v1.1**: every pps also gets a 64-bit PS-clock (10 ns) timestamp, plus a (helper, PS) counter pair so software maps one scale onto the other; driver `pps_offsets_ns()` / `absolute_phases_ps()` / `resolve_cycles()`; testbench 47 -> 57 checks, all pass; Vivado WNS +0.971 ns; loaded on the PYNQ, VERSION reads 1.1.  Sheet note corrected |
 | 6 | High | Gr (C confirms) | The fitted TCXO is ±2.5 ppm (FT5HNB**P**K), the schematic says ±0.5 ppm; ±2.5 ppm is ±25 Hz of beat, which reaches the 1260 Hz mains harmonic at the hot end | Fox datasheet option table: P = ±2.5 ppm | Note fixed.  Driver: `Si5351.trim_to_beat()` re-centres the beat from the measured helper frequency, which the core already reports.  The board is thermostatted, so in service the TCXO sees ±2 °C, not −30..+85.  Rev B: the T option (±1.0 ppm) of the same part |
 | 7 | Medium | Gr (C confirms the fact, not the remedy); Ge supplies the fix | CLK1 at exactly 10.000000 MHz off the *same* PLL as the 10.0012344 MHz helper needs a fractional MultiSynth (80.0099), i.e. the jittery mode.  Grok says the Si5351A has one PLL: it has two | Si5351 datasheet block diagram (PLLA, PLLB) and §4.1; AN619 register map | Driver puts CLK1 on **PLLB in integer mode** (25 × 32 = 800 MHz / 80); notes on the helper sheet, unit 13 sheet and `design.py` say "same TCXO, both integer" instead of "same PLL, noiseless" |
 | 8 | Medium | G Gr (C: **they are wrong**) | "Driving XA is an undocumented mode" | Si5351 datasheet **§6.6 "Applying a Reference Clock at XTAL Input"**: 1 Vpp through a 0.1 µF into XA, XB open.  Documented | Note corrected.  We run 0.77 Vpp because XA's abs max is +1.3 V and its bias point is unpublished; §2.8 shows 0.77 is the largest swing that is safe under the worst-case bias assumption.  GPT's "select the Si5351C" is unnecessary |
 | 9 | Medium | Gr C | Comments and notes that describe a different board: pin 31 "DNP 0R alternate helper", "In2 = helper and NOTHING else", `VIA_CLK0/VIA_CLK1` swapped in `helper.py`, "200.02 MHz" pps note, "±0.5 ppm", "noiseless CLK1" | Read each one against the netlist / .kicad_pcb | All fixed at the source |
-| 10 | Medium | G Gr C | Bench-powering the board with the PYNQ off puts 3.3 V on 26 unpowered Zynq I/O (abs max 0.55 V) with silkscreen as the only lock | PYNQ-Z2 manual table 15; power sheet | **Interlock added**: the LDO enables now come from `+5V_HDR` (the header side of the OR-ing diode) through 10k, so with the host off the board's 3.3 V rails cannot come up at all.  A DNP 0R restores always-on for use with no host attached.  See log for whether the layout took it |
-| 11 | Medium | G Ge C | `rev B` on the silkscreen, `Rev A` everywhere else; silkscreen text clipped by the top edge; two 0.1–0.2 mm stubs on PPS_03/PPS_05 | DRC report; `build_pcb.py` line 2368 | Silkscreen now takes the revision from `design.py`; text moved 1 mm in; stubs are cosmetic and left |
+| 10 | Medium | G Gr C | Bench-powering the board with the PYNQ off puts 3.3 V on 26 unpowered Zynq I/O (abs max 0.55 V) with silkscreen as the only lock | PYNQ-Z2 manual table 15; power sheet | **Interlock designed and drawn** (schematic ERC 0): the LDO enables come from `+5V_HDR`, the header side of the OR-ing diode, through R2025 (10k), so with the host off the TPS7A20s' own 500k pulldowns hold LDO_EN low and neither 3.3 V rail exists.  R2026 (DNP 0R) restores always-on for a board used with no host.  Laid out in the hand-routed power block on F.Cu + In2.  See the log for build 2's DRC verdict |
+| 11 | Medium | G Ge C | `rev B` on the silkscreen, `Rev A` everywhere else; silkscreen text clipped by the top edge; two 0.1–0.2 mm stubs on PPS_03/PPS_05 | DRC report; `build_pcb.py` line 2368 | **FIXED**: silkscreen reads `rev A` from `design.py` (plus a `DATE`); the edge text moved to 2.2 mm (KiCad still warns at that distance; it is inside JLCPCB's 0.15 mm silk-to-edge rule, and no further in is free of pads); the two stubs are cosmetic and left |
 | 12 | Medium | Ge (C: overstated) Gr (C: right) | In2.Cu is not "helper and nothing else": 53 nets, 501 segments.  Gemini calls the crosstalk catastrophic | My own scan (§2.10): the sub-1 mm parallel runs against helper branches are with DC nets, with beats (whose edges are *caused by* the helper edge and so land ns after it, never on it) and with one pps (1 event/s).  Not catastrophic; not clean either | Docstring corrected.  No re-route for Rev A.  Rev B: keep-out for helper branches in the router |
 | 13 | Medium | Ge Gr (C: real, not fixable on this board) | The squarer's common-mode-threshold argument only holds for equal slew rates; the inventory spans 23 to ~1000 mV/ns, so 1 mV of rail drift is 44 ps on the FE-5680A and 1 ps on a ZED-F9T | Arithmetic; `design.py` SOURCES | Accept and measure.  Power-sheet note rewritten to say what cancels and what does not; expected floor per source tabulated in §2.13.  Rev B: a comparator-grade front end on one channel |
-| 14 | Medium | C G Ge Gr | CPL rotations: KiCad-native, no correction | Compared Gemini's table (SOT-23 = +180) with the JLCKicadTools database used by thousands of orders (SOT-23 = **−90**): they disagree, so no table can be applied blind | `mfg/make_bom.py` now emits **both** files: `_cpl.csv` (native) and `_cpl_jlc_corrected.csv` (JLCKicadTools table, provenance recorded).  FABRICATION_NOTES says which to upload and which five packages to check in the placement preview |
+| 14 | Medium | C G Ge Gr | CPL rotations: KiCad-native, no correction | Compared Gemini's table (SOT-23 = +180) with the JLCKicadTools database used by thousands of orders (SOT-23 = **−90**): they disagree, so no table can be applied blind | **DONE**: `mfg/make_bom.py` emits **both** files: `_cpl.csv` (native) and `_cpl_jlc_corrected.csv` (JLCKicadTools table, 72 placements rotated: 62 SOT-23-x by -90, 3 SOT-223 by +180, 9 SOIC-8 by +270; provenance and sign convention recorded in the source).  FABRICATION_NOTES says which to upload and which five parts to check in the placement preview |
 | 15 | Low | Ge | R3004 "33 Ω" on the FPGA helper should be 0 Ω | R3004 is the DNP external-helper selector, not a 33 Ω; the 33 Ω are R3008–R3021, the branch series terminations chosen in round 21 from the Si5351 datasheet | No change.  Gemini misread the reference |
 | 16 | Low | Ge | TM-4 unterminated pumps the gate to +7.3 V | Already in `design.py` unit 1 note, round 4 | No change: the TERM jumper ships fitted on unit 1 |
-| 17 | Low | Gr | Order one board, not five | — | Agreed; `build.py --boards 1` is now the default release quantity |
+| 17 | Low | Gr | Order one board, not five | — | **DONE**: `build.py --boards 1` is the default; the release is priced for one board: parts $37.00, parts + assembly $99.77 |
 
 Things I looked for and did **not** find (so that this review is
 distinguishable from one that read nothing): a repeat of the 0x60 address
@@ -177,13 +177,13 @@ reason the heater exists.  It is not a Rev A change; it is a measurement.
 
 ## 4. What to do before ordering (the checklist)
 
-- [ ] Route fix for the two drill clashes; rebuild; DRC 0 filled, 0 unconnected
-- [ ] Notes and comments corrected at the source (`design.py`, `sheet_unit.py`,
+- [ ] Route fix for the two drill clashes; rebuild; DRC 0 filled, 0 unconnected (build 2, see log)
+- [x] Notes and comments corrected at the source (`design.py`, `sheet_unit.py`,
       `sheets_rest.py`, `helper.py`, `build_pcb.py`)
-- [ ] I2C drivers + host tests + bring-up script; AxiIIC path tried on the PYNQ
-- [ ] Release regenerated for **1** board, with both CPL files
-- [ ] Gateware v1.1 pps timestamps (see log)
-- [ ] LDO-enable interlock from `+5V_HDR` (see log)
+- [x] I2C drivers + host tests + bring-up script; AxiIIC path tried on the PYNQ
+- [x] Release regenerated for **1** board, with both CPL files
+- [x] Gateware v1.1 pps timestamps: simulated, built, running on the PYNQ
+- [ ] LDO-enable interlock from `+5V_HDR` (drawn and laid out; build 2, see log)
 - [ ] **Jason:** upload `GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv`; in JLCPCB's
       placement preview confirm pin 1 on one 74LVC1G80 (SOT-23-5), one
       DMN6068SE (SOT-223), one TMP1075 (SOIC-8), the Si5351 (MSOP-10) and the
@@ -242,3 +242,39 @@ reason the heater exists.  It is not a Rev A change; it is a measurement.
   now a DRC *error*).  Goes into **build 2** after build 1's release is
   checked.  If build 2 fails DRC or leaves LDO_EN unconnected, revert these
   five files to way-point 1 and record the interlock as a Rev B item.
+- **01:28** Build 1's full-severity DRC: the two hole-to-hole clashes were
+  STILL there.  Cause: `build_g2()` (the multi-piece joiner's grid) skips the
+  net's own pads with `continue` before the new no-via call, so a net's own
+  through-hole pad never got its zone -- and both clashes are exactly that
+  case (I2C_SCL's own J5001 pad, +5V_HDR's own J4001 pad).  Fixed by moving
+  the call ahead of the skip.  Way-point 2 committed (`9d24e83`) with build
+  1's outputs and gateware v1.1.  **Build 2 launched 01:29** with the via
+  fix, the interlock and hole_to_hole as a DRC error (launched ~01:23 by the
+  wall clock; earlier times in this log are approximate).  Uncommitted at this
+  moment: gen/gen.py, gen/sheets_rest.py, pcb/power.py, pcb/build_pcb.py,
+  mfg/parts_map.py (all interlock/via-fix), gateware/README.md,
+  gateware/driver/dmtd.py (docs).
+- **01:58** Build 2's router has been running 31 min against build 1's 20
+  (build.py buffers its output, so nothing is visible until it ends).  A
+  diagnostic copy of gen/ + pcb/ is running in the session scratchpad with
+  `RTPROG=1 RTDEBUG=1` to see which nets it is fighting.  Build 2 left to
+  run.  If it does not finish by ~02:20, the plan is: kill it, revert the
+  interlock (gen/sheets_rest.py, pcb/power.py, the PW hook in
+  pcb/build_pcb.py, mfg/parts_map.py) to way-point 2 and rebuild with only
+  the via fix and the DRC severity, then record the interlock as Rev B.
+- **02:05** Build 2 finished after 2037 s: 0 DRC violations but **2
+  unconnected items, I2C_SCL and I2C_SDA**.  The diagnostic copy (router
+  debug flags on) said why within a minute: my LDO_EN run on In2 at board
+  x = 128 crossed the six board-wide In2 links at y = 25.0..29.0 that carry
+  I2C, the Q2003 drain, HTR_DRIVE, +3V3_D and +15V_HTR straight through the
+  power block; spine() tried to hop each link to F.Cu over it and landed on
+  U2002's pads, so five links were dropped and the joiner spent half an hour
+  failing to re-route two of them.  My In2 scan of the block had only tested
+  segment *endpoints* against the window, and the links' endpoints are at the
+  board edges.  Build 2's output is discarded (not committed).
+- **02:07** `LDO_EN` re-laid: R2025's via at board (143.1, 19.1), In2 up to
+  y = 23.5, across to x = 128.5 and up to y = 15.2; each EN pin reaches it by
+  a short F.Cu stub to its own via (U2002's at (128.5, 23.5), U2001's at
+  (128.5, 15.2)); nothing on In2 at y > 23.5.  R2026 moved to straddle the
+  new stub.  The constraint is now written into `build_pcb.py` beside the
+  hook.  **Build 3 launched 02:07.**

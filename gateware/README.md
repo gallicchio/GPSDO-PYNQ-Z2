@@ -15,15 +15,16 @@ files and `gen/design.py`, so the result is a diff rather than a screenshot.
 
 | path | what it is |
 |---|---|
-| `rtl/dmtd_capture.v` | the measurement core: AXI4-Lite, 13 beats + 12 pps |
-| `sim/tb_dmtd_capture.v` | self-checking testbench, 47 checks |
+| `rtl/dmtd_capture.v` | the measurement core: AXI4-Lite, 13 beats + 12 pps, v1.1 |
+| `sim/tb_dmtd_capture.v` | self-checking testbench, 57 checks |
 | `build.tcl` | project, block design, synth, impl, bitstream, handoff |
 | `sim.tcl` | runs the testbench, non-zero exit unless it passes |
 | `bringup.tcl` | talks to the core over JTAG with no PS and no network |
 | `bd_diagram.tcl` | draws the block diagram headlessly, from the BD itself |
 | `gen_xdc.py` | generates `xdc/pins.xdc` from `gen/design.py` |
 | `gen_constants.py` | generates `driver/dmtd_constants.py` from `gen/design.py` |
-| `driver/` | the PYNQ driver, plus host-side tests that need no board |
+| `driver/` | the PYNQ driver, the I2C device drivers, and host-side tests that need no board |
+| `board/bringup.py` | first power-up of a front-end board, in the safe order (DAC EEPROM first) |
 | `board_files/pynq-z2/` | vendored board files, so no network and no install |
 
 Two things are generated from `gen/design.py`, which is the same file the
@@ -31,6 +32,25 @@ schematic and the PCB come from: the pin constraints and the driver's
 constants. The board, the gateware and the driver therefore cannot disagree
 about which GPSDO is on which pin, or what a helper cycle is worth in
 picoseconds.
+
+## What v1.1 added (round 28)
+
+A beat timestamp is modulo one 10 MHz cycle (100 ns).  The 1 pps was meant to
+say *which* cycle, but a pps timestamped in helper cycles is itself quantised
+to 100 ns, so it could not.  v1.1 stamps every pps a second time in the PS
+clock domain (10 ns) and latches a (helper counter, PS counter) **pair** at
+every LIVE refresh so software can map one scale onto the other:
+
+| offset | what |
+|---|---|
+| `0x01C/0x020` | LIVE_PS_LO/HI: the PS counter at the instant of LIVE_LO/HI |
+| `0x400 + 16*slot` | PS timestamp low / high / PS-domain edge count, pps slots 16–27 |
+
+`driver.pps_offsets_ns()` is a 10 ns time-interval counter across all twelve
+pps inputs; `driver.absolute_phases_ps()` resolves the 100 ns integer for the
+beat phase from it (assuming each GPSDO's pps sits on one of its own 10 MHz
+edges to better than ±40 ns, which must be measured per unit).  VERSION reads
+1.1; a 1.0 bitstream still works with the driver, minus these.
 
 ## Build
 

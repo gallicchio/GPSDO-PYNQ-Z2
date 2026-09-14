@@ -3763,7 +3763,7 @@
 		)
 		(uuid "197438c3-11e4-9c99-1983-b3ae587ddc3d")
 	)
-	(text "PLL feedback 32 + 4142/1048575, MultiSynth 80 (INTEGER, low spur),"
+	(text "PLLA feedback 32 + 1543/390625 (exact), MultiSynth 80 (INTEGER, low spur),"
 		(exclude_from_sim no)
 		(at 120.6500 135.8900 0)
 		(effects
@@ -3773,7 +3773,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "bb1ce876-c31e-5fc0-fcb0-84fb1772f4d9")
+		(uuid "aaf9bb15-0085-fd59-98cd-d2aaca212454")
 	)
 	(text "R = 1  ->  CLK0 = 10.0012344 MHz,  f_beat = 1234.4 Hz,  N = 8101"
 		(exclude_from_sim no)

@@ -120,7 +120,10 @@ def project_file(children):
     for sch, name, fn in children:
         sheets.append([uuid_for(D.PROJECT, "sheetbox", fn), name])
     return json.dumps({
-        "board": {}, "boards": [], "cvpcb": {"equivalence_files": []},
+        # Round 28: two vias were drilled into through-hole pads and the DRC
+        # only ever warned, so the build's --severity-error pass never saw it.
+        "board": {"design_settings": {"rule_severities": {"hole_to_hole": "error"}}},
+        "boards": [], "cvpcb": {"equivalence_files": []},
         "libraries": {"pinned_footprint_libs": [], "pinned_symbol_libs": []},
         "meta": {"filename": D.PROJECT + ".kicad_pro", "version": 3},
         "net_settings": {"meta": {"version": 3}, "net_colors": None,

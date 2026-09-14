@@ -699,14 +699,26 @@ def build():
     # ---- the power input block -------------------------------------------
     for ref, (px, py, prot) in sorted(PW.PARTS.items()):
         put(ref, *PW.place(px, py), rot=(prot + PW.ROT) % 360)
-    for (slot, pad), w, pts in PW.routes():
+    for lst, lyr in ((PW.routes(), "F.Cu"), (PW.IN2_ROUTES, "In2.Cu")):
+        for (slot, pad), w, pts in lst:
+            nm = nets.get(slot, {}).get(pad)
+            if not nm or nm.startswith("unconnected-"):
+                continue
+            for i in range(len(pts) - 1):
+                p0, p1 = PW.place(*pts[i]), PW.place(*pts[i + 1])
+                if p0 != p1:
+                    tracks.append(p0 + p1 + (lyr, nm, w))
+    # NOTE for anyone adding In2 copper in this block: the six board-level
+    # links (I2C_SCL, I2C_SDA, Q2003-D, HTR_DRIVE, +3V3_D, +15V_HTR) run the
+    # whole width of the board on In2 at y = 25.0 .. 29.0, straight through
+    # the power block, and are laid AFTER this by spine().  In2 here must stay
+    # above y = 24 or below y = 30, or the links hop to F.Cu and cannot land
+    # (round 28's first interlock layout crossed all six and dropped five).
+    for slot, pad, vx, vy in PW.VIAS:                  # round 28: LDO_EN
         nm = nets.get(slot, {}).get(pad)
-        if not nm or nm.startswith("unconnected-"):
-            continue
-        for i in range(len(pts) - 1):
-            p0, p1 = PW.place(*pts[i]), PW.place(*pts[i + 1])
-            if p0 != p1:
-                tracks.append(p0 + p1 + ("F.Cu", nm, w))
+        if nm:
+            vp = PW.place(vx, vy)
+            tile_vias.append((vp[0], vp[1], nm))
     out.append(text(PW.LABEL_XY[0], PW.LABEL_XY[1], "POWER", "F.SilkS", 2.0, 0.34))
 
     # ---- hand-placed: edges and hot spots ---------------------------------
@@ -2118,6 +2130,13 @@ def build():
             return g
         g = MZ.Grid(G.BW, G.BH)
         for _r, _p, ax, ay, tht, net, hd, rc in allpads:
+            # The no-via disc goes on BEFORE the net's own pads are skipped:
+            # hole-to-hole does not care whose hole it is.  Round 28's first
+            # build put this after the `continue` and both drill clashes -- a
+            # via inside J5001 pin 13 (I2C_SCL's own pad) and one 0.24 mm from
+            # J4001 pin 4 (+5V_HDR's own pad) -- came straight back.
+            if tht:
+                g.block_via(ax, ay, NOVIA_R(hd))
             if net == open_net:
                 continue
             # 0.45 mm, not 0.85.  A 0.25 mm track needs 0.275 mm of clear
@@ -2129,8 +2148,6 @@ def build():
             # anything is committed.
             g.block_rect(ax, ay, rc, 0.5 if tht else 0.45,
                          None if tht else FCU)
-            if tht:
-                g.block_via(ax, ay, NOVIA_R(hd))
         for vx, vy in vias:
             g.block_disc(vx, vy, 0.75)
         for vx, vy, _n in tile_vias:

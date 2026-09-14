@@ -3,7 +3,7 @@
 A 13-channel Digital DMTD front end that plugs onto a PYNQ-Z2's Raspberry Pi
 40-pin header and compares thirteen GPSDOs' 10 MHz and 1 pps outputs at about
 12 ps single-shot resolution. This file is the design log and the tutorial:
-twenty-seven rounds of prompts and answers, in order, including the mistakes
+twenty-eight rounds of prompts and answers, in order, including the mistakes
 and what they cost. The board, the generator that draws it, the manufacturing
 release and the FPGA gateware are all in this directory.
 

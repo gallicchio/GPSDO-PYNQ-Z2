@@ -18,7 +18,7 @@ WHAT IS ON EACH LAYER
 MINIMUMS ACTUALLY USED  (all well inside JLCPCB's 4-layer capability)
   Minimum track ...... 0.25 mm
   Track widths used .. 0.25, 0.30, 0.35, 0.50
-  Via pad/drill ...... 0.60/0.30 mm      (599 vias)
+  Via pad/drill ...... 0.60/0.30 mm      (595 vias)
   Minimum via drill .. 0.3 mm
   Pad drill sizes .... 1.00, 1.20, 1.50, 1.70
   Minimum pad drill .. 1.0 mm

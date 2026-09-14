@@ -1,19 +1,19 @@
 # Annotated BOM - GPSDO DDMTD front end
 
-Generated 2026-09-14T01:20:01-07:00 for **1 board(s)**.  Prices and stock come from JLCPCB's parts API; each row carries the timestamp of its own query.  JLCPCB's quote at checkout is authoritative -- the fee model below is an estimate stated so it can be checked.
+Generated 2026-09-14T02:27:46-07:00 for **1 board(s)**.  Prices and stock come from JLCPCB's parts API; each row carries the timestamp of its own query.  JLCPCB's quote at checkout is authoritative -- the fee model below is an estimate stated so it can be checked.
 
 ## What it costs
 
 | | |
 |---|---|
-| SMT parts, 38 distinct, 457 placements | **$37.00** |
+| SMT parts, 38 distinct, 458 placements | **$37.00** |
 | Basic / Preferred parts (no setup fee) | 20 |
 | Extended parts (setup fee each) | 18 |
 | Estimated assembly fees | $62.78 |
 |   - order setup | $8.00 |
 |   - 18 extended parts at $3.00 | $54.00 |
-|   - 457 joints at $0.0017 | $0.78 |
-| **Parts + assembly, excluding the bare boards** | **$99.77** |
+|   - 458 joints at $0.0017 | $0.78 |
+| **Parts + assembly, excluding the bare boards** | **$99.78** |
 | Through-hole parts to order loose | $13.00 |
 | Extras (jumper shunts) | $0.18 |
 
@@ -41,7 +41,7 @@ No part is out of stock, unfound, or in a package that disagrees with its footpr
 | C17738 | 0805W8F510JT5E | 51R 1% | 0805 | Basic | 13 | 23 | $0.0035 | $0.0805 | 1,015,829 | 2026-09-13 11:10 |  |
 | C17520 | 0805W8F2201T5E | 2k2 | 0805 | Basic | 13 | 23 | $0.0054 | $0.1242 | 3,783,955 | 2026-09-13 11:10 |  |
 | C17513 | 0805W8F1001T5E | 1k | 0805 | Basic | 13 | 23 | $0.0042 | $0.0966 | 30,674,410 | 2026-09-13 11:10 |  |
-| C17414 | 0805W8F1002T5E | 10k | 0805 | Basic | 12 | 22 | $0.0039 | $0.0858 | 54,156,568 | 2026-09-13 11:10 |  |
+| C17414 | 0805W8F1002T5E | 10k | 0805 | Basic | 13 | 23 | $0.0039 | $0.0897 | 54,156,568 | 2026-09-13 11:10 |  |
 | C7836 | SN74LVC1G17DBVR | 74LVC1G17 | SOT-23-5 | Extended | 12 | 16 | $0.1681 | $2.69 | 23,766 | 2026-09-13 11:10 | Extended: one-off setup fee applies to this part |
 | C2878381 | TMP1075DR | TMP1075D | SOIC-8 | Extended | 8 | 8 | $0.4834 | $3.87 | 1,952 | 2026-09-13 11:10 | Extended: one-off setup fee applies to this part |
 | C17969 | 1206W4F470JT5E | 47R | 1206 | Extended | 5 | 9 | $0.0071 | $0.0639 | 326,057 | 2026-09-13 11:10 | Extended: one-off setup fee applies to this part |

@@ -124,6 +124,12 @@ DNP_NOTES = {
     "R3004": (None, "0R selector for the EXTERNAL helper input.  Fit it AND "
                     "remove R3005 to run off the EXT HELPER IN SMA instead of "
                     "the on-board Si5351"),
+    "R2026": (None, "0R that ties LDO_EN to the LDO input, so the 3.3 V rails "
+                    "come up with NO host attached (a USB-I2C dongle on the "
+                    "debug header).  Fit ONLY on a board that will never sit "
+                    "on a PYNQ: with it fitted, bench power on an unpowered "
+                    "host drives 26 Zynq I/O past their 0.55 V absolute max, "
+                    "which is the thing round 28's interlock exists to stop"),
 }
 
 # Parts deliberately NOT given an LCSC code.

@@ -16,6 +16,7 @@ R1006,51R,R_0805_2012Metric,DNP in the schematic,"1 pps 50R terminator: nothing 
 R106,51R,R_0805_2012Metric,DNP in the schematic,"1 pps 50R terminator: nothing here drives 50 ohm, and fitting it on a ZED-F9T asks 66 mA of a 5 mA pin"
 R1106,51R,R_0805_2012Metric,DNP in the schematic,"1 pps 50R terminator: nothing here drives 50 ohm, and fitting it on a ZED-F9T asks 66 mA of a 5 mA pin"
 R1206,51R,R_0805_2012Metric,DNP in the schematic,"1 pps 50R terminator: nothing here drives 50 ohm, and fitting it on a ZED-F9T asks 66 mA of a 5 mA pin"
+R2026,0R,R_0805_2012Metric,DNP in the schematic,"0R that ties LDO_EN to the LDO input, so the 3.3 V rails come up with NO host attached (a USB-I2C dongle on the debug header).  Fit ONLY on a board that will never sit on a PYNQ: with it fitted, bench power on an unpowered host drives 26 Zynq I/O past their 0.55 V absolute max, which is the thing round 28's interlock exists to stop"
 R206,51R,R_0805_2012Metric,DNP in the schematic,"1 pps 50R terminator: nothing here drives 50 ohm, and fitting it on a ZED-F9T asks 66 mA of a 5 mA pin"
 R3004,0R DNP,R_0805_2012Metric,DNP in the schematic,0R selector for the EXTERNAL helper input.  Fit it AND remove R3005 to run off the EXT HELPER IN SMA instead of the on-board Si5351
 R306,51R,R_0805_2012Metric,DNP in the schematic,"1 pps 50R terminator: nothing here drives 50 ohm, and fitting it on a ZED-F9T asks 66 mA of a 5 mA pin"

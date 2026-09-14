@@ -533,7 +533,14 @@ if _HAVE_PYNQ:
             the 1-Wire bridge.
 
             pynq 3.0 binds its own `pynq.lib.iic.AxiIIC` driver to this, so it
-            already has send/receive.  Device-level drivers for the parts on
-            the bus are not written yet -- the Si5351 is the one that matters,
-            because nothing beats until it is programmed."""
+            already has send/receive.  The device-level drivers are in
+            i2c_devices.py (round 28): wrap this in `PynqBus` and use
+            `Si5351`, `TMP1075`, `Heater`/`MCP4725`, `DS2482`/`DS18B20`.
+            gateware/board/bringup.py is the sequence, in the safe order."""
             return self.axi_iic_0
+
+        @property
+        def bus(self):
+            """The same controller as an i2c_devices.Bus."""
+            from .i2c_devices import PynqBus
+            return PynqBus(self.axi_iic_0)

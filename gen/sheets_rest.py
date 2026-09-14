@@ -45,6 +45,9 @@ def _head(s, title, sub):
 
 
 # ===========================================================================
+YEN, XEN, XOVR = 134.0, 25.4, 254.0     # the LDO_EN bus and its two resistors
+
+
 def power(s):
     R = RefGen(20)
     _head(s, "POWER",
@@ -128,9 +131,13 @@ def power(s):
                   footprint=FP_SOT235, lcsc="C2862740",
                   ref_dxy=(-6.35, -19.05), val_dxy=(-6.35, -16.51))
         s.wire(u.pin(1)[0], y, *u.pin(1))                        # IN up to the bus
-        s.wire(x - 20.32, y, x - 20.32, u.pin(3)[1])             # EN riser
-        s.wire(x - 20.32, u.pin(3)[1], *u.pin(3))
-        s.text(x - 20.32, y + 35.56, "EN tied high: always on", size=1.3, italic=True)
+        # Round 28: EN goes DOWN to the LDO_EN bus at YEN, not up to the input
+        # bus.  LDO_EN is +5V_HDR through R2025 -- the HEADER side of the
+        # OR-ing diode -- so the rails cannot come up unless the host is on.
+        s.wire(*u.pin(3), x - 20.32, u.pin(3)[1])
+        s.wire(x - 20.32, u.pin(3)[1], x - 20.32, YEN)
+        s.text(x - 17.78, y + 35.56, "EN from LDO_EN: only while the host's 5 V is present",
+               size=1.3, italic=True)
         gnd(s, *u.pin(2), drop=8.89, R=R)
         s.nc(*u.pin(4))
         s.text(x + 2.54, 138.0, "pin 4 = N/C, no bypass cap",
@@ -147,6 +154,23 @@ def power(s):
         rail(s, x + 60.96, oy, rail_net, rise=7.62, R=R)
 
         s.text(x - 12.7, y - 8.89, desc, size=1.8, bold=True)
+
+    # ---- the LDO_EN bus: +5V_HDR through 10k, DNP 0R back to the input ---
+    # Both enables hang off this.  R2025 and R2026 themselves are drawn at the
+    # END of this function so that their reference designators come after the
+    # twenty-four heaters' -- R2001..R2024 are the heaters, by position, and
+    # pcb/build_pcb.py relies on that numbering.
+    s.junction(XEN, y)
+    s.wire(XEN, y, XEN, 107.95)                       # +5V_HDR down to R2025 pin 1
+    s.wire(XEN, 115.57, XEN, YEN)                     # R2025 pin 2 down to the bus
+    s.wire(XEN, YEN, 300.0, YEN)                      # the LDO_EN bus
+    s.glabel(300.0, YEN, "LDO_EN", shape="passive", justify="left")
+    s.junction(XOVR, y)
+    s.wire(XOVR, y, XOVR, 107.95)                     # input bus down to R2026 pin 1
+    s.wire(XOVR, 115.57, XOVR, YEN)                   # R2026 pin 2 down to the bus
+    s.text(XOVR + 3.81, 119.38, "DNP.  Fit to run with NO host at all:", size=1.3, italic=True)
+    s.text(XOVR + 3.81, 123.19, "ties LDO_EN to the LDO input, as rounds 1-27 had it.",
+           size=1.3, italic=True)
 
     s.note(15.24, 145.0, 122.0, 0,
            "ONE SHARED RAIL FOR EVERY THRESHOLD-SETTING GATE.\n"
@@ -191,13 +215,16 @@ def power(s):
            "the board edge.\n"
            "What is NOT protected: sustained reverse voltage beyond the SS34's 40 V, and "
            "anything applied directly to an SMA or the header pins.\n"
-           "NEVER RUN OFF THE BENCH POSTS WITH THE PYNQ UNPOWERED.  PYNQ-Z2 user manual "
-           "table 15: an unpowered Zynq I/O pin is absolute-max 0.55 V.  This board would "
-           "then drive 3.3 V into all 13 beats, 12 pps returns and the helper clock.  The "
-           "PYNQ's own 200 R series resistors hold each one to about 14 mA, so it survives "
-           "a mistake, but it is out of spec every second it lasts.  The bench posts are "
-           "for powering the board when the PYNQ is ALSO on - to take the 3.3 V rails off "
-           "the host - not for running it alone.",
+           "THE RAILS CANNOT COME UP WITHOUT THE HOST (round 28).  PYNQ-Z2 user manual "
+           "table 15: an unpowered Zynq I/O pin is absolute-max 0.55 V, and a bench-powered "
+           "board with the PYNQ off would drive 3.3 V into all 13 beats, 12 pps returns and "
+           "the helper clock - 14 mA a pin through the PYNQ's 200 R, survivable but out of "
+           "spec every second it lasts, and rounds 21-27 had only silkscreen against it.  So "
+           "both LDO enables now come from +5V_HDR, the HEADER side of the OR-ing diode, "
+           "through R2025: with the host off, LDO_EN is held low by each TPS7A20's own 500k "
+           "pulldown and neither 3.3 V rail exists.  The bench posts still work with the "
+           "PYNQ also on.  For a board that will NEVER sit on a host (a USB-I2C dongle on "
+           "the debug header instead), fit R2026, a 0R, which ties LDO_EN to the LDO input.",
            size=1.4, color=WARN, cols=80)
     s.note(403.86, 100.0, 122.0, 0,
            "CURRENT BUDGET, ~100 mA TOTAL.\n"
@@ -356,6 +383,11 @@ def power(s):
         gnd(s, *q.pin(3), drop=8.89, R=R)
     s.text(400.0, ybus + 26.67, "heater return: its own trace back to the jack, meeting board "
            "ground at exactly one point", size=1.4, italic=True)
+
+    # The two LDO_EN resistors, created last so they are R2025 and R2026 (see
+    # the note beside the LDO_EN bus above).  Pins land at 107.95 and 115.57.
+    r_v(s, XEN, 111.76, R("R"), "10k")                     # R2025: +5V_HDR -> LDO_EN
+    r_v(s, XOVR, 111.76, R("R"), "0R", dnp=True)           # R2026: input -> LDO_EN, DNP
 
     s.note(15.24, 348.0, 122.0, 0,
            "12 V ON ITS OWN JACK, HEATER ONLY.\n"
