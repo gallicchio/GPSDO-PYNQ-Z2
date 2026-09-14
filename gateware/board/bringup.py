@@ -46,6 +46,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--scan', action='store_true', help='scan the bus and stop')
     ap.add_argument('--no-si5351', action='store_true')
+    ap.add_argument('--clk2', default='off', choices=('off', 'helper', 'null'),
+                    help="what to put on the Si5351's third output.  'off' is "
+                         "what the front-end board wants -- CLK2 has no track "
+                         "on it.  'helper' puts a second copy of CLK0 there, "
+                         "so a scope or an ADALM2000 on CLK1 and CLK2 sees the "
+                         "1234.4 Hz beat this instrument is built on")
     ap.add_argument('--no-heater', action='store_true',
                     help='do not touch the DAC (only if it has been made safe before)')
     ap.add_argument('--bit', default=os.path.join(HERE, 'dmtd_top.bit'))
@@ -83,7 +89,7 @@ def main():
               % (rb['eeprom_code'], rb['eeprom_pd'], rb['code'], rb['pd'],
                  'SAFE' if rb['eeprom_code'] == 0 and rb['eeprom_pd'] == 1 else 'NOT SAFE'))
 
-    hdr('Si5351: helper on CLK0, null on CLK1')
+    hdr('Si5351: helper on CLK0, null on CLK1, CLK2 %s' % a.clk2)
     if a.no_si5351:
         print('    skipped by --no-si5351')
     elif Si5351.ADDR not in found:
@@ -92,12 +98,18 @@ def main():
         chip = Si5351(bus)
         print('    status before:', chip.status)
         chip.wait_ready()
-        cfg = Si5351Config(f_helper=F_HELPER)
+        cfg = Si5351Config(f_helper=F_HELPER, clk2=a.clk2)
         f0, f1 = cfg.expected()
         print('    PLLA %d + %d/%d -> VCO %.3f MHz -> CLK0 %.4f Hz'
               % (cfg.a, cfg.b, cfg.c, cfg.f_vco_a / 1e6, f0))
         print('    PLLB %d          -> VCO %.3f MHz -> CLK1 %.4f Hz'
               % (cfg.mult_b, cfg.f_vco_b / 1e6, f1))
+        f2 = cfg.expected_clk2()
+        print('    CLK2 %s' % ('off (not routed on the front-end board)'
+                               if f2 is None else
+                               '%.4f Hz  -- %s, a bench witness; CLK1 and CLK2 '
+                               'are then %.1f Hz apart'
+                               % (f2, a.clk2, abs(f2 - f1))))
         chip.program(cfg)
         bad = chip.verify(cfg)
         print('    readback: %s' % ('all %d registers agree' % len(cfg.registers())
@@ -131,14 +143,24 @@ def main():
                     print('    %016X  read failed: %s' % (rom, e))
 
     hdr('measurement core selftest')
-    res = core.selftest(settle=1.0)
-    fails = [r for r in res if not r[1]]
+    # Is there a front-end board on the header at all?  The squarers and the
+    # flip-flops that make a beat are on it, so with it absent the thirteen
+    # beat checks cannot pass and reporting them as failures buries whatever
+    # else went wrong.  The board's own I2C parts are the evidence: a bare
+    # PYNQ with a Si5351 wired to five pins has none of them.
+    front_end = bool(set(found) - {Si5351.ADDR})
+    if not front_end:
+        print('    no front-end board on the bus (%s), so the beat and pps '
+              'checks are reported as not testable rather than failed'
+              % ('nothing but the Si5351 answered' if found else 'nothing answered'))
+    res = core.selftest(settle=1.0, front_end=front_end)
+    fails = core.failures(res)
     hz = core.helper_hz
     if hz:
         print('    helper %.1f Hz measured against the PS clock (that clock is '
               '+/-50 ppm, so +/-500 Hz: use a pps to measure it properly)' % hz)
     print('\n%d checks, %d failures' % (len(res), len(fails)))
-    return 0
+    return 1 if fails else 0
 
 
 if __name__ == '__main__':

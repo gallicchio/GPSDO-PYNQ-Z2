@@ -75,26 +75,56 @@ class Bus(object):
 
 
 class PynqBus(Bus):
-    """pynq.lib.iic.AxiIIC -- the axi_iic in the overlay, bound by pynq."""
+    """pynq.lib.iic.AxiIIC -- the axi_iic in the overlay, bound by pynq.
+
+    ROUND 30, on real silicon.  `AxiIIC.receive()` passes its `data` argument
+    straight to `XIic_Recv`, whose prototype is
+
+        unsigned XIic_Recv(unsigned long, unsigned char, unsigned char *,
+                           unsigned, unsigned char);
+
+    cffi will convert a `bytes` for that `unsigned char *` -- which is why
+    `send()` works with one and why the bus SCAN passed -- but it refuses a
+    `bytearray`, because a bytearray is mutable and cffi has no way to pin it:
+
+        TypeError: initializer for ctype 'unsigned char *' must be a cdata
+                   pointer, not bytearray
+
+    So a receive needs a real cffi buffer.  The class has the FFI that owns
+    the prototype (`AxiIIC._ffi`, created by its own `_initialise_lib()` and
+    therefore non-None by the time we are handed an instance), so allocate
+    from that one rather than making a second FFI whose `unsigned char[]` is
+    a different type object.
+    """
 
     def __init__(self, axi_iic):
         self.iic = axi_iic
+        self._ffi = getattr(type(axi_iic), "_ffi", None)
+        if self._ffi is None:                      # pragma: no cover
+            import cffi
+            self._ffi = cffi.FFI()
+
+    def _rx(self, n):
+        return self._ffi.new("unsigned char[]", n)
+
+    def _bytes(self, buf, n):
+        return bytes(self._ffi.buffer(buf, n))
 
     def write(self, addr, data):
         data = bytes(data)
         self.iic.send(addr, data, len(data))
 
     def read(self, addr, n):
-        buf = bytearray(n)
+        buf = self._rx(n)
         self.iic.receive(addr, buf, n)
-        return bytes(buf)
+        return self._bytes(buf, n)
 
     def write_read(self, addr, data, n):
         data = bytes(data)
         self.iic.send(addr, data, len(data), self.iic.REPEAT_START)
-        buf = bytearray(n)
+        buf = self._rx(n)
         self.iic.receive(addr, buf, n)
-        return bytes(buf)
+        return self._bytes(buf, n)
 
 
 class SmbusBus(Bus):
@@ -188,6 +218,7 @@ REG_MSNA        = 26       # PLLA feedback, 8 registers
 REG_MSNB        = 34       # PLLB feedback, 8 registers
 REG_MS0         = 42       # output MultiSynth 0, 8 registers
 REG_MS1         = 50
+REG_MS2         = 58
 REG_SS_EN       = 149
 REG_PLL_RESET   = 177
 REG_XTAL_CL     = 183
@@ -282,10 +313,20 @@ class Si5351Config(object):
            integer: 25 MHz x 32 = 800 MHz / 80 = 10.000000 MHz.
     The two PLLs lock to the same XA input, so the beat between CLK0 and CLK1
     is exact in frequency; they are two PLLs, so their noise is not common.
+
+    CLK2 = off, which is what the front-end board wants: nothing is routed to
+    it there.  ROUND 30 adds `clk2='helper'`, a second copy of CLK0 off the
+    same PLLA and the same MultiSynth ratio, for the bench: with a scope or an
+    ADALM2000 on CLK1 and CLK2 you can watch the beat this whole instrument is
+    built on -- 10.0012344 against 10.000000 MHz, 1234.4 Hz apart -- before any
+    board exists.  It costs the real board nothing because it is not the
+    default and CLK2 has no track on it.
     """
 
+    CLK2_CHOICES = ('off', 'helper', 'null')
+
     def __init__(self, f_xtal=25e6, f_helper=10_001_234.4, f_null=10e6,
-                 div=80, pll_ratio=None, xtal_cl=XTAL_CL_10PF):
+                 div=80, pll_ratio=None, xtal_cl=XTAL_CL_10PF, clk2='off'):
         self.f_xtal, self.f_helper, self.f_null, self.div = f_xtal, f_helper, f_null, div
         if pll_ratio is None:
             self.a, self.b, self.c, self.f_vco_a = plan_pll(f_xtal, f_helper, div)
@@ -302,6 +343,10 @@ class Si5351Config(object):
             raise ValueError('PLLB VCO %.0f outside 600-900 MHz' % self.f_vco_b)
         if div % 2 or not (6 <= div <= 254):
             raise ValueError('output divider must be an even integer 6..254')
+        if clk2 not in self.CLK2_CHOICES:
+            raise ValueError('clk2 must be one of %s, got %r'
+                             % (self.CLK2_CHOICES, clk2))
+        self.clk2 = clk2
         self.xtal_cl = xtal_cl
 
     def registers(self):
@@ -315,13 +360,32 @@ class Si5351Config(object):
         r.update(ms_registers(REG_MS1, *ms_params(self.div, 0, 1), rdiv=0))
         r[REG_CLK_CTRL + 0] = CLK_INT | CLK_SRC_MS | CLK_IDRV_8MA              # PLLA
         r[REG_CLK_CTRL + 1] = CLK_INT | CLK_PLLB | CLK_SRC_MS | CLK_IDRV_8MA   # PLLB
-        r[REG_CLK_CTRL + 2] = CLK_PDN                                          # CLK2 unused
+        if self.clk2 == 'off':
+            r[REG_CLK_CTRL + 2] = CLK_PDN                                      # not routed
+        else:
+            # Same MultiSynth ratio as CLK0/CLK1; only the PLL differs.  The
+            # MultiSynth is an integer divider either way, so CLK_INT is right
+            # for both -- the fraction that makes the helper is in PLLA's
+            # feedback, not here.
+            r.update(ms_registers(REG_MS2, *ms_params(self.div, 0, 1), rdiv=0))
+            r[REG_CLK_CTRL + 2] = (CLK_INT | CLK_SRC_MS | CLK_IDRV_8MA
+                                   | (CLK_PLLB if self.clk2 == 'null' else 0))
         r[REG_SS_EN] = 0x00                            # spread spectrum off
         return r
 
     def expected(self):
         """(f_clk0, f_clk1) the image produces, for the log."""
         return self.f_vco_a / self.div, self.f_vco_b / self.div
+
+    def expected_clk2(self):
+        """What CLK2 puts out, or None when it is powered down."""
+        if self.clk2 == 'off':
+            return None
+        return (self.f_vco_b if self.clk2 == 'null' else self.f_vco_a) / self.div
+
+    def oeb(self):
+        """The output-enable byte: 0 enables, 1 disables, bit n = CLKn."""
+        return 0xFC & ~(0x04 if self.clk2 != 'off' else 0) & 0xFF
 
 
 class Si5351(object):
@@ -366,7 +430,7 @@ class Si5351(object):
         for reg in sorted(img):                              # 4. the new configuration
             self.write_reg(reg, img[reg])
         self.write_reg(REG_PLL_RESET, 0xAC)                  # 5. AN619's value: PLLA+PLLB reset
-        self.write_reg(REG_OEB, 0xFC)                        # 6. CLK0 and CLK1 on
+        self.write_reg(REG_OEB, cfg.oeb())                   # 6. outputs on
         return img
 
     def verify(self, cfg):

@@ -250,6 +250,56 @@ class TestRegisterSemantics(unittest.TestCase):
         self.assertFalse(res['helper running'])
         self.assertFalse(res['helper frequency'])
 
+    def test_selftest_without_a_front_end_does_not_call_beats_failures(self):
+        """ROUND 30.  The squarers and the flip-flops that make a beat are on
+        the front-end board.  Run against a bare PYNQ with only a Si5351 wired
+        to the header, every beat reads ~0 edges -- which is the right answer,
+        not fourteen failures."""
+        res = self.d.selftest(settle=0.0, verbose=False, front_end=False)
+        by = {n: ok for n, ok, _ in res}
+        self.assertTrue(by['helper frequency'])
+        beats = [ok for n, ok in by.items() if n.startswith('beat')]
+        self.assertEqual(len(beats), N_BEAT)
+        self.assertTrue(all(ok is None for ok in beats))
+        pps = [ok for n, ok in by.items() if n.startswith('pps')]
+        self.assertTrue(all(ok is None for ok in pps))
+        # ...and none of them counts as a failure
+        self.assertEqual(self.d.failures(res), [])
+
+    def test_failures_ignores_the_not_testable_ones(self):
+        res = [('a', True, ''), ('b', False, ''), ('c', None, '')]
+        self.assertEqual([r[0] for r in self.d.failures(res)], ['b'])
+
+    def test_settle_helper_waits_out_a_straddling_window(self):
+        """ROUND 30.  The estimator latches the window that has just finished,
+        so the one spanning the moment the synthesiser starts reads LOW by
+        however much of it had no clock in it.  On silicon that was 8.15 MHz
+        for a 10.0012 MHz helper.  settle_helper polls until two consecutive
+        windows agree."""
+        good = int(round(HELPER_TICK_CYCLES * 100e6 / F_HELPER))
+        straddled = int(good * 1.227)          # the window round 30 actually saw
+        seq = [straddled, good, good, good]
+        self.d.regs[REG_HELPER] = seq[0]
+
+        calls = {'n': 0}
+        real_read = self.d.read
+
+        def read(off):
+            if off == REG_HELPER:
+                i = min(calls['n'], len(seq) - 1)
+                calls['n'] += 1
+                return seq[i]
+            return real_read(off)
+
+        self.d.read = read
+        hz = self.d.settle_helper(timeout=2.0)
+        self.assertAlmostEqual(hz, F_HELPER, delta=F_HELPER * 1e-4)
+        self.assertGreaterEqual(calls['n'], 3)   # it did not believe the first
+
+    def test_settle_helper_gives_up_on_a_dead_helper(self):
+        self.d.regs[REG_HELPER] = 0
+        self.assertEqual(self.d.settle_helper(timeout=0.3), 0.0)
+
     def test_selftest_notices_a_helper_on_the_wrong_frequency(self):
         # 10.000000 MHz instead of 10.0012344: the Si5351 programmed wrong,
         # which would silently give a 12000x wrong scale factor.

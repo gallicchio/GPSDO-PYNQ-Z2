@@ -169,11 +169,59 @@ class DmtdRegisters(object):
 
     @property
     def helper_hz(self):
-        """Measured helper frequency, from PS clocks per 2^20 helper cycles."""
+        """Measured helper frequency, from PS clocks per 2^20 helper cycles.
+
+        ONE WINDOW OLD, ALWAYS.  The estimator counts PS clocks across
+        2^20 helper cycles and latches the result, so this register holds the
+        frequency of the window that has just finished -- about 105 ms at
+        10 MHz.  Read it too soon after the synthesiser starts or changes and
+        you get the window that STRADDLES the change, which is long by
+        however much of it had no clock in it, and therefore reports a
+        frequency that is low by the same fraction.  See settle_helper().
+        """
         ticks = self.read(REG_HELPER)
         if not ticks:
             return 0.0
         return HELPER_TICK_CYCLES * float(self.ps_clk_hz) / ticks
+
+    @property
+    def helper_window_s(self):
+        """How long one estimator window takes, at the frequency it is
+        currently reporting.  Used to size the wait in settle_helper()."""
+        hz = self.helper_hz
+        return HELPER_TICK_CYCLES / hz if hz else 0.0
+
+    def settle_helper(self, timeout=2.0, tol_ppm=20.0, agree=2):
+        """Wait until the helper estimator reports the same frequency twice
+        running, and return it.  0.0 if the clock never starts.
+
+        ROUND 30, on real silicon.  `bringup.py` programmed the Si5351 and,
+        a few tens of milliseconds later, asked the selftest to check the
+        helper.  The estimator's latched value was still the window that
+        spanned the moment CLK0 started: it read **8150729.9 Hz** for a helper
+        that three independent methods put at 10001217 Hz, and the selftest
+        called that a failure.  Nothing was wrong with the clock, the
+        gateware, or the arithmetic; the reader was simply one window early.
+
+        Polling until two consecutive windows agree is the fix that does not
+        need to know when the clock changed, and it costs one window when the
+        clock is already steady.
+        """
+        deadline = time.time() + timeout
+        prev, same = None, 0
+        while True:
+            hz = self.helper_hz
+            if hz and prev and abs(hz - prev) <= prev * tol_ppm * 1e-6:
+                same += 1
+                if same >= agree - 1:
+                    return hz
+            else:
+                same = 0
+            prev = hz
+            if time.time() >= deadline:
+                return hz
+            # A little over one window, so the next read is a different one.
+            time.sleep(min(0.15, max(0.02, 1.15 * (self.helper_window_s or 0.11))))
 
     @property
     def counter(self):
@@ -375,17 +423,26 @@ class DmtdRegisters(object):
             time.sleep(period)
 
     # ---- bring-up --------------------------------------------------------
-    def selftest(self, settle=0.5, verbose=True):
+    def selftest(self, settle=0.5, verbose=True, front_end=True):
         """Check the overlay is alive and every channel is receiving a beat.
 
-        Returns a list of (name, ok, detail).  Run it first, every time:
-        almost every confusing result from this instrument starts with a dead
-        helper or a channel with nothing plugged into it.
+        Returns a list of (name, ok, detail) where `ok` is True, False, or
+        None for "not testable here".  Run it first, every time: almost every
+        confusing result from this instrument starts with a dead helper or a
+        channel with nothing plugged into it.
+
+        front_end=False says there is no front-end board on the header -- the
+        squarers and the flip-flops that make a beat are ON that board, so
+        with it absent the thirteen beat checks cannot pass and are not
+        failures.  Round 30 ran this against a bare PYNQ with a Si5351 wired
+        to five header pins and got "29 checks, 14 failures", of which
+        thirteen were the front end not existing yet.  A count that includes
+        the things that cannot be tested is a count nobody reads.
         """
         results = []
 
         def note(name, ok, detail):
-            results.append((name, bool(ok), detail))
+            results.append((name, None if ok is None else bool(ok), detail))
 
         ident = self.id
         note('ID', ident == MAGIC_ID, '0x%08X' % ident)
@@ -402,9 +459,13 @@ class DmtdRegisters(object):
                 ' -- pre-1.1: no PS-domain pps timestamps'))
 
         note('helper running', self.alive, '')
-        hz = self.helper_hz
+        # settle_helper(), not helper_hz: see its docstring.  With a steady
+        # clock this costs one estimator window; with one that has just been
+        # programmed it is the difference between 10.0012 MHz and a spurious
+        # 8.15 MHz.
+        hz = self.settle_helper() if self.alive else self.helper_hz
         err = (hz - F_HELPER) / F_HELPER * 1e6 if hz else float('inf')
-        note('helper frequency', hz and abs(err) < 100,
+        note('helper frequency', bool(hz) and abs(err) < 100,
              '%.1f Hz (%.1f ppm from %.1f Hz)' % (hz, err, F_HELPER))
 
         self.clear()
@@ -412,29 +473,42 @@ class DmtdRegisters(object):
         expect = F_BEAT * settle
         for n in range(N_BEAT):
             c, _ = self.channel(n)
-            ok = 0.5 * expect < c < 1.5 * expect
+            ok = (None if not front_end else 0.5 * expect < c < 1.5 * expect)
             note('beat %2d %s' % (n, UNIT_NAMES[n]), ok,
-                 '%d edges in %.2f s (expect ~%.0f)' % (c, settle, expect))
+                 '%d edges in %.2f s (expect ~%.0f)%s'
+                 % (c, settle, expect,
+                    '' if front_end else '  -- no front-end board'))
         for n in range(N_BEAT):
             slot = PPS_SLOT[n]
             if slot is None:
                 continue
             c, _ = self.channel(slot)
-            note('pps  %2d %s' % (n, UNIT_NAMES[n]), True,
-                 '%d edges in %.2f s' % (c, settle))
+            note('pps  %2d %s' % (n, UNIT_NAMES[n]), None if not front_end else True,
+                 '%d edges in %.2f s%s'
+                 % (c, settle, '' if front_end else '  -- no front-end board'))
 
         if verbose:
             self._print(results)
         return results
 
     @staticmethod
+    def failures(results):
+        """The entries that actually failed.  `ok is None` means the check
+        could not be made here and is not one of them."""
+        return [r for r in results if r[1] is False]
+
+    @staticmethod
     def _print(results):
         width = max(len(r[0]) for r in results)
-        bad = 0
+        bad = skipped = 0
         for name, ok, detail in results:
-            bad += not ok
-            print('%s  %-*s  %s' % ('ok  ' if ok else 'FAIL', width, name, detail))
-        print('--- %d checks, %d failures' % (len(results), bad))
+            bad += ok is False
+            skipped += ok is None
+            tag = 'ok  ' if ok else ('skip' if ok is None else 'FAIL')
+            print('%s  %-*s  %s' % (tag, width, name, detail))
+        print('--- %d checks, %d failures%s'
+              % (len(results) - skipped, bad,
+                 ', %d not testable here' % skipped if skipped else ''))
 
 
 # ---------------------------------------------------------------------------

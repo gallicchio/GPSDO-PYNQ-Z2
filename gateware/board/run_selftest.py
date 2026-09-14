@@ -35,8 +35,10 @@ assert type(d).__name__ == 'DmtdCapture'
 print("    axi_iic driver           ->", type(ol.axi_iic_0).__name__)
 
 print("\n=== selftest ===")
-res = d.selftest(settle=0.5)
-fails = [r for r in res if not r[1]]
+res = d.selftest(settle=0.5, front_end=False)
+fails = d.failures(res)
 print("\n=== %d checks, %d failures ===" % (len(res), len(fails)))
-print("(with nothing plugged in, the helper and every beat MUST fail --")
-print(" that is the correct answer, not a broken overlay)")
+print("(front_end=False: the squarers and flip-flops that make a beat live on")
+print(" the front-end board, so with nothing plugged in the beat and pps")
+print(" checks are 'not testable here' rather than failures.  The helper is")
+print(" still checked, and still MUST fail if no Si5351 is driving pin 18.)")

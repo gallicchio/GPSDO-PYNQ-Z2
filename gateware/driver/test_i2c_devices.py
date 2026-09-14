@@ -15,6 +15,7 @@ from driver.i2c_devices import (                        # noqa: E402
     plan_pll, ms_params, ms_registers, decode_ms, trim_fraction, crc8_maxim,
     scan, EXPECTED_DEVICES, REG_MSNA, REG_MSNB, REG_MS0, REG_MS1,
     REG_CLK_CTRL, REG_OEB, REG_PLL_RESET, REG_XTAL_CL, REG_PLL_SRC,
+    CLK_PDN, CLK_PLLB,
 )
 from driver import F_HELPER, F_BEAT                     # noqa: E402
 
@@ -194,3 +195,49 @@ class TestScan(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class TestClk2Witness(unittest.TestCase):
+    """ROUND 30.  CLK2 is not routed on the front-end board, so it stays off
+    there -- but on the bench it is the only way to see the beat without a
+    board, and the ADALM2000 is already on it."""
+
+    def test_off_is_the_default_and_powers_the_driver_down(self):
+        cfg = Si5351Config()
+        self.assertEqual(cfg.clk2, 'off')
+        self.assertIsNone(cfg.expected_clk2())
+        self.assertEqual(cfg.registers()[REG_CLK_CTRL + 2], CLK_PDN)
+        self.assertEqual(cfg.oeb(), 0xFC)          # CLK0, CLK1 enabled only
+
+    def test_helper_copies_clk0_off_plla(self):
+        cfg = Si5351Config(clk2='helper')
+        f0, f1 = cfg.expected()
+        self.assertAlmostEqual(cfg.expected_clk2(), f0, places=3)
+        ctrl = cfg.registers()[REG_CLK_CTRL + 2]
+        self.assertFalse(ctrl & CLK_PDN)
+        self.assertFalse(ctrl & CLK_PLLB)          # PLLA, like CLK0
+        self.assertEqual(cfg.oeb(), 0xF8)          # CLK0, CLK1, CLK2 enabled
+        # ...and the beat the instrument is built on is what you would see
+        self.assertAlmostEqual(abs(cfg.expected_clk2() - f1), F_BEAT, places=3)
+
+    def test_null_copies_clk1_off_pllb(self):
+        cfg = Si5351Config(clk2='null')
+        self.assertEqual(cfg.expected_clk2(), cfg.expected()[1])
+        self.assertTrue(cfg.registers()[REG_CLK_CTRL + 2] & CLK_PLLB)
+
+    def test_clk2_ms_registers_only_appear_when_it_is_on(self):
+        from driver.i2c_devices import REG_MS2
+        self.assertNotIn(REG_MS2, Si5351Config().registers())
+        self.assertIn(REG_MS2, Si5351Config(clk2='helper').registers())
+
+    def test_a_bad_choice_is_refused(self):
+        with self.assertRaises(ValueError):
+            Si5351Config(clk2='clk2')
+
+    def test_program_enables_exactly_the_outputs_the_config_asks_for(self):
+        from driver.i2c_devices import REG_OEB
+        for choice, want in (('off', 0xFC), ('helper', 0xF8)):
+            bus = MockBus()
+            chip = Si5351(bus)
+            chip.program(Si5351Config(clk2=choice))
+            self.assertEqual(bus.regs[Si5351.ADDR][REG_OEB], want, choice)
+

@@ -3,7 +3,7 @@
 A 13-channel Digital DMTD front end that plugs onto a PYNQ-Z2's Raspberry Pi
 40-pin header and compares thirteen GPSDOs' 10 MHz and 1 pps outputs at about
 12 ps single-shot resolution. This file is the design log and the tutorial:
-twenty-nine rounds of prompts and answers, in order, including the mistakes
+thirty rounds of prompts and answers, in order, including the mistakes
 and what they cost. The board, the generator that draws it, the manufacturing
 release and the FPGA gateware are all in this directory.
 
@@ -10673,3 +10673,273 @@ is.
 | documents generated from the sources | schematic, board, release | + `HANDBOOK.md` |
 | does the build stop on an unconnected net? | no | yes |
 | closest SMT pad to the board edge | 1.19 mm, unmeasured | 1.19 mm, measured and in the fab notes |
+
+
+## Prompt 30
+
+I now have the Si5351 module hooked up. It's CLK0 goes to the the Raspberry Pi header's pin 18 HELPER_CLK. I did `ssh xilinx@192.168.1.142` and `./pynq-run bringup.py --scan` and it found the Si5351. However, `./pynq-run bringup.py --no-heater` failed. Make it work. Feel free to rebuild with vivado and run it and your python on the PYNQ-Z2.
+
+I also have an ADALM2000 hoooked up to the Si5351's channels CLK1 and CLK2. We can monitor what those channels are doing throgh Scopy (installed and working in `/home/jason/.local/bin/Scopy-v2.2.1-Linux-x86_64-glib_2.31.AppImage`). It is currently closed. Feel free to use Scopy (or something else) and the M2k device for additional checks. If you need me to open Scopy to watch something, let me know. Otherwise get as far as you can on the firmware with the current setup.
+
+## Round 30
+
+`bringup.py --no-heater` works, and the instrument's defining number has been
+measured on real hardware for the first time:
+
+```
+    measured beat : 1234.417 Hz   (block-to-block spread 1.239 Hz)
+    by design      : 1234.400 Hz
+    error          : +0.017 Hz (+13.4 ppm of the beat, +0.0017 ppm of 10 MHz)
+
+    one helper cycle of beat displacement = 12.3426 ps of input phase
+```
+
+against a design value of 12.3425 ps.  No front-end board exists yet; that
+came from your ADALM2000 looking at two of the Si5351's outputs, and §30.5 is
+how.
+
+### 30.1 The failure you hit: a bytearray that cffi will not take
+
+```
+  File "/usr/local/share/pynq-venv/.../pynq/lib/iic.py", line 94, in receive
+    received = AxiIIC._lib.XIic_Recv(
+TypeError: initializer for ctype 'unsigned char *' must be a cdata pointer,
+           not bytearray
+```
+
+`AxiIIC.receive()` hands its `data` argument straight to
+
+    unsigned XIic_Recv(unsigned long, unsigned char, unsigned char *,
+                       unsigned, unsigned char);
+
+and cffi will convert a `bytes` for that `unsigned char *` but refuses a
+`bytearray`, because a bytearray is mutable and it has no way to pin it.  A
+receive needs a real cffi buffer.
+
+The shape of the bug is worth noting, because it is why the scan passed and
+the rest did not: `PynqBus.write()` passes `bytes`, so every SEND worked, and
+the bus scan is nothing but sends -- it found the Si5351 at 0x60 and looked
+healthy.  The first READ is the Si5351's status register, four lines into the
+next section.  `PynqBus` now allocates from `AxiIIC._ffi`, the FFI that owns
+the prototype, rather than making a second one whose `unsigned char[]` would
+be a different type object.
+
+`MockBus` and `SmbusBus` never had this: one is a dict and the other goes
+through `smbus2`, which takes whatever buffer you give it.  It is exactly the
+class of bug a mock cannot find, which is what the PYNQ is for.
+
+### 30.2 And then the selftest reported a helper of 8.15 MHz
+
+With the I2C fixed, the Si5351 programmed and locked first time:
+
+```
+    PLLA 32 + 1543/390625 -> VCO 800.099 MHz -> CLK0 10001234.4000 Hz
+    PLLB 32               -> VCO 800.000 MHz -> CLK1 10000000.0000 Hz
+    readback: all 38 registers agree
+    status after : ... LOCKED
+```
+
+and the selftest then said
+
+```
+FAIL  helper frequency    8150729.9 Hz (-185027.6 ppm from 10001234.4 Hz)
+```
+
+while `bringup.py`, reading the SAME property a second later, printed
+10001217.0 Hz.  Both numbers come from one line of arithmetic, so one of the
+two reads had to be wrong, not the formula.
+
+Three independent measurements settle it:
+
+| method | result |
+|---|---|
+| the gateware's estimator, read twelve times over 3 s | 10001217.0 Hz, moving by 0.9 Hz |
+| free-running helper counter against `time.time()` | 10001137 Hz over 1 s, 10001330 over 2 s |
+| the v1.1 (helper, PS) counter pair | 10001216.3 Hz, identical over 0.5, 1 and 2 s gates |
+
+The clock was fine.  The estimator counts PS clocks across 2^20 helper cycles
+and **latches the window that has just finished** -- about 105 ms at 10 MHz --
+so reading it a few tens of milliseconds after the synthesiser starts returns
+the window that STRADDLES the moment CLK0 came up.  That window is long by
+however much of it had no clock in it, and reports a frequency low by the same
+fraction: 8150729.9 / 10001217 = 0.815, a window 1.227x too long.
+
+`DmtdRegisters.settle_helper()` polls until two consecutive windows agree and
+returns that; `selftest()` uses it instead of a bare read.  With a steady clock
+it costs one window.  There is a test that feeds it the 1.227x value first and
+checks it does not believe it.
+
+### 30.3 Thirteen "failures" that were the board not existing yet
+
+The run then reported **29 checks, 14 failures** -- one of them real, thirteen
+of them the thirteen beat channels reading 1 edge per second.  The squarers
+and the flip-flops that MAKE a beat are on the front-end board.  There is no
+front-end board.  A count that includes the things that cannot be tested is a
+count nobody reads, and round 28's own note ("with nothing plugged in, the
+helper and every beat MUST fail") had already normalised it.
+
+`selftest()` takes `front_end=` and its results are now three-state -- True,
+False, or None for "not testable here" -- with `failures()` counting only
+False.  `bringup.py` works out the flag from the bus itself: the front-end
+board's own I2C parts are the evidence, and a bare PYNQ with a Si5351 wired to
+five header pins has none of them.
+
+```
+=== measurement core selftest ===
+    no front-end board on the bus (nothing but the Si5351 answered), so the
+    beat and pps checks are reported as not testable rather than failed
+ok    ID                                 0x444D5444
+ok    VERSION                            v1.1, 13 beats, 12 pps
+ok    helper running
+ok    helper frequency                   10001224.7 Hz (-1.0 ppm from 10001234.4 Hz)
+skip  beat  0 Spectrum Instruments TM-4  1 edges in 1.00 s  -- no front-end board
+...
+--- 4 checks, 0 failures, 25 not testable here
+```
+
+-1.0 ppm is the module's plain crystal, not a TCXO.  That is the right answer
+for what is on the bench.
+
+### 30.4 CLK2 was powered down, so your M2k was looking at a dead pin
+
+`Si5351Config` wrote `CLK_PDN` to CLK2 and said `# CLK2 unused`, which is
+correct for the front-end board -- nothing is routed to it there.  It is not
+correct for a bench with an ADALM2000 already clipped to CLK1 and CLK2.
+
+`clk2='helper'` puts a second copy of CLK0 on it, off the same PLLA and the
+same MultiSynth ratio, so CLK1 and CLK2 are 10.000000 and 10.0012344 MHz --
+**1234.4 Hz apart, the beat this entire instrument is built on, visible before
+any board exists**.  `'null'` copies CLK1 off PLLB instead, which is the
+control: two outputs that should be at exactly the same frequency.
+
+It is off by default, so nothing about the shipped board changes, and
+`program()` now takes its output-enable byte from the config rather than the
+literal `0xFC` it used to write.
+
+### 30.5 Measuring the beat with the ADALM2000
+
+`gateware/board/m2k_beat.py` drives the M2k over libiio directly -- no Scopy,
+no libm2k, just the `iio` bindings that were already installed.  It runs on
+the laptop, because that is where the M2k is.
+
+**The first thing it found was that the M2k's analog front end is powered
+down.** With nothing else driving the device, `m2k-fabric` leaves both input
+amplifiers at `powerdown = 1`, and a capture returns four ADC counts of noise
+that look exactly like a disconnected probe.  libm2k does this for you, and
+Scopy goes through libm2k, so it is invisible until you drive the thing from
+raw libiio.  Two attribute writes and the captures came up at 210 counts
+peak-to-peak with a crossing fit residual of 0.038 samples -- 0.4 ns.
+
+**The second thing is what makes the measurement worth anything.**  The
+obvious approach -- fit each channel's frequency, subtract -- throws away
+everything the simultaneous capture bought:
+
+```
+  ch1     9999845.7 Hz   (nominal 10000000)     -15.4 ppm
+  ch2    10001080.2 Hz   (nominal 10001234.4)   -15.4 ppm
+```
+
+Both are low by the same 15.4 ppm, which is the M2k's own crystal and not the
+Si5351 -- and that is the tell.  The difference of two separately-fitted
+10 MHz numbers carries both of their end-to-end timing errors, and gave a beat
+that wandered over a 2.5 Hz range between runs.
+
+The channels are sampled by ONE ADC clock, so pair the crossings and the
+common error cancels:
+
+    delta_k = t2_k - t1_k = k (T2 - T1) + const
+
+a straight line whose slope is the period difference -- -12.34 ps per cycle,
+which over a 2.6 ms buffer is 320 ns of ramp, three whole 10 MHz cycles,
+measured against 0.4 ns of per-edge noise.  The pairing slips, because that is
+the entire point; consecutive crossings differ by 12 ps, so unwrapping is
+unambiguous.  That is a DDMTD, done in software on the raw capture, and it is
+the measurement at the top of this round.
+
+The tool refuses to report a beat when either channel is not carrying a clock
+-- too few ADC counts, a crossing fit whose residual is a large fraction of a
+cycle, or a block-to-block spread that is too wide.  That guard is round
+29.10's lesson in a new place, and it earned itself on the first run, before I
+knew about the powerdown:
+
+```
+  ch1  NOT A CLOCK: only 4 ADC counts peak-to-peak; crossing fit residual
+       108 samples is 3061% of a cycle; block-to-block spread 198779 Hz
+  Refusing to report a beat: at least one channel is not carrying a clock.
+```
+
+### 30.6 The PYNQ power-cycled in the middle, and the way I failed to log it is the evidence
+
+Eight minutes into the session the board stopped answering: ARP incomplete,
+ssh dropped with `client_loop: send disconnect: Broken pipe` immediately after
+the sudo prompt.  It came back by itself two minutes later reporting
+`up 1 min`, so it had restarted rather than lost its network.
+
+I armed a serial logger before it returned and captured **nothing at all**.
+That looked like the wrong port.  It was not:
+
+* `/dev/ttyUSB1` IS the console.  `echo HELLO > /dev/ttyPS0` on the board
+  comes out of it, verified.  (`/dev/ttyUSB0` is the other interface of the
+  same Xilinx/TUL FT2232 -- its JTAG -- and `/dev/ttyACM0` is the ADALM2000,
+  not the PYNQ at all.)
+* the console is enabled: `/sys/class/tty/console/active` is `tty0 ttyPS0`
+  and dmesg has `printk: console [ttyPS0] enabled`.
+
+What actually happened is in my logger's stderr:
+
+```
+SerialException: device reports readiness to read but returned no data
+                 (device disconnected or multiple access on port?)
+```
+
+It died on its first read, seconds after arming, because **the port went
+away**.  And that is the diagnostic, not the bug: the FT2232 is powered from
+the USB cable, so a PS-only reset -- a kernel panic, a watchdog, a `reboot` --
+leaves it enumerated and the port open.  For `/dev/ttyUSB1` to disappear, the
+BOARD's power has to go.  The device node's timestamp agrees: it was recreated
+at 16:24, when the board dropped.
+
+**So the PYNQ browned out or lost power; Linux did not crash.**  Which points
+straight at a line this project's own silkscreen has carried since round 29:
+
+> Power the PYNQ with its barrel jack, J9.  Not (only) through USB.
+
+That went on the board because the PYNQ-Z2 manual warns micro-USB "should
+provide enough power for MOST designs", and a Si5351 module hanging off the
+header's 3.3 V is exactly the kind of extra load that turns "most" into "not
+this one".  **If the PYNQ is running on USB power, move it to the barrel jack
+with J9 at `REG` before the next long run.**  I cannot check which it is on
+from here.
+
+`gateware/board/console_log.py` is the logger done properly: it reconnects
+when the port comes back, and it writes the distinction into the log rather
+than making you infer it --
+
+```
+=== 2026-09-14 16:35:00  logger armed on /dev/ttyUSB1 at 115200 baud ===
+=== 2026-09-14 16:35:00  port open ===
+LOGGER-TEST-OK
+```
+
+and, if it happens again:
+
+```
+=== ...  port GONE -- the FT2232 is USB-powered, so this means the BOARD
+         lost power, not that Linux crashed ===
+```
+
+### 30.7 What is now true, and what is not
+
+* `./pynq-run bringup.py --no-heater` : **4 checks, 0 failures**, and the
+  three parts that are not on the bench are named as absent rather than
+  counted as broken.
+* `./pynq-run bringup.py --no-heater --clk2 helper` : the same, plus a bench
+  witness on CLK2.
+* `python3 gateware/board/m2k_beat.py` : the beat, from the phase ramp,
+  +0.0017 ppm of 10 MHz from design.
+* 59 host tests pass, including the 1.227x stale window, the three-state
+  results, and the CLK2 register image.
+
+Not tested, and not testable until boards arrive: every one of the thirteen
+front ends, the heater, the thermometers, the 1-Wire bridge, and the pps path.
+The gateware's beat and pps counters have still only ever seen a testbench.
