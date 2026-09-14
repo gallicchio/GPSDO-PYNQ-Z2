@@ -9717,3 +9717,11 @@ is.
 Round 26's §26.14 flag is now discharged: the `T_input / N` sentence is fixed at
 the source, so the error that reached `gen/design.py` cannot be inherited again
 by the next person who reads §10.0.
+
+# Prompt 28
+
+Look at DESIGN_REVIEW_PROMPT.md and do this review yourself. Then dive a bit deeper into the schematic and PCB aspects to decide if now is the time to send this off to get manufactured and assembled. I asked 3 other LLMs to do this. Their answers are in `design_review*`. I want you to combine your design review with theirs. Make a plan in DESIGN_REVIEW_RESPONSE.md. Fix the things that you can and should fix. Make sure you don't break anything else. Summarize:
+* What you and the other LLMs found and you confirmed, ranked by severity and general agreement among models. For each one, tell me how you were able to fix it, how you plan to fix it if you really need my input, or what we should do about it other than fix it.
+* Rank the responses of the other 3 LLMs in terms of insightfulness into this particular problem.
+
+Feel free to make the board wider if that would help address some of these issues without causing other issues. Feel free to use this computer all night for tests or optimizations. I won't be able to answer any questions for the next ~6 hours, so you'll have to use your judgment. Feel free to git commit any useful way-points. Regularly log what you've found and what you're doing in DESIGN_REVIEW_RESPONSE.md in case the process or the power gets killed. This is especially true if you run two or more tests or take two or more paths simultaneously – we'll need to be able to unwind things to a reasonable state.
