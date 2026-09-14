@@ -166,9 +166,13 @@ module tb_dmtd_capture;
   function [11:0] ch_ts_lo; input integer n; ch_ts_lo = 12'h200 + n*16 + 0; endfunction
   function [11:0] ch_ts_hi; input integer n; ch_ts_hi = 12'h200 + n*16 + 4; endfunction
   function [11:0] ch_count; input integer n; ch_count = 12'h200 + n*16 + 8; endfunction
+  function [11:0] ps_ts_lo; input integer n; ps_ts_lo = 12'h400 + n*16 + 0; endfunction
+  function [11:0] ps_ts_hi; input integer n; ps_ts_hi = 12'h400 + n*16 + 4; endfunction
+  function [11:0] ps_count; input integer n; ps_count = 12'h400 + n*16 + 8; endfunction
 
   reg [31:0] v, lo1, lo2, hi1, hi2, before, after;
-  integer    gap, i;
+  reg [31:0] pl1, pl2, hl1, hl2, pp1, pp2, hp;
+  integer    gap, i, dps, dh, pred, err;
 
   initial begin
     $display("=== tb_dmtd_capture : helper 10.0012344 MHz, PS 100 MHz ===");
@@ -178,7 +182,7 @@ module tb_dmtd_capture;
 
     // ---- identity ---------------------------------------------------------
     axi_read(12'h000, v); check(v, 32'h444D5444, "ID");
-    axi_read(12'h004, v); check(v, {8'd1, 8'd0, N_BEAT[7:0], N_PPS[7:0]}, "VERSION");
+    axi_read(12'h004, v); check(v, {8'd1, 8'd1, N_BEAT[7:0], N_PPS[7:0]}, "VERSION 1.1");
 
     // ---- CONTROL clear must work on the FIRST write -----------------------
     helper_cycles(4 << LIVE_W);           // get the counter well away from 0
@@ -222,6 +226,48 @@ module tb_dmtd_capture;
     axi_read(ch_count(13),   v); check(v, 32'd0, "slot 13 has no pin");
     axi_read(12'h0FC,        v); check(v, 32'd0, "unmapped register reads 0");
     axi_read(12'h20C,        v); check(v, 32'd0, "channel word 3 is reserved");
+    // v1.1: the same pps edge was also counted and stamped in the PS domain
+    axi_read(ps_count(16+5), v); check(v, 32'd1, "pps 5 counted in the PS domain too");
+    axi_read(ps_count(16+6), v); check(v, 32'd0, "PS slot 22 untouched");
+    axi_read(ps_count(5),    v); check(v, 32'd0, "PS block has nothing for a beat slot");
+    axi_read(ps_ts_lo(16+5), v); note(v != 32'd0, "pps 5 PS timestamp is not zero");
+    axi_read(12'h40C,        v); check(v, 32'd0, "PS channel word 3 is reserved");
+
+    // ---- v1.1: PS timestamps resolve 10 ns, and map onto the helper scale --
+    // Two pps 7 edges exactly 200 helper cycles apart are 1999.75 PS clocks
+    // apart; the PS side must see 2000 +/- 1 (each edge is quantised once).
+    axi_write(12'h008, 32'h1);
+    settle;
+    pulse_pps(7);                         // eats 2 helper edges
+    axi_read(ps_ts_lo(16+7), pp1);
+    axi_read(ch_ts_lo(16+7), hp);
+    helper_cycles(198);
+    pulse_pps(7);
+    settle;
+    axi_read(ps_count(16+7), v); check(v, 32'd2, "two pps 7 edges in the PS domain");
+    axi_read(ps_ts_lo(16+7), pp2);
+    dps = pp2 - pp1;
+    note(dps >= 1998 && dps <= 2002, "200 helper cycles of pps spacing is 2000 +/- 2 PS clocks");
+    $display("      PS delta = %0d clocks for 200 helper cycles (expect 1999.75)", dps);
+    // The pair: (LIVE, LIVE_PS) taken at the same instant, twice, gives the
+    // scale between the two counters...
+    helper_cycles(4 << LIVE_W); settle;
+    axi_read(12'h010, hl1); axi_read(12'h01C, pl1);
+    helper_cycles(8 << LIVE_W); settle;
+    axi_read(12'h010, hl2); axi_read(12'h01C, pl2);
+    dh  = hl2 - hl1;
+    dps = pl2 - pl1;
+    note(dh > 0 && dps > 0, "the pair advances in both domains");
+    note((dps * 100 > dh * 990) && (dps * 100 < dh * 1010),
+         "pair ratio is 9.9988 PS clocks per helper cycle within 1%");
+    $display("      pair: %0d helper cycles <-> %0d PS clocks", dh, dps);
+    // ...and with it a pps PS-timestamp predicts the helper-domain timestamp
+    // of the same edge to within the two synchronisers' latency.
+    axi_read(ch_ts_lo(16+7), hp);          // helper-domain stamp of the 2nd edge
+    pred = hl2 - ((pl2 - pp2) * 10000) / 99988;   // helper cycles at pp2
+    err  = pred - hp;
+    note(err >= -6 && err <= 6, "PS timestamp maps onto the helper timestamp within 6 cycles");
+    $display("      pps 7: helper stamp %0d, predicted from PS stamp %0d (err %0d)", hp, pred, err);
 
     // ---- a write that is not to CONTROL must clear nothing ---------------
     axi_write(12'h000, 32'hFFFF_FFFF);

@@ -69,14 +69,20 @@ PPS_SLOT = [
 NULL_CHANNEL = 12
 
 # ---- register map ---------------------------------------------------
-REG_ID       = 0x000
-REG_VERSION  = 0x004
-REG_CONTROL  = 0x008
-REG_HELPER   = 0x00C
-REG_LIVE_LO  = 0x010
-REG_LIVE_HI  = 0x014
-REG_ALIVE    = 0x018
-REG_CHAN0    = 0x200
+REG_ID         = 0x000
+REG_VERSION    = 0x004
+REG_CONTROL    = 0x008
+REG_HELPER     = 0x00C
+REG_LIVE_LO    = 0x010
+REG_LIVE_HI    = 0x014
+REG_ALIVE      = 0x018
+REG_LIVE_PS_LO = 0x01C
+REG_LIVE_PS_HI = 0x020
+REG_CHAN0      = 0x200
+REG_PSCHAN0    = 0x400
+# REG_LIVE_PS_*, REG_PSCHAN0: gateware 1.1 (round 28) -- the PS-domain
+# 10 ns timestamps of every pps and the (helper, PS) counter pair.
+GATEWARE_MIN_MINOR_FOR_PS = 1
 CHAN_STRIDE  = 0x010
 OFF_TS_LO    = 0x000
 OFF_TS_HI    = 0x004

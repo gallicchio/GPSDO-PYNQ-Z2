@@ -43,20 +43,47 @@
 // copy happens within ~30 ns of the toggle.  Do not reuse this pattern where
 // the source can update quickly.
 //
+// THE PPS, TWICE  (v1.1, round 28)
+//
+// A beat timestamp is modulo one 10 MHz cycle: the beat wraps every 810 us,
+// which is exactly 100 ns of input phase, so two oscillators 100 ns apart
+// read the same.  The 1 pps is meant to say WHICH 100 ns cycle -- but a pps
+// timestamped in helper cycles is itself quantised to 100 ns, which is the
+// very ambiguity it is supposed to resolve.  (Rounds 10-27 promised a 200 MHz
+// / 5 ns domain for this; none was ever built.  Two of round 28's reviewers
+// noticed.)
+//
+// So every pps is now timestamped a second time, in the PS clock domain, by a
+// free-running 100 MHz counter: 10 ns resolution, which picks a 100 ns cycle
+// with margin.  The two domains are tied together by a PAIR register: at each
+// LIVE refresh the PS side latches its own counter alongside the helper
+// counter it just received, so software has (helper_cycles, ps_ticks) samples
+// of the same instants and can map either scale onto the other.  The pps
+// PS-timestamps are plain PS-domain registers -- no CDC, since the AXI bus
+// is in that domain -- and can also be read against each other directly as a
+// 10 ns time-interval counter between any two GPSDOs' pps outputs.
+//
 // REGISTER MAP (AXI4-Lite, 32-bit, 4 kB)
 //
 //   0x000 R   ID        0x444D5444 = "DMTD"
-//   0x004 R   VERSION   {8'maj, 8'min, 8'N_BEAT, 8'N_PPS}
-//   0x008 RW  CONTROL   write bit0 = 1: zero the counter and all edge counts
+//   0x004 R   VERSION   {8'maj, 8'min, 8'N_BEAT, 8'N_PPS}   = 1.1
+//   0x008 RW  CONTROL   write bit0 = 1: zero the counters and all edge counts
 //   0x00C R   HELPER    PS-clock ticks per 2^20 helper cycles; 0 = no helper
 //   0x010 R   LIVE_LO   free-running helper counter, refreshed every ~102 us
 //   0x014 R   LIVE_HI
 //   0x018 R   ALIVE     bit0 = helper clock is running
+//   0x01C R   LIVE_PS_LO  the PS counter, latched when LIVE_LO/HI last
+//   0x020 R   LIVE_PS_HI  arrived (v1.1): the (helper, PS) pair
 //
-//   0x200 + 16*n + 0  R  channel n timestamp low
+//   0x200 + 16*n + 0  R  channel n timestamp low        (helper cycles)
 //   0x200 + 16*n + 4  R  channel n timestamp high
 //   0x200 + 16*n + 8  R  channel n edge count (free-running, wraps at 2^32)
 //   0x200 + 16*n + 12 R  reserved, reads 0
+//
+//   0x400 + 16*n + 0  R  channel n PS timestamp low     (PS clocks, v1.1;
+//   0x400 + 16*n + 4  R  channel n PS timestamp high     pps slots only)
+//   0x400 + 16*n + 8  R  channel n PS-domain edge count
+//   0x400 + 16*n + 12 R  reserved, reads 0
 //
 //   n = 0  .. N_BEAT-1      the beats,       BEAT_00 .. BEAT_12
 //   n = 16 .. 16+N_PPS-1    the pps returns, PPS_00  .. PPS_11
@@ -205,12 +232,50 @@ module dmtd_capture #(
     end
   endgenerate
 
+  // ---- v1.1: the PS-domain counter, the pps PS-timestamps, the pair ------
+  // Cleared by the same CONTROL write that clears the helper counter (two or
+  // three clocks apart in each domain, which the pair register absorbs).
+  reg        clr_ps_d = 1'b0;
+  wire       do_clear_ps = clr_tog_ps ^ clr_ps_d;
+  reg [63:0] psc = 64'd0;
+  always @(posedge s_axi_aclk) begin
+    clr_ps_d <= clr_tog_ps;
+    psc      <= do_clear_ps ? 64'd0 : psc + 64'd1;
+  end
+
+  reg [63:0] pts_ps  [0:NCH-1];
+  reg [31:0] pcnt_ps [0:NCH-1];
+  generate
+    for (g = 0; g < NCH; g = g + 1) begin : g_pps_ps
+      initial begin pts_ps[g] = 64'd0; pcnt_ps[g] = 32'd0; end
+      if (g >= PPS0 && g < PPS0 + N_PPS) begin : g_has_pps
+        (* ASYNC_REG = "TRUE" *) reg q0 = 1'b0;
+        reg q1 = 1'b0, q2 = 1'b0;
+        always @(posedge s_axi_aclk) begin
+          q0 <= pps[g - PPS0];
+          q1 <= q0;
+          q2 <= q1;
+          if (do_clear_ps) begin
+            pcnt_ps[g] <= 32'd0;
+          end else if (q1 && !q2) begin
+            pts_ps [g] <= psc;
+            pcnt_ps[g] <= pcnt_ps[g] + 32'd1;
+          end
+        end
+      end
+    end
+  endgenerate
+
   (* ASYNC_REG = "TRUE" *) reg lv0 = 1'b0;
   reg lv1 = 1'b0, lv2 = 1'b0;
-  reg [63:0] live_ps = 64'd0;
+  reg [63:0] live_ps  = 64'd0;
+  reg [63:0] live_psc = 64'd0;          // psc at the moment live_ps was taken
   always @(posedge s_axi_aclk) begin
     lv0 <= live_tog; lv1 <= lv0; lv2 <= lv1;
-    if (lv1 ^ lv2) live_ps <= live_h;
+    if (lv1 ^ lv2) begin
+      live_ps  <= live_h;
+      live_psc <= psc;
+    end
   end
 
   // Helper frequency: PS clocks between successive 2^20-helper-cycle ticks.
@@ -260,8 +325,10 @@ module dmtd_capture #(
   assign s_axi_rresp   = rresp;
 
   // Channel block is 0x200..0x3FF: one bit selects it and five address the
-  // slot, which is why the map starts at 0x200 and not 0x100.
-  wire       sel_ch = araddr_q[9];
+  // slot, which is why the map starts at 0x200 and not 0x100.  The PS-domain
+  // block is the same shape at 0x400..0x5FF, selected by the next bit.
+  wire       sel_ps = araddr_q[10];
+  wire       sel_ch = araddr_q[9] & ~araddr_q[10];
   wire [4:0] rd_ch  = araddr_q[8:4];
   wire [1:0] rd_off = araddr_q[3:2];
 
@@ -275,7 +342,14 @@ module dmtd_capture #(
   reg [31:0] rdata_q = 32'd0;
   reg        rd_pending = 1'b0;
   always @(*) begin
-    if (sel_ch) begin
+    if (sel_ps) begin
+      case (rd_off)
+        2'd0:    rdata_mux = pts_ps [rd_ch][31:0];
+        2'd1:    rdata_mux = pts_ps [rd_ch][63:32];
+        2'd2:    rdata_mux = pcnt_ps[rd_ch];
+        default: rdata_mux = 32'd0;
+      endcase
+    end else if (sel_ch) begin
       case (rd_off)
         2'd0:    rdata_mux = ts_ps [rd_ch][31:0];
         2'd1:    rdata_mux = ts_ps [rd_ch][63:32];
@@ -285,12 +359,14 @@ module dmtd_capture #(
     end else begin
       case (araddr_q[7:2])
         6'h00:   rdata_mux = ID;
-        6'h01:   rdata_mux = {8'd1, 8'd0, N_BEAT[7:0], N_PPS[7:0]};
+        6'h01:   rdata_mux = {8'd1, 8'd1, N_BEAT[7:0], N_PPS[7:0]};
         6'h02:   rdata_mux = {31'd0, clr_tog_ps};
         6'h03:   rdata_mux = hz_lat;
         6'h04:   rdata_mux = live_ps[31:0];
         6'h05:   rdata_mux = live_ps[63:32];
         6'h06:   rdata_mux = {31'd0, alive};
+        6'h07:   rdata_mux = live_psc[31:0];
+        6'h08:   rdata_mux = live_psc[63:32];
         default: rdata_mux = 32'd0;
       endcase
     end

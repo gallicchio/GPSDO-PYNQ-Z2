@@ -9813,10 +9813,10 @@
 		)
 		)
 	)
-	(text_box "WHAT THE GATE DOES BEFORE SOFTWARE WRITES THE DAC.\nThe 100k holds all three gates down whenever the DAC is not driving them, which covers an unpopulated or unpowered DAC and\nthe moment before the first I2C write. It does NOT cover the DAC powering up from its own EEPROM into something other than\nzero - and half scale is exactly the point of MAXIMUM pass-element dissipation, 0.8 W in each of three SOT-223s.  The fix\nis to program the MCP4725's EEPROM to zero once, at bring-up, with a Write-DAC-and-EEPROM command; the part then powers up\noff every time.  DATASHEET NEEDED to confirm the as-shipped EEPROM value - see the datasheet list in the notes."
+	(text_box "WHAT THE GATE DOES BEFORE SOFTWARE WRITES THE DAC.\nThe 100k holds all three gates down whenever the DAC is not driving them, which covers an unpopulated or unpowered DAC and\nthe moment before the first I2C write. It does NOT cover the DAC powering up from its own EEPROM into something other than\nzero - and half scale is exactly the point of MAXIMUM pass-element dissipation, 0.8 W in each of three SOT-223s.\nCONFIRMED in round 28 from the MCP4725 datasheet, Table 5-3: the factory EEPROM is PD = 00 with D11 = 1, i.e. MID-SCALE,\n1.65 V on the gates from the first power-up.  So the fix is procedural and it is the FIRST thing bringup.py does: Write-\nDAC-and-EEPROM = 0 with PD = 01 (1k pull-down), after which the part powers up off every time.  Do not connect the 15 V\njack to a board on which that has not yet run once."
 		(exclude_from_sim no)
 		(at 299.7200 246.3800 0)
-		(size 275.5900 17.7800)
+		(size 275.5900 24.1300)
 		(margins 0.9525 0.9525 0.9525 0.9525)
 		(stroke
 			(width 0)

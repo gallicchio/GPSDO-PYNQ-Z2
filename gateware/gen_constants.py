@@ -83,8 +83,13 @@ def main(out=sys.stdout):
     for name, off in (("REG_ID", 0x000), ("REG_VERSION", 0x004),
                       ("REG_CONTROL", 0x008), ("REG_HELPER", 0x00C),
                       ("REG_LIVE_LO", 0x010), ("REG_LIVE_HI", 0x014),
-                      ("REG_ALIVE", 0x018), ("REG_CHAN0", 0x200)):
-        w("%-12s = 0x%03X\n" % (name, off))
+                      ("REG_ALIVE", 0x018),
+                      ("REG_LIVE_PS_LO", 0x01C), ("REG_LIVE_PS_HI", 0x020),
+                      ("REG_CHAN0", 0x200), ("REG_PSCHAN0", 0x400)):
+        w("%-14s = 0x%03X\n" % (name, off))
+    w("# REG_LIVE_PS_*, REG_PSCHAN0: gateware 1.1 (round 28) -- the PS-domain\n"
+      "# 10 ns timestamps of every pps and the (helper, PS) counter pair.\n")
+    w("GATEWARE_MIN_MINOR_FOR_PS = 1\n")
     w("CHAN_STRIDE  = 0x010\n")
     w("OFF_TS_LO    = 0x000\n")
     w("OFF_TS_HI    = 0x004\n")

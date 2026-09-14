@@ -38,6 +38,7 @@ from .dmtd_constants import (
     N_BEAT, N_PPS, PPS0, UNIT_NAMES, PPS_SLOT, NULL_CHANNEL,
     REG_ID, REG_VERSION, REG_CONTROL, REG_HELPER, REG_LIVE_LO, REG_LIVE_HI,
     REG_ALIVE, REG_CHAN0, CHAN_STRIDE, OFF_TS_LO, OFF_TS_HI, OFF_COUNT,
+    REG_LIVE_PS_LO, REG_LIVE_PS_HI, REG_PSCHAN0, GATEWARE_MIN_MINOR_FOR_PS,
     MAGIC_ID, BASE_ADDR,
 )
 
@@ -47,7 +48,7 @@ from .dmtd_constants import (
 HELPER_TICK_CYCLES = 1 << 20
 
 __all__ = ['DmtdRegisters', 'phase_ps', 'wrap_cycles', 'unwrap_ps',
-           'beat_period_cycles']
+           'beat_period_cycles', 'resolve_cycles']
 if _HAVE_PYNQ:
     __all__ += ['DmtdCapture', 'DmtdOverlay', 'attach']
 
@@ -112,6 +113,21 @@ def unwrap_ps(series, wrap=WRAP_PS):
         return out
 
 
+def resolve_cycles(fine_ps, coarse_ps, wrap=WRAP_PS):
+    """Combine a beat-derived phase (fine, exact but modulo `wrap`) with a
+    pps-derived offset (coarse, 10 ns quantised, unambiguous) into one
+    absolute phase in ps.  Returns (phase_ps, n_cycles, residual_ps): the
+    residual is how far the coarse value sat from the nearest consistent
+    integer -- near +/- wrap/2 means the pps did not decide it.
+
+    ASSUMPTION, stated because no datasheet promises it: each GPSDO's pps
+    edge is aligned to a rising edge of its own 10 MHz to better than
+    +/- 40 ns.  Measure it per unit before believing the integer.
+    """
+    n = round((coarse_ps - fine_ps) / wrap)
+    return fine_ps + n * wrap, int(n), coarse_ps - (fine_ps + n * wrap)
+
+
 # ---------------------------------------------------------------------------
 # register semantics, on top of anything with .read(offset) / .write(offset, v)
 # ---------------------------------------------------------------------------
@@ -142,6 +158,16 @@ class DmtdRegisters(object):
         return bool(self.read(REG_ALIVE) & 1)
 
     @property
+    def has_ps_timestamps(self):
+        """Gateware 1.1 and later stamp every pps in the PS domain too."""
+        maj, minr, _, _ = self.version
+        return (maj, minr) >= (1, GATEWARE_MIN_MINOR_FOR_PS)
+
+    @property
+    def ps_ns_per_tick(self):
+        return 1e9 / float(self.ps_clk_hz)
+
+    @property
     def helper_hz(self):
         """Measured helper frequency, from PS clocks per 2^20 helper cycles."""
         ticks = self.read(REG_HELPER)
@@ -164,6 +190,32 @@ class DmtdRegisters(object):
             if lo0 == lo1:
                 return (hi << 32) | lo0
         raise RuntimeError('could not read a consistent helper counter')
+
+    def counter_pair(self):
+        """(helper_counter, ps_counter) latched at the same instant, the
+        v1.1 pair register.  Read LO/HI of both with the helper LO re-read
+        last, so a refresh in the middle is detected and retried."""
+        for _ in range(self._RETRIES):
+            lo0 = self.read(REG_LIVE_LO)
+            hi = self.read(REG_LIVE_HI)
+            plo = self.read(REG_LIVE_PS_LO)
+            phi = self.read(REG_LIVE_PS_HI)
+            lo1 = self.read(REG_LIVE_LO)
+            if lo0 == lo1:
+                return (hi << 32) | lo0, (phi << 32) | plo
+        raise RuntimeError('could not read a consistent counter pair')
+
+    def ps_to_helper_cycles(self, ps_ticks, pair=None, helper_hz=None):
+        """Map a PS-domain timestamp onto the helper counter's scale, using
+        the pair register and the measured helper frequency.  Error is the
+        pair's own +/-1 PS tick plus (helper_hz error) x (distance from the
+        pair), so it is good to a few helper cycles over a second."""
+        if pair is None:
+            pair = self.counter_pair()
+        if helper_hz is None:
+            helper_hz = self.helper_hz or F_HELPER
+        h0, p0 = pair
+        return h0 + (ps_ticks - p0) * float(helper_hz) / float(self.ps_clk_hz)
 
     # ---- control ---------------------------------------------------------
     def clear(self):
@@ -194,6 +246,18 @@ class DmtdRegisters(object):
                 return c0, (hi << 32) | lo
         raise RuntimeError('slot %d kept changing under the read' % slot)
 
+    def ps_channel(self, slot):
+        """(edge_count, ps_timestamp) for one pps slot in the PS domain."""
+        base = REG_PSCHAN0 + slot * CHAN_STRIDE
+        for _ in range(self._RETRIES):
+            c0 = self.read(base + OFF_COUNT)
+            lo = self.read(base + OFF_TS_LO)
+            hi = self.read(base + OFF_TS_HI)
+            c1 = self.read(base + OFF_COUNT)
+            if c0 == c1:
+                return c0, (hi << 32) | lo
+        raise RuntimeError('PS slot %d kept changing under the read' % slot)
+
     def beat(self, n):
         """(edge_count, timestamp) for beat channel n."""
         return self.channel(n)
@@ -219,18 +283,67 @@ class DmtdRegisters(object):
             bc.append(c)
             bt.append(t)
         pc, pt = [], []
+        ppc, ppt = [], []
+        ps = self.has_ps_timestamps
         for n in range(N_BEAT):
             slot = PPS_SLOT[n]
             if slot is None:
                 pc.append(None)
                 pt.append(None)
+                ppc.append(None)
+                ppt.append(None)
             else:
                 c, t = self.channel(slot)
                 pc.append(c)
                 pt.append(t)
-        return {'time': time.time(), 'counter': self.counter,
-                'beat_count': bc, 'beat_ts': bt,
-                'pps_count': pc, 'pps_ts': pt}
+                if ps:
+                    c2, t2 = self.ps_channel(slot)
+                    ppc.append(c2)
+                    ppt.append(t2)
+                else:
+                    ppc.append(None)
+                    ppt.append(None)
+        out = {'time': time.time(), 'counter': self.counter,
+               'beat_count': bc, 'beat_ts': bt,
+               'pps_count': pc, 'pps_ts': pt,
+               'pps_ps_count': ppc, 'pps_ps_ts': ppt}
+        if ps:
+            out['pair'] = self.counter_pair()
+        return out
+
+    def pps_offsets_ns(self, reference=0, snap=None):
+        """Each unit's pps edge time minus the reference unit's, in ns, from
+        the PS-domain timestamps: a 10 ns time-interval counter across the
+        whole inventory.  None where a unit has no pps or no edge yet."""
+        if snap is None:
+            snap = self.snapshot()
+        ts = snap['pps_ps_ts']
+        cnt = snap['pps_ps_count']
+        if ts[reference] is None or not cnt[reference]:
+            raise ValueError('reference channel %d has no pps timestamp' % reference)
+        k = self.ps_ns_per_tick
+        return [None if (t is None or not c) else (t - ts[reference]) * k
+                for t, c in zip(ts, cnt)]
+
+    def absolute_phases_ps(self, reference=None, snap=None):
+        """phases_ps() with the 100 ns integer resolved from the pps, where
+        both channels have one.  Returns a list of (phase_ps, n_cycles,
+        residual_ps) or None.  See resolve_cycles() for the assumption."""
+        if reference is None:
+            reference = NULL_CHANNEL
+        if snap is None:
+            snap = self.snapshot()
+        fine = self.phases_ps(reference, snap)
+        ts = snap['pps_ps_ts']
+        cnt = snap['pps_ps_count']
+        k = self.ps_ns_per_tick * 1e3
+        out = []
+        for n in range(N_BEAT):
+            if ts[n] is None or ts[reference] is None or not cnt[n] or not cnt[reference]:
+                out.append(None)
+            else:
+                out.append(resolve_cycles(fine[n], (ts[n] - ts[reference]) * k))
+        return out
 
     def phases_ps(self, reference=None, snap=None):
         """Phase of every GPSDO against the null channel, in picoseconds.
@@ -283,8 +396,10 @@ class DmtdRegisters(object):
 
         maj, minr, nb, npps = self.version
         note('VERSION', nb == N_BEAT and npps == N_PPS,
-             'v%d.%d, %d beats, %d pps (driver expects %d/%d)'
-             % (maj, minr, nb, npps, N_BEAT, N_PPS))
+             'v%d.%d, %d beats, %d pps (driver expects %d/%d)%s'
+             % (maj, minr, nb, npps, N_BEAT, N_PPS,
+                '' if self.has_ps_timestamps else
+                ' -- pre-1.1: no PS-domain pps timestamps'))
 
         note('helper running', self.alive, '')
         hz = self.helper_hz

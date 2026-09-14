@@ -18,30 +18,44 @@ from driver import (                                    # noqa: E402
     N_BEAT, N_PPS, NULL_CHANNEL, PPS_SLOT, MAGIC_ID,
     REG_ID, REG_VERSION, REG_CONTROL, REG_HELPER, REG_LIVE_LO, REG_LIVE_HI,
     REG_ALIVE, REG_CHAN0, CHAN_STRIDE, OFF_TS_LO, OFF_TS_HI, OFF_COUNT,
+    REG_LIVE_PS_LO, REG_LIVE_PS_HI, REG_PSCHAN0,
 )
-from driver.dmtd import HELPER_TICK_CYCLES               # noqa: E402
+from driver.dmtd import HELPER_TICK_CYCLES, resolve_cycles   # noqa: E402
 
 
 class FakeDevice(DmtdRegisters):
     """A dmtd_capture made of a dict, which can tear reads on demand."""
 
-    def __init__(self, helper_hz=F_HELPER, ps_hz=100e6):
+    def __init__(self, helper_hz=F_HELPER, ps_hz=100e6, minor=1):
         self.regs = {
             REG_ID: MAGIC_ID,
-            REG_VERSION: (1 << 24) | (0 << 16) | (N_BEAT << 8) | N_PPS,
+            REG_VERSION: (1 << 24) | (minor << 16) | (N_BEAT << 8) | N_PPS,
             REG_CONTROL: 0,
             REG_ALIVE: 1,
             REG_HELPER: int(round(HELPER_TICK_CYCLES * ps_hz / helper_hz)),
             REG_LIVE_LO: 0, REG_LIVE_HI: 0,
+            REG_LIVE_PS_LO: 0, REG_LIVE_PS_HI: 0,
         }
         self.ps_clk_hz = ps_hz
         self.tear = 0            # number of reads still to be corrupted
         self.writes = []
         for slot in range(32):
-            b = REG_CHAN0 + slot * CHAN_STRIDE
-            self.regs[b + OFF_TS_LO] = 0
-            self.regs[b + OFF_TS_HI] = 0
-            self.regs[b + OFF_COUNT] = 0
+            for base in (REG_CHAN0, REG_PSCHAN0):
+                b = base + slot * CHAN_STRIDE
+                self.regs[b + OFF_TS_LO] = 0
+                self.regs[b + OFF_TS_HI] = 0
+                self.regs[b + OFF_COUNT] = 0
+
+    def set_ps_channel(self, slot, ts, count):
+        b = REG_PSCHAN0 + slot * CHAN_STRIDE
+        self.regs[b + OFF_TS_LO] = ts & 0xFFFFFFFF
+        self.regs[b + OFF_TS_HI] = (ts >> 32) & 0xFFFFFFFF
+        self.regs[b + OFF_COUNT] = count
+
+    def set_pair(self, h, p):
+        self.set_counter(h)
+        self.regs[REG_LIVE_PS_LO] = p & 0xFFFFFFFF
+        self.regs[REG_LIVE_PS_HI] = (p >> 32) & 0xFFFFFFFF
 
     def set_channel(self, slot, ts, count):
         b = REG_CHAN0 + slot * CHAN_STRIDE
@@ -142,7 +156,7 @@ class TestRegisterSemantics(unittest.TestCase):
 
     def test_identity(self):
         self.assertEqual(self.d.id, MAGIC_ID)
-        self.assertEqual(self.d.version, (1, 0, N_BEAT, N_PPS))
+        self.assertEqual(self.d.version, (1, 1, N_BEAT, N_PPS))
         self.assertTrue(self.d.alive)
 
     def test_helper_frequency(self):
@@ -243,6 +257,66 @@ class TestRegisterSemantics(unittest.TestCase):
         res = dict((n, ok) for n, ok, _ in
                    self.d.selftest(settle=0.0, verbose=False))
         self.assertFalse(res['helper frequency'])
+
+
+class TestPpsPsTimestamps(unittest.TestCase):
+    """Gateware 1.1: the PS-domain pps stamps, the pair, and the integer."""
+
+    def test_pre_1_1_gateware_reports_no_ps_timestamps(self):
+        d = FakeDevice(minor=0)
+        self.assertFalse(d.has_ps_timestamps)
+        snap = d.snapshot()
+        self.assertTrue(all(t is None for t in snap['pps_ps_ts']))
+        self.assertNotIn('pair', snap)
+
+    def test_pps_offsets_are_ten_ns_per_tick(self):
+        d = FakeDevice()
+        d.set_ps_channel(PPS_SLOT[0], 1000, 5)
+        d.set_ps_channel(PPS_SLOT[1], 1000 + 37, 5)      # 370 ns later
+        d.set_ps_channel(PPS_SLOT[3], 1000 - 2, 5)       # 20 ns earlier
+        off = d.pps_offsets_ns(reference=0)
+        self.assertAlmostEqual(off[1], 370.0)
+        self.assertAlmostEqual(off[3], -20.0)
+        self.assertIsNone(off[2])                        # no edge counted yet
+        self.assertIsNone(off[NULL_CHANNEL])             # unit 13 has no pps
+
+    def test_pair_maps_ps_onto_helper(self):
+        d = FakeDevice()
+        d.set_pair(h=1_000_000, p=5_000_000)
+        # 9998.8 PS ticks later is 1000 helper cycles later
+        h = d.ps_to_helper_cycles(5_000_000 + 9998.8, helper_hz=F_HELPER)
+        self.assertAlmostEqual(h, 1_001_000.0, delta=0.01)
+
+    def test_resolve_cycles(self):
+        # fine says +30 ns (mod 100), coarse says +2.33 us: 23 cycles, 30 ns
+        ph, n, res = resolve_cycles(30_000.0, 2_330_000.0)
+        self.assertEqual(n, 23)
+        self.assertAlmostEqual(ph, 2_330_000.0)
+        self.assertAlmostEqual(res, 0.0)
+        # coarse is 10 ns quantised and 40 ns off: still the same integer
+        ph, n, res = resolve_cycles(30_000.0, 2_370_000.0)
+        self.assertEqual(n, 23)
+        self.assertAlmostEqual(res, 40_000.0)
+        # negative
+        ph, n, res = resolve_cycles(-45_000.0, -145_000.0)
+        self.assertEqual(n, -1)
+        self.assertAlmostEqual(ph, -145_000.0)
+
+    def test_absolute_phases_combine_beat_and_pps(self):
+        d = FakeDevice()
+        # beats: channel 1 is 8102.1/4 helper cycles behind the null -> +25 ns
+        quarter = HELPER_CYCLES_PER_BEAT / 4.0
+        d.set_channel(NULL_CHANNEL, 500_000, 1)
+        d.set_channel(1, 500_000 + int(round(quarter)), 1)
+        d.set_channel(0, 500_000, 1)
+        # pps: channel 1's pps 3.02 us after channel 0's; null has none
+        d.set_ps_channel(PPS_SLOT[0], 700_000, 1)
+        d.set_ps_channel(PPS_SLOT[1], 700_000 + 302, 1)
+        out = d.absolute_phases_ps(reference=0)
+        self.assertIsNone(out[NULL_CHANNEL])
+        ph, n, res = out[1]
+        self.assertEqual(n, 30)                           # 3.02 us = 30 cycles + 20 ns
+        self.assertAlmostEqual(ph, 3_000_000.0 + 25_000.0, delta=T_RES_PS)
 
 
 if __name__ == '__main__':

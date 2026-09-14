@@ -215,3 +215,30 @@ reason the heater exists.  It is not a Rev A change; it is a measurement.
 - **01:05** `gateware/driver/i2c_devices.py`, `test_i2c_devices.py` (20 new
   tests, 44 total pass) and `gateware/board/bringup.py` written.  PLL ratio
   computed exactly (32 + 1543/390625); schematic text updated to match.
+- **01:08** `bringup.py` run on the live PYNQ through the real `axi_iic`
+  with no front-end board: bus scan empty, every device reported absent,
+  core selftest as in round 27.  The software path is exercised end to end;
+  the devices are not (no board exists yet).  Way-point 1 committed
+  (`dfe5616`).
+- **01:14** Gateware v1.1 (finding 5): `dmtd_capture.v` gains a PS-domain
+  64-bit counter, a 10 ns timestamp + count for every pps at 0x400+16*slot,
+  and the (helper, PS) pair at 0x01C/0x020; VERSION 1.1.  Testbench extended
+  to 57 checks (pps spacing 200 helper cycles -> 2000 +/-2 PS clocks; pair
+  ratio 9.9988; PS stamp predicts the helper stamp within 3 cycles).
+  **xsim: TB PASS 57/57.**  Driver: `ps_channel`, `counter_pair`,
+  `pps_offsets_ns`, `absolute_phases_ps`, `resolve_cycles`; 49 host tests
+  pass.  **Vivado bitstream build launched 01:15**, log in the scratchpad.
+  Board build 1 (router) still running.
+- **01:20** Board build 1: router done, **filled DRC 0 violations, 0
+  unconnected**; release step running.  (The router's own log says two
+  off-block nets, PPS_03 and PPS_05, failed its first pass and were joined
+  by the multi-piece pass -- the same two that carried 0.1-0.2 mm stubs in
+  round 27.)  Vivado v1.1 overlay: **WNS +0.971 ns, WHS +0.035 ns**, 2523
+  LUTs, 9043 FFs, 28 IOBs; `build/overlay/dmtd_top.bit` + `.hwh` written.
+- **01:22** Interlock (finding 10) written but NOT yet built: `sheets_rest.py`
+  (LDO_EN bus, R2025 10k from +5V_HDR, R2026 DNP 0R), `pcb/power.py`
+  (placement, F.Cu, In2 and three vias), `build_pcb.py` (consumes the power
+  block's In2 routes/vias), `parts_map.py`, and `gen.py` (hole_to_hole is
+  now a DRC *error*).  Goes into **build 2** after build 1's release is
+  checked.  If build 2 fails DRC or leaves LDO_EN unconnected, revert these
+  five files to way-point 1 and record the interlock as a Rev B item.

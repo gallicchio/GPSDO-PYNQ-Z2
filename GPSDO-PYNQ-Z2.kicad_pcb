@@ -84713,9 +84713,9 @@
 		)
 	)
 	(gr_text "BENCH 5 V IN - OR LEAVE OPEN.  PYNQ MUST BE POWERED: ITS PINS ARE ABS-MAX 0.55 V OFF"
-(at 139 1.1 0)
+(at 139 2.2 0)
 (layer "F.SilkS")
-(uuid "8a8c0821-2999-4982-8a24-116049203544")
+(uuid "c368ef05-8b82-4bcd-8104-6fc02de2401d")
 		(effects
 			(font
 (size 1 1)
@@ -108559,10 +108559,10 @@
 			)
 		)
 	)
-	(gr_text "GPSDO DDMTD FRONT END   rev B"
+	(gr_text "GPSDO DDMTD FRONT END   rev A"
 (at 4 158 0)
 (layer "F.SilkS")
-(uuid "02b06a9e-b134-4a47-8a0c-5cb2804e1702")
+(uuid "e7c0f0e6-680f-4ff0-8be0-5673889c6dee")
 		(effects
 			(font
 (size 1.8 1.8)
@@ -108571,10 +108571,10 @@
 (justify left)
 		)
 	)
-	(gr_text "Jason Gallicchio   jason@hmc.edu   2026-09-13"
+	(gr_text "Jason Gallicchio   jason@hmc.edu   2026-09-14"
 (at 4 160.6 0)
 (layer "F.SilkS")
-(uuid "e6bc5fff-4fb5-4533-8e0f-5496e4e6f1c2")
+(uuid "9503220c-589d-48b0-80fe-4170ba711436")
 		(effects
 			(font
 (size 1.2 1.2)

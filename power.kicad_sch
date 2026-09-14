@@ -4702,10 +4702,10 @@
 		)
 		(uuid "c6740439-0b18-7ef8-906e-0820c5d3b668")
 	)
-	(text_box "ONE SHARED RAIL FOR EVERY THRESHOLD-SETTING GATE.\n+3V3_A feeds all 14 squarers, all 26 flip-flops, all 12 Schmitts and the whole\nhelper fan-out.  A gate's switching threshold moves with its supply, so on a\nshared rail every channel's threshold moves TOGETHER - common mode, and it\ncancels in the differences we actually compute.  Fourteen separate regulators\nwould make fourteen thresholds wander independently and turn a cancelling error\ninto one that does not."
+	(text_box "ONE SHARED RAIL FOR EVERY THRESHOLD-SETTING GATE.\n+3V3_A feeds all 14 squarers, all 26 flip-flops, all 12 Schmitts and the whole\nhelper fan-out.  A gate's switching threshold moves with its supply, so on a\nshared rail every channel's threshold moves TOGETHER - common mode, and it\ncancels in the differences we actually compute BETWEEN CHANNELS OF EQUAL SLEW.\nRound 28: dt = dV / slew, and the inventory's slews span 23 mV/ns (FE-5680A,\n0.72 Vpp sine) to ~1600 mV/ns (ZED-F9T CMOS), so 1 mV of common rail shift is 44\nps on one and 0.6 ps on the other, and 43 ps of it does NOT cancel between them.\nThat residual is the analog floor for the sine sources and the reason the board\nis heated and the rail is a 7 uV LDO.  Fourteen separate regulators would still\nbe worse: they would add fourteen independent wanders on top."
 		(exclude_from_sim no)
 		(at 15.2400 144.7800 0)
-		(size 121.9200 21.5900)
+		(size 121.9200 31.7500)
 		(margins 0.9525 0.9525 0.9525 0.9525)
 		(stroke
 			(width 0)
@@ -9420,10 +9420,10 @@
 		)
 		(uuid "76fa13af-a6c2-2978-da8f-682941edc125")
 	)
-	(text_box "LINEAR, NOT PWM - AND THAT IS DELIBERATE.\nWe are making heat on purpose, so dissipation in the pass element is not waste.\nA linear element means there is no switching edge anywhere on a board doing\npicosecond timing; a PWM heater is a few hundred mA of square wave circulating\nsomewhere, which is exactly what the helper-tree work is trying to keep off the\nground plane."
+	(text_box "LINEAR, NOT PWM - AND THAT IS DELIBERATE.\nWe are making heat on purpose, so dissipation in the pass element is not waste.\nA linear element means there is no switching edge anywhere on a board doing\npicosecond timing; a PWM heater is a few hundred mA of square wave circulating\nsomewhere, which is exactly what the helper-tree work is trying to keep off the\nground plane.  Round 28 qualifies this: the FETs are driven fully on or off with\na duty cycle of 30 s or more (see PASS FET), which is not PWM in that sense -\none ramped edge every half minute, and nothing in the measurement band."
 		(exclude_from_sim no)
 		(at 144.7800 347.9800 0)
-		(size 121.9200 17.7800)
+		(size 121.9200 24.1300)
 		(margins 0.9525 0.9525 0.9525 0.9525)
 		(stroke
 			(width 0)
@@ -9462,10 +9462,10 @@
 		)
 		(uuid "c3ae3044-097f-5e31-08bc-ba21691723ff")
 	)
-	(text_box "PASS FET WORST CASE.\nLinear drive means the pass element dissipates a QUARTER of the heater's full\npower at half current: 2.4 W at 9.6 W total.  That is why there are three FETs\nof eight heaters rather than one of twenty-four - 0.8 W each, in three SOT-223s\nplaced far apart, where the heat they make is useful instead of being a hot spot\non a board built for uniformity.  Drive comes from the MCP4725 on the\nhousekeeping sheet, so the loop closes in Python on the PYNQ and costs no header\npins."
+	(text_box "PASS FETS: DRIVE THEM FULLY ON OR OFF, NOT IN BETWEEN.\nRound 28.  The three FETs share one gate voltage and DMN6068SE Vth is 1.0-3.0 V\n(datasheet), so at any intermediate gate voltage which bank conducts is a\nlottery; worse, at half current a FET's own heating (Vth tempco x RthJA) has\nloop gain above 1, so a bank snaps to full-on.  Linear sharing needs an op-amp\ncurrent sink per FET from the 15 V rail - a Rev B change.  On this board the\nsoftware drives the DAC to 0 or full scale with a duty cycle of 30 s or more\nagainst a ~5 min board time constant: at Vgs = 3.3 V every DMN6068SE carries the\n214 mA its 70 ohm bank allows, dissipates ~3 mW instead of the 0.8 W a linear\nhalf-current point would, and all 24 heaters switch together.  Three FETs stay\nfor the local drain nets.  Drive comes from the MCP4725 on the housekeeping\nsheet."
 		(exclude_from_sim no)
 		(at 403.8600 347.9800 0)
-		(size 121.9200 24.1300)
+		(size 121.9200 34.2900)
 		(margins 0.9525 0.9525 0.9525 0.9525)
 		(stroke
 			(width 0)
@@ -9481,7 +9481,7 @@
 			)
 			(justify left top)
 		)
-		(uuid "b1e6cdb6-b645-fff6-cfc3-453e8acba30d")
+		(uuid "7481f3e3-be00-fa61-a83c-c05a26e2fa8c")
 	)
 	(wire
 		(pts
