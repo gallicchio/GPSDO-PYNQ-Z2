@@ -1,8 +1,15 @@
-# Design review response -- round 28
+# Design review response -- round 28, with an addendum from rounds 29 and 30
 
 *Started 2026-09-14 00:50 PDT.  This file is written first and updated as
 work proceeds, so that if the session dies the state is recoverable from the
 **Log** at the bottom.  Every way-point is a git commit; the log names them.*
+
+> **READ THE ADDENDUM FIRST.**  Later the same day, rounds 29 and 30 found
+> that the release this document recommends ordering **had no ground planes
+> in its gerbers** -- see finding 18 -- along with fourteen other faults and
+> the first hardware measurement of the beat.  The round-28 verdict below is
+> left exactly as it was written; its error is recorded in the addendum
+> rather than edited out of it.
 
 ## Verdict, in one paragraph
 
@@ -287,3 +294,155 @@ reason the heater exists.  It is not a Rev A change; it is a measurement.
   exactly as laid out; R2025 is in the BOM/CPL, R2026 in the excluded list.
   Release regenerated for one board.  1496 s.  Way-point 3 committed
   (`6d1391a`).  README.md gained its Round 28 section; this file is final.
+
+---
+
+# Addendum -- rounds 29 and 30, the same day
+
+*Written 2026-09-14 afternoon, after the round-28 response above was closed.
+Rounds 29 and 30 were not a design review; round 29 was a list of silkscreen
+corrections and a request for a document, and round 30 was "make
+`bringup.py` work".  Both turned up things a review should have found, and
+one of them would have wasted the order this file told you to place.*
+
+## Verdict, revised
+
+**Round 28's "order one board" was wrong, and by a wide margin.**  Not
+because of anything the four reviews found -- those dispositions all stand --
+but because of a fault none of us looked for: **the release in round 28 had
+no ground planes in it.**  Not thinned, not badly stitched: absent.
+
+```
+                    round 28                    round 29
+  In1_Cu     1364 lines, 0 regions        34421 lines, 1 region
+  B_Cu       1474 lines, 0 regions        34531 lines, 1 region
+  F_Cu       9770 lines, 0 regions        79224 lines, 9 regions
+  In2_Cu     2516 lines, 0 regions         2396 lines, 0 regions   (correct: In2 is routed, not poured)
+```
+
+A 4-layer board with two empty copper layers and no F.Cu pour is not a board
+with a compromised ground; it is a board on which 436 ground pads connect to
+nothing.  JLCPCB's own DFM would probably have queried two blank layers
+before building it, so the likely cost was a week and an e-mail rather than a
+scrapped panel -- but it was the order, either way.
+
+**After round 29 and 30: order one board.**  The same recommendation, now
+resting on a release that has been checked rather than one that merely passed
+a check aimed somewhere else.
+
+## 5. What rounds 29 and 30 found
+
+Numbering continues from the table in §1.  "Found by" is honest about how:
+almost none of these came from re-reviewing the design.  They came from
+Jason looking at a render, from a bring-up run on real silicon, and from
+making the DRC ask questions it had not been asking.
+
+| # | Sev | Found by | Finding | Confirmed by | Disposition |
+|---|-----|----------|---------|--------------|-------------|
+| 18 | **Blocker** | round 29, from the DRC-vs-reality gap | **The pours were never poured into the shipped board.** `build.py` filled the zones into a COPY, `build/filled.kicad_pcb`, ran the DRC on that, and committed the unfilled original | `grep -c filled_polygon` on the committed board = 0; the three gerbers above | **FIXED**: the zones are poured into the board itself; the unfilled copy is kept in `build/` for the clearance-only pass, with a copy of the project file beside it so that pass uses our rules and not KiCad's defaults |
+| 19 | **Blocker** | round 29, from the 3D render | **The board had no mounting holes.** Six `Cmts.User` captions reading "M3 standoff" and "M3 shared with PYNQ", and no drilled hole anywhere. `put("H1".."H6")` looked six references up in a netlist that has never had a mounting-hole symbol in it, and `put()` returns quietly when it finds nothing | `grep -c MountingHole` on the committed board = 0 | **FIXED**: four M3 holes and one 7 x 3.2 mm M3 slot onto the PYNQ's own top-right hole, placed directly rather than through the netlist (a hole is not a part: no pads, no net, no BOM line). Their courtyard is the standoff keep-out, so the existing courtyard check tests the clearance -- and caught a 2 mm clash with J6001 immediately. Verified in the drill file: four T6 (3.2 mm) hits plus one G85 routed slot |
+| 20 | High | round 29 | **The DRC was answering a question nobody asked.** The project set four numeric rules and left the other eleven -- including the entire silkscreen family -- at KiCad's defaults, and every rule at its default severity. `--severity-error` therefore reported "0 violations" on a board carrying 639 warnings; at full severity and under round 29's severities, that same board reports **598 errors** | `kicad-cli pcb drc --severity-all` on the round-28 board | **FIXED**: `gen/jlc.py`, one row per rule, each asserting our figure is at least as strict as JLCPCB's published capability (the file will not import otherwise), plus 25 severities of which 18 are errors. `build.py` now also raises before the release step if the poured board has any DRC error -- which is how round 30's unconnected `I2C_SDA` was caught |
+| 21 | High | round 29 | **Twelve silkscreen markers named the wrong part.** `r.startswith("R20")` also matches unit 2's `R201`..`R208`, and `r.startswith("U50")` matches unit 5's `U501`..`U504`, so eight resistors and four logic gates carried a heater `H` or a thermometer `T` | Reference numbering scheme in `build_pcb.unit_of()` | **FIXED**: `re.match(r"^R20\d\d$")` / `^U500[1-8]$`, the same four-digit rule `block_of()` has always used |
+| 22 | Medium | round 29 | **Every marker offset was in BOARD coordinates.** A tile is stamped thirteen times at rot 90 on the left and rot 270 on the right, so one offset meant "towards the helper" on one side and "away" on the other; a 9 mm dodge spiral then moved letters onto whatever was clear | Plotted silkscreen, both columns | **FIXED**: offsets are given in the frame of the part they label, so the two sides are mirror images by construction; the dodge radius is 2.2 mm, not 9 |
+| 23 | Medium | round 29 | **Reference designators were 0.6 mm tall** -- below JLCPCB's 0.8 mm minimum printable height -- **and the stock footprints' silkscreen outlines are 0.12 mm**, below their 6 mil minimum. No KiCad rule checks a *graphic* line's width, only text's | DRC `text_height` x199 (the per-rule report cap, so the real count was every designator) | **FIXED**: designators are 0.8 mm and are *placed* (588 of 591 find clear board; three test points' names go to F.Fab); `footprint()` raises every silkscreen stroke below 0.16 mm as the footprint is placed, which covers the stock library too |
+| 24 | Medium | round 29 | **A false `UNROUTED: PPS_05, PPS_03` caption had been on the board for several rounds** while KiCad's own filled DRC said 0 unconnected. It was printed from the two-point router's leftovers; the multi-terminal pass that runs afterwards had already finished both | KiCad DRC vs the caption | **FIXED**, and then nearly repeated: the replacement check is *stricter* than KiCad's connectivity and put a new false caption on build 4. The check now prints to stderr and writes nothing on the board. **A board must not carry a claim that a better check contradicts** |
+| 25 | Medium | round 29 | `HIN` and `HO` were each drawn **twice**, 0.5 mm apart -- `geom.sma_rows()` lists the helper jacks and `build_pcb` had a second loop for them | The .kicad_pcb has two `gr_text "HIN"` | **FIXED** |
+| 26 | Medium | round 29 | **Two connectors carried the same five names**: the 1-Wire screw terminals were `P1`..`P5` and the 1 pps jacks are `P1`..`P12` | Round 29's own prompt walked into it ("the screw terminal labeled P3") | **FIXED**: the terminals are `W1`..`W5`, matching the `W` already printed on the 1-Wire test point |
+| 27 | Medium | round 29 | **Closest SMT pad to the board edge is 1.19 mm** (`FB5009`; `Q2003` is second at 1.20 mm). An assembly constraint, not a fabrication one, and nothing in KiCad looks at it -- `copper_edge_clearance` is about copper, not about whether a nozzle and an edge clamp can both reach | `mfg/make_fab.py` measures it from the board | **OPEN -- for Jason.** Measured and printed in `FABRICATION_NOTES.txt`. Everything nearer the edge is through-hole and hand-soldered. If 1.19 mm is inside JLCPCB's rail allowance the panel needs a break-away rail, which is a different panel and a price, not a redesign. **Ask them; do not move the part** -- `FB5009` is 4 mm from the pin it decouples and that is the point of it |
+| 28 | **Blocker** (bring-up) | round 30, on silicon | **`PynqBus` could not read.** `pynq`'s `AxiIIC.receive()` hands its buffer straight to cffi as `unsigned char *`; cffi converts a `bytes` but refuses a `bytearray`. Every *send* worked, so the bus scan passed and found the Si5351 -- the first *read*, the Si5351's status register, is where `bringup.py` died | The traceback, on the PYNQ | **FIXED**: receives allocate from `AxiIIC._ffi`, the FFI that owns the prototype. Note that `MockBus` and `SmbusBus` cannot reproduce this -- one is a dict and the other goes through `smbus2`. It is exactly the class of bug the 20 host tests for finding 1 could never have found |
+| 29 | High | round 30, on silicon | **The selftest reported the helper at 8150729.9 Hz**, -185000 ppm, while the same property read a second later said 10001217.0. The gateware's estimator counts PS clocks across 2^20 helper cycles and *latches the finished window*, so a read taken shortly after the synthesiser starts returns the window that straddles the change -- long by however much of it had no clock in it (8150729.9/10001217 = 0.815, a window 1.227x too long) | Three independent methods agree on 10001217 Hz: the estimator read repeatedly, the free-running counter against the wall clock, and the v1.1 (helper, PS) pair | **FIXED**: `settle_helper()` polls until two consecutive windows agree; `selftest()` uses it. A host test feeds it the 1.227x value first and checks it is not believed |
+| 30 | Medium | round 30 | **The selftest counted thirteen untestable things as failures.** The squarers and flip-flops that make a beat are on the front-end board; with no board they read ~0 edges, which is the right answer. "29 checks, 14 failures" buried the one real failure | The run itself | **FIXED**: results are three-state (True / False / None = "not testable here"), `failures()` counts only False, and `bringup.py` infers the flag from the bus -- the board's own I2C parts are the evidence |
+| 31 | Low | round 30 | **CLK2 was powered down**, so an ADALM2000 clipped to CLK1 and CLK2 was watching a dead pin. Correct for the front-end board, which routes nothing to CLK2; not correct for a bench | `Si5351Config.registers()` wrote `CLK_PDN` | **FIXED as an option**: `clk2='helper'` puts a second copy of CLK0 there off the same PLLA, so CLK1 and CLK2 are 1234.4 Hz apart. Off by default, so the board's own image is unchanged |
+| 32 | Medium | round 30 | **The PYNQ-Z2 power-cycled mid-session.** The serial logger died with "device reports readiness to read but returned no data" -- and that is the evidence, not the bug: the FT2232 is USB-powered, so a PS reset leaves the port open. For `/dev/ttyUSB1` to vanish, the board's power has to go | Device node recreated at the moment of the drop; board reported `up 1 min` on return | **OPEN -- for Jason.** This board's own silkscreen already says it: *power the PYNQ from its barrel jack J9, not USB alone*. A Si5351 module on the header's 3.3 V is exactly the load that turns "enough for most designs" into a brown-out. `gateware/board/console_log.py` now logs across resets and says which of the two happened |
+
+## 6. What is now verified on hardware, and what is still not
+
+Round 28 could say only that the software path ran with nothing attached.
+Round 30 ran it against a real Si5351 wired to five header pins, and measured
+the number the instrument is built on:
+
+```
+    measured beat : 1234.417 Hz     (block-to-block spread 1.24 Hz)
+    by design      : 1234.400 Hz
+    error          : +0.017 Hz, +0.0017 ppm of 10 MHz
+    -> one helper cycle = 12.3426 ps of input phase   (design 12.3425)
+```
+
+from an ADALM2000 on CLK1 and CLK2, measured from the **phase ramp** between
+the two channels rather than by subtracting two separately-fitted 10 MHz
+frequencies: both channels share one ADC clock, so the ramp cancels it.  That
+is a DDMTD performed in software on the raw capture, and it is the first
+end-to-end confirmation of finding 7's disposition (CLK1 on PLLB in integer
+mode) on real silicon.
+
+| | round 28 | now |
+|---|---|---|
+| I2C write path | exercised, all devices absent | **exercised against a real Si5351** |
+| I2C read path | never exercised | **fixed and exercised** (finding 28) |
+| Si5351 programming | host tests only | **46 registers written and read back, both PLLs locked** |
+| helper frequency | 0 Hz (no synthesiser) | **10001224.7 Hz, -1.0 ppm** (a plain crystal, not a TCXO) |
+| the 1234.4 Hz beat | asserted from arithmetic | **measured, +0.0017 ppm of 10 MHz** |
+| `bringup.py --no-heater` | crashed | **4 checks, 0 failures, 25 not testable here** |
+
+Still untested, and untestable until boards exist: all thirteen front ends,
+the heater and its DAC, the eight thermometers, the DS2482 and the probes,
+and the pps path.  The beat and pps counters in the gateware have still only
+ever seen a testbench and a bench synthesiser.
+
+## 7. The checklist, restated
+
+Carried forward from §4, with what rounds 29 and 30 added:
+
+- [x] Everything ticked in §4 still holds
+- [x] **The pours are in the board and in the gerbers** (finding 18) -- the
+      one item that invalidated the round-28 release
+- [x] Mounting holes exist and are in the drill file (finding 19)
+- [x] The DRC is set from JLCPCB's capability and the build stops on a DRC
+      error or an unconnected net (finding 20)
+- [x] `bringup.py` runs clean on real silicon (findings 28-30)
+- [ ] **Jason:** upload `GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv`; check pin 1 on
+      the five named packages in JLCPCB's placement preview (unchanged from §4)
+- [ ] **Jason:** decide Rev A vs Rev B for the heater current sinks (§2.4).
+      Recommendation unchanged: Rev A as-is with on/off drive
+- [ ] **Jason:** ask JLCPCB whether **1.19 mm** from an SMT pad to the board
+      edge needs a break-away rail (finding 27).  The number is in
+      `FABRICATION_NOTES.txt`
+- [ ] **Jason:** re-read the three rules in `gen/jlc.py` marked `as JLC`
+      (hole-to-copper, hole-to-hole, silkscreen-to-copper) against their
+      current published capability before ordering.  Change the `jlc` column
+      if one has tightened and the assertion will say whether we still pass
+- [ ] **Jason:** power the PYNQ-Z2 from its barrel jack with J9 at `REG`,
+      not from micro-USB (finding 32), before the next long bring-up run
+- [ ] First power-up order, unchanged from §4
+
+## Log (continued)
+
+- **11:52-14:50, round 29** Five board builds.  Build 1 was the round-28
+  board rebuilt as a baseline.  Build 2 lost the title and the legend heading
+  off the board (vias treated as hard obstacles; they are tented, and a
+  `gr_text` dropped on one DRCs clean) and left `I2C_SDA` unconnected, and
+  built a release from it anyway.  Build 3 caught the same unconnected net
+  because `build.py` now raises, and refused to build a release.  The cause
+  was mine: I had moved two parts for *silkscreen* room, and a part moved for
+  the silkscreen is a part moved -- three packed 1-Wire parts 2 mm lower
+  changed which way the DS2482's `I2C_SDA` escaped and cost the helper its
+  only corridor.  Both moves reverted, the mounting hole moved instead.
+  Build 4 routed clean and printed a false `UNROUTED` caption (finding 24).
+  Build 5 ships.  Commits `fe07e29` (sources) and `460c5d6` (the board,
+  `HANDBOOK.md`, the release).
+- **16:05-16:20, round 30** `bringup.py --no-heater` on the PYNQ: the cffi
+  read bug (finding 28), then the stale-window helper reading (finding 29),
+  then thirteen untestable beats counted as failures (finding 30).  All three
+  fixed; 59 host tests pass.
+- **16:20-16:28** The PYNQ dropped off the network mid-run and came back
+  reporting `up 1 min`.  My first serial logger captured nothing because it
+  died when the port vanished -- which is itself the diagnosis (finding 32).
+  `/dev/ttyUSB1` confirmed as the console by writing to `/dev/ttyPS0` on the
+  board and watching it arrive.
+- **16:29-16:35** CLK2 enabled as a bench witness (finding 31); the M2k's own
+  analog front end found powered down (`m2k-fabric` leaves both input
+  amplifiers at `powerdown = 1`, which reads as four ADC counts that look
+  exactly like a disconnected probe); the beat measured from the phase ramp.
+  Commits `76e8b2d` and `6423d21`.
+- **16:40** This addendum.  The round-28 verdict above is left as it was
+  written, with its error recorded here rather than edited out of it.
