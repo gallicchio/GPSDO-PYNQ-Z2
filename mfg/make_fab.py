@@ -164,12 +164,33 @@ WHAT TO SET ON THE JLCPCB ORDER FORM
                              the lower-left margin below the title block
   PCB assembly ............. Yes, TOP side, %(qty)s boards
   Tooling holes ............ Added by JLCPCB
-  Confirm parts placement .. Yes  (worth it on a first run of this board)
+  Confirm parts placement .. Yes  -- NOT OPTIONAL, see ROTATION below
+
+ROTATION  (round 28)
+  KiCad's footprint zero-orientation and JLCPCB's feeder zero-orientation
+  differ per package, and no two published correction tables agree on the
+  SOT-23 family, which is 62 of this board's 457 placements.  So two
+  placement files are supplied:
+    %(name)s_cpl.csv ............... KiCad-native rotations
+    %(name)s_cpl_jlc_corrected.csv . the same, with the JLCKicadTools table
+                                     applied: SOT-23-x -90, SOT-223 +180,
+                                     SOIC-8 +270.  Nothing else is touched.
+  UPLOAD THE CORRECTED FILE.  Then, in JLCPCB's placement preview (the
+  "Confirm parts placement" step), check these against the assembly drawing
+  before approving:
+    U102  (74LVC1G80, SOT-23-5)  pin 1 = the D input, bottom-left at rot 0
+    Q2001 (DMN6068SE, SOT-223)   tab = drain, the wide pad
+    U5001 (TMP1075, SOIC-8)      pin 1 dot
+    U3001 (Si5351A, MSOP-10)     pin 1 dot  (NOT corrected: no table entry)
+    D2001 (SS34, SMA)            cathode band  (NOT corrected: no table entry)
+  If the SOT-23-5 preview is wrong, upload the native file instead; one of
+  the two is right for their machines on the day, and the preview says which.
 
 FILES
   %(name)s_gerbers.zip ........ Gerber RS-274X + Excellon drill + drill map
   %(name)s_bom.csv ............ assembly BOM
-  %(name)s_cpl.csv ............ assembly placement file
+  %(name)s_cpl.csv ............ assembly placement file, KiCad-native rotations
+  %(name)s_cpl_jlc_corrected.csv  the same with JLCPCB rotation corrections
   %(name)s_assembly_top.pdf ... placement drawing, top
   %(name)s_assembly_bottom.pdf  placement drawing, bottom
   hand_solder_bom.csv ......... through-hole parts, NOT for assembly

@@ -30,6 +30,46 @@ def norm_rot(r):
     return r - 360.0 if r > 180.0 else r
 
 
+# ---------------------------------------------------------------------------
+# JLCPCB rotation corrections.  Round 28.
+#
+# KiCad's footprint zero-orientation and JLCPCB's feeder zero-orientation
+# differ per package family, so a CPL in KiCad's native convention has some
+# packages loaded turned.  Round 23 declined to correct because no vetted table
+# was to hand; the round-28 reviews all raised it, and one supplied a table
+# (SOT-23: +180) that DISAGREES with the table used by the two most widely
+# used KiCad->JLCPCB tools (SOT-23: -90).  So no table can be applied blind.
+#
+# What is done: TWO placement files are written.  `_cpl.csv` is KiCad-native,
+# as before.  `_cpl_jlc_corrected.csv` applies the table below, which is the
+# subset of matthewlai/JLCKicadTools `cpl_rotations_db.csv` (also imported by
+# Bouni/kicad-jlcpcb-tools) that matches a footprint on this board, fetched
+# 2026-09-14.  Its convention, from that tool's source: for a TOP-side part
+# rotation = (kicad_rotation + correction) mod 360.  Everything here is top
+# side.  FABRICATION_NOTES says which file to upload and which five packages to
+# look at in JLCPCB's placement preview -- that preview, not this table, is the
+# thing that actually guarantees a part goes down the right way round.
+#
+# Packages on this board with NO entry in that database (MSOP-10, SMA/SMB
+# diodes, SOD-323, the FT5H oscillator, all passives) are left at KiCad's
+# native rotation in both files.
+# ---------------------------------------------------------------------------
+JLC_ROTATION = [
+    # (regex on the short footprint name, correction in degrees)
+    (re.compile(r"^SOT-223"), 180),
+    (re.compile(r"^SOT-23"),  -90),     # SOT-23-5 and SOT-23-6 both
+    (re.compile(r"^SOIC-"),   270),
+]
+
+
+def jlc_rotation(fpshort, rot):
+    """(corrected rotation, correction applied) for one placement."""
+    for pat, corr in JLC_ROTATION:
+        if pat.match(fpshort):
+            return norm_rot(float(rot) + corr), corr
+    return norm_rot(rot), 0
+
+
 def write(outdir, rows=None, quiet=False):
     rows = rows or bomdata.components()
     os.makedirs(outdir, exist_ok=True)
@@ -50,7 +90,7 @@ def write(outdir, rows=None, quiet=False):
             refs = sorted(refs, key=lambda s: (len(s), s))
             w.writerow([value, ",".join(refs), fp, lcsc])
 
-    # ---- CPL --------------------------------------------------------------
+    # ---- CPL, twice: KiCad-native and JLCPCB-corrected ---------------------
     cpl = os.path.join(outdir, "%s_cpl.csv" % NAME)
     with open(cpl, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -58,6 +98,17 @@ def write(outdir, rows=None, quiet=False):
         for r in sorted(smt, key=lambda r: r["ref"]):
             w.writerow([r["ref"], "%.4f" % r["x"], "%.4f" % (-r["y"]),
                         r["side"].capitalize(), "%.4f" % norm_rot(r["rot"])])
+    cplj = os.path.join(outdir, "%s_cpl_jlc_corrected.csv" % NAME)
+    ncorr = collections.Counter()
+    with open(cplj, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
+        for r in sorted(smt, key=lambda r: r["ref"]):
+            rot, corr = jlc_rotation(r["fpshort"], r["rot"])
+            if corr:
+                ncorr[(r["fpshort"], corr)] += 1
+            w.writerow([r["ref"], "%.4f" % r["x"], "%.4f" % (-r["y"]),
+                        r["side"].capitalize(), "%.4f" % rot])
 
     # ---- hand-solder list --------------------------------------------------
     hby = collections.defaultdict(list)
@@ -98,13 +149,18 @@ def write(outdir, rows=None, quiet=False):
         print("  %-34s %d distinct parts, %d placements"
               % (os.path.basename(bom), len(by), len(smt)))
         print("  %-34s %d placements" % (os.path.basename(cpl), len(smt)))
+        print("  %-34s %d placements, %d rotated: %s"
+              % (os.path.basename(cplj), len(smt), sum(ncorr.values()),
+                 ", ".join("%s %+d x%d" % (k[0], k[1], n)
+                           for k, n in sorted(ncorr.items()))))
         print("  %-34s %d parts + %d extras"
               % (os.path.basename(hand), len(hby), len(parts_map.EXTRAS)))
         print("  %-34s %d DNP + %d bare pads"
               % (os.path.basename(excl), len(dnp),
                  sum(1 for r in rows if r["cls"] == "nopart")))
-    return dict(bom=bom, cpl=cpl, hand=hand, excluded=excl,
-                distinct=len(by), placements=len(smt))
+    return dict(bom=bom, cpl=cpl, cpl_jlc=cplj, hand=hand, excluded=excl,
+                distinct=len(by), placements=len(smt),
+                rotated=sum(ncorr.values()))
 
 
 if __name__ == "__main__":

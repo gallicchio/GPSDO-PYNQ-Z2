@@ -203,3 +203,15 @@ reason the heater exists.  It is not a Rev A change; it is a measurement.
   RTL, the driver, the mfg scripts, the four datasheets the findings turn on
   (Fox FT5HN, DMN6068SE, MCP4725, Si5351), and the DRC reports.  Scanned
   In2.Cu geometry with a script.  Wrote this file.  No source changed yet.
+- **01:00** Source edits for findings 2, 6, 7, 8, 9, 11, 12, 14, 17 made
+  (router no-via zone round every through-hole drill; silkscreen revision
+  from `design.py`; edge text moved; stackup docstring; `helper.py` via names;
+  design.py pin-31 comment and unit-13 note; unit-sheet pps and null notes;
+  helper-sheet TCXO/XA/CLK1 notes; power-sheet rail and FET notes; DAC EEPROM
+  note; both CPL files; one board default).  `build.py --no-pcb`: ERC 0,
+  all checks pass, 0 overlaps.  **Full build 1 launched 00:59** (router +
+  DRC + release), log in the session scratchpad.  Not yet committed: waits
+  for the DRC result.
+- **01:05** `gateware/driver/i2c_devices.py`, `test_i2c_devices.py` (20 new
+  tests, 44 total pass) and `gateware/board/bringup.py` written.  PLL ratio
+  computed exactly (32 + 1543/390625); schematic text updated to match.

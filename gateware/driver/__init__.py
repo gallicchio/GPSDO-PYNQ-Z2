@@ -13,3 +13,4 @@ On any machine, for the phase arithmetic and for tests:
 from .dmtd_constants import *          # noqa: F401,F403
 from .dmtd import *                    # noqa: F401,F403
 from .dmtd import DmtdRegisters, phase_ps, wrap_cycles, unwrap_ps  # noqa: F401
+from . import i2c_devices                     # noqa: F401

@@ -14,10 +14,13 @@ The one part that does not fit that pattern is the Si5351.  In MSOP-10 it has
 VDD on the top-left corner and VDDO on the lower-RIGHT, with CLK1, CLK0 and GND
 physically between them down the right-hand edge.  There is no way to join VDD
 to VDDO on F.Cu without crossing the clock outputs.  The way out is that both
-of those outputs WANT to leave on In2.Cu anyway -- CLK0 goes to the CLK1-OUT
-SMA 180 mm away and CLK1 is HELPER_SRC, the helper clock itself, and In2.Cu is
-the layer reserved for exactly that.  So they drop to In2 within 3 mm of the
-package and the VDD-to-VDDO link walks over the top of them on F.Cu.
+of those outputs WANT to leave on In2.Cu anyway -- CLK0 (pad 10) is
+HELPER_SRC, the helper clock itself, and CLK1 (pad 9) goes to the CLK1-OUT SMA
+180 mm away -- and In2.Cu is where the helper lives.  So they drop to In2
+within 3 mm of the package and the VDD-to-VDDO link walks over the top of them
+on F.Cu.  (Round 28: this paragraph and the two via names below had CLK0 and
+CLK1 the wrong way round for eight rounds.  The PAD NUMBERS were always right,
+which is why the board was too; the names are what a future edit would trust.)
 """
 
 SIG = 0.25          # signal track
@@ -113,19 +116,20 @@ for _i, (_fb, _ca, _cb) in enumerate((("FB3005", "C3011", "C3012"),
     PARTS.update(gate_power_parts(_fb, _ca, _cb, BUF_X[_i]))
 
 # Vias that take a helper signal down to In2.Cu, (slot, pad, x, y).
-VIA_CLK1 = (27.6, -2.0)          # HELPER_SRC, out of the Si5351
-VIA_CLK0 = (29.0, -1.2)          # CLK0, on its way to the CLK1-OUT SMA
+# MSOP-10 Si5351A: pad 10 is CLK0, pad 9 is CLK1 (datasheet 10.7).
+VIA_HSRC = (27.6, -2.0)          # pad 10, CLK0 = HELPER_SRC, out of the Si5351
+VIA_CLK1OUT = (29.0, -1.2)       # pad 9, CLK1, on its way to the CLK1-OUT SMA
 VIA_SRC = (33.5, 0.0)            # HELPER_SRC, back up into the 0R selector
 VIA_EXT = (31.8, -6.6)           # the external-helper SMA, coming up
-VIAS = [("U3001", "10") + VIA_CLK1, ("U3001", "9") + VIA_CLK0,
+VIAS = [("U3001", "10") + VIA_HSRC, ("U3001", "9") + VIA_CLK1OUT,
         ("R3005", "1") + VIA_SRC, ("R3004", "1") + VIA_EXT]
 
-# HELPER_SRC only has to get from the synthesiser's CLK1 pin to the 0R source
+# HELPER_SRC only has to get from the synthesiser's CLK0 pin to the 0R source
 # selector 6 mm away, so it is routed here by hand on In2.Cu rather than handed
 # to the maze router, which cannot start from a via boxed in by its neighbours.
 # Over the top of the synthesiser, above the external-input via.  Under the
 # chain it crossed both helper SMAs on their way down to In2.
-IN2_ROUTES = [(("R3005", "1"), SIG, [VIA_CLK1, (27.6, -7.4), (33.5, -7.4),
+IN2_ROUTES = [(("R3005", "1"), SIG, [VIA_HSRC, (27.6, -7.4), (33.5, -7.4),
                                      VIA_SRC])]
 for _i, _b in enumerate(BUF):
     _offs = R_OFF4 if len(BUF_R[_i]) == 4 else R_OFF3
@@ -167,8 +171,8 @@ def routes():
     A((("C3004", "1"), SIG, [(27.0, -3.25), (27.0, -3.0)]))
     A((("C3005", "1"), SIG, [(21.888, -3.25), (21.888, -3.0)]))
     # ---- both clock outputs drop to In2 within 3 mm of the package ----
-    A((("U3001", "10"), SIG, [(26.112, -0.5), (27.6, -0.5), VIA_CLK1]))
-    A((("U3001", "9"), SIG, [(26.112, 0.0), (29.0, 0.0), VIA_CLK0]))
+    A((("U3001", "10"), SIG, [(26.112, -0.5), (27.6, -0.5), VIA_HSRC]))
+    A((("U3001", "9"), SIG, [(26.112, 0.0), (29.0, 0.0), VIA_CLK1OUT]))
     # ---- I2C leaves downwards in its own two lanes --------------------
     A((("U3001", "4"), SIG, [(21.888, 1.0), (I2C_SCL_X, 1.0),
                              (I2C_SCL_X, I2C_Y)]))

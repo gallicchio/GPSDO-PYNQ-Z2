@@ -5,7 +5,7 @@
     python3 build.py --clean         delete every generated file first
     python3 build.py --no-pcb        stop before the router (the 40-minute part)
     python3 build.py --no-release    stop before the manufacturing outputs
-    python3 build.py --boards 5      how many boards the release is priced for
+    python3 build.py --boards 5      how many boards the release is priced for (default 1)
     python3 build.py --list          print what is source and what is product
 
 Nothing in this repository is hand-edited downstream of a generator.  The
@@ -75,7 +75,7 @@ def main():
     ap.add_argument("--no-pcb", action="store_true")
     ap.add_argument("--no-release", action="store_true")
     ap.add_argument("--no-drc", action="store_true")
-    ap.add_argument("--boards", type=int, default=5)
+    ap.add_argument("--boards", type=int, default=1)     # round 28: one first
     ap.add_argument("--list", action="store_true")
     a = ap.parse_args()
 

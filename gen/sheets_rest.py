@@ -153,8 +153,13 @@ def power(s):
            "+3V3_A feeds all 14 squarers, all 26 flip-flops, all 12 Schmitts and the whole "
            "helper fan-out.  A gate's switching threshold moves with its supply, so on a shared "
            "rail every channel's threshold moves TOGETHER - common mode, and it cancels in the "
-           "differences we actually compute.  Fourteen separate regulators would make fourteen "
-           "thresholds wander independently and turn a cancelling error into one that does not.",
+           "differences we actually compute BETWEEN CHANNELS OF EQUAL SLEW.  Round 28: dt = "
+           "dV / slew, and the inventory's slews span 23 mV/ns (FE-5680A, 0.72 Vpp sine) to "
+           "~1600 mV/ns (ZED-F9T CMOS), so 1 mV of common rail shift is 44 ps on one and 0.6 ps "
+           "on the other, and 43 ps of it does NOT cancel between them.  That residual is the "
+           "analog floor for the sine sources and the reason the board is heated and the rail "
+           "is a 7 uV LDO.  Fourteen separate regulators would still be worse: they would add "
+           "fourteen independent wanders on top.",
            size=1.4, color=INFO, cols=80)
     s.note(144.78, 145.0, 122.0, 0,
            "WHY A SECOND RAIL AT ALL.\n"
@@ -369,7 +374,9 @@ def power(s):
            "linear element means there is no switching edge anywhere on a board doing "
            "picosecond timing; a PWM heater is a few hundred mA of square wave circulating "
            "somewhere, which is exactly what the helper-tree work is trying to keep off the "
-           "ground plane.",
+           "ground plane.  Round 28 qualifies this: the FETs are driven fully on or off with a "
+           "duty cycle of 30 s or more (see PASS FET), which is not PWM in that sense - one "
+           "ramped edge every half minute, and nothing in the measurement band.",
            size=1.4, color=INFO, cols=80)
     s.note(274.32, 348.0, 122.0, 0,
            "TWENTY-FOUR HEATERS, AND THREE PASS FETS.\n"
@@ -382,14 +389,17 @@ def power(s):
            "the spread is good enough.",
            size=1.4, color=INFO, cols=80)
     s.note(403.86, 348.0, 122.0, 0,
-           "PASS FET WORST CASE.\n"
-           "Linear drive means the pass element dissipates a QUARTER of the heater's full "
-           "power at half current: 2.4 W at 9.6 W total.  That is why there are three FETs "
-           "of eight heaters rather than one of twenty-four - 0.8 W each, in three SOT-223s "
-           "placed far apart, where the heat they make is useful instead of being a hot "
-           "spot on a board built for uniformity.  Drive comes from the "
-           "MCP4725 on the housekeeping sheet, so the loop closes in Python on the PYNQ and "
-           "costs no header pins.",
+           "PASS FETS: DRIVE THEM FULLY ON OR OFF, NOT IN BETWEEN.\n"
+           "Round 28.  The three FETs share one gate voltage and DMN6068SE Vth is 1.0-3.0 V "
+           "(datasheet), so at any intermediate gate voltage which bank conducts is a lottery; "
+           "worse, at half current a FET's own heating (Vth tempco x RthJA) has loop gain "
+           "above 1, so a bank snaps to full-on.  Linear sharing needs an op-amp current sink "
+           "per FET from the 15 V rail - a Rev B change.  On this board the software drives the "
+           "DAC to 0 or full scale with a duty cycle of 30 s or more against a ~5 min board "
+           "time constant: at Vgs = 3.3 V every DMN6068SE carries the 214 mA its 70 ohm bank "
+           "allows, dissipates ~3 mW instead of the 0.8 W a linear half-current point would, "
+           "and all 24 heaters switch together.  Three FETs stay for the local drain nets.  "
+           "Drive comes from the MCP4725 on the housekeeping sheet.",
            size=1.4, color=NOTE, cols=80)
 
 
@@ -416,7 +426,10 @@ def helper(s):
 
     # --- 3k3/1k divider into XA -------------------------------------------
     ox, oy = x.pin(3)
-    s.text(55.88, oy + 6.35, "25.000000 MHz, 0/3.3 V CMOS, +/-0.5 ppm",
+    # +/-2.5 ppm, not +/-0.5: FT5HNB*P*K is the P = +/-2.5 ppm grade over
+    # -30..+85 C (Fox option table).  Round 28 caught this label; the beat is
+    # re-centred in software from the measured helper frequency (see note).
+    s.text(55.88, oy + 6.35, "25.000000 MHz, 0/3.3 V HCMOS, +/-2.5 ppm (-30..+85 C)",
            size=1.3, italic=True)
     s.wire(ox, oy, 62.23, oy)
     r_h(s, 66.04, oy, R("R"), "3k3")
@@ -431,17 +444,19 @@ def helper(s):
     s.text(88.9, oy + 20.32, "0.77 Vpp, 0 to +0.77 V at TP_XA -", size=1.3, italic=True)
     s.text(88.9, oy + 24.13, "the level the Si5351 actually sees, AC coupled", size=1.3, italic=True)
     s.note(210.82, 46.0, 122.0, 0,
-           "DRIVING XA IS NOT A DOCUMENTED MODE, AND TP_XA IS WHY.\n"
-           "The Si5351A has no CLKIN pin - only the Si5351C does - so an external reference "
-           "has to go into the crystal oscillator input.  XA/XB are absolute-maximum -0.5 to "
-           "+1.3 V, so the 3k3/1k knocks the TCXO's 3.3 V CMOS down to 0.77 Vpp FIRST and the "
-           "10 nF then AC-couples it in, leaving XA's own internal bias intact.  Order matters: "
-           "the 1k must sit on the divider, not on XA.\n"
-           "Silicon Labs publish no level for this, so it is measured, not calculated.  Probe "
-           "TP_XA, which is on the DRIVEN side of the coupling cap where 10 pF of probe does "
-           "nothing; probing XA itself would pull the oscillator.  If the swing is outside the "
-           "window, change the 1k - 620R gives 0.52 Vpp.  If it will not run at all, fit Y3001 "
-           "and drop the TCXO: that is the documented mode, at the cost of +/-10 ppm.",
+           "DRIVING XA WITH A REFERENCE IS A DOCUMENTED MODE.  Si5351 datasheet 6.6, "
+           "'Applying a Reference Clock at XTAL Input': 1 Vpp AC-coupled into XA, XB open - "
+           "which is this circuit.  (Rounds 17-27 said it was undocumented; two of round 28's "
+           "reviewers repeated that.)  The Si5351A has no CLKIN pin - only the C does - so XA is "
+           "the input.  XA/XB are absolute-maximum -0.5 to +1.3 V and the pin's own bias point "
+           "is not published: 0.77 Vpp (3k3/1k from 3.3 V CMOS, then the 10 nF) is the largest "
+           "swing that stays under 1.3 V even if the bias is as high as 0.9 V, and it is within "
+           "30 percent of the datasheet's figure.  Order matters: the 1k must sit on the "
+           "divider, not on XA.\n"
+           "Probe TP_XA, on the DRIVEN side of the coupling cap where 10 pF of probe does "
+           "nothing; probing XA itself would pull the oscillator.  If the part will not start "
+           "at 0.77 Vpp, 1k -> 1k3 gives 0.93 Vpp.  If it will not run at all, fit Y3001 and "
+           "drop the TCXO: +/-10 ppm, which cannot avoid the 60 Hz comb.",
            size=1.4, color=WARN, cols=80)
 
     # --- Si5351 -----------------------------------------------------------
@@ -482,10 +497,15 @@ def helper(s):
         s.glabel(px - 20.32, py, nm, shape="bidirectional", justify="right")
     s.text(120.65, 132.08, "I2C address 0x60.  Programmed at every power-up from the PYNQ:",
            size=1.3, italic=True)
-    s.text(120.65, 135.89, "PLL feedback 32 + 4142/1048575, MultiSynth 80 (INTEGER, low spur),",
+    # 32 + 1543/390625 is EXACT for 10 001 234.4 Hz from 25 MHz through /80;
+    # the 32 + 4142/1048575 quoted in rounds 6-27 was 10 ppb high.  The driver
+    # computes it (i2c_devices.plan_pll) rather than carrying either number.
+    s.text(120.65, 135.89, "PLLA feedback 32 + 1543/390625 (exact), MultiSynth 80 (INTEGER, low spur),",
            size=1.3, italic=True)
     s.text(120.65, 139.7, "R = 1  ->  CLK0 = %.7f MHz,  f_beat = %.1f Hz,  N = %.0f"
            % (D.F_HELPER / 1e6, D.F_BEAT, D.N_GAIN), size=1.3, italic=True)
+    s.text(120.65, 143.51, "CLK1 = PLLB, INTEGER: 25 MHz x 32 = 800 MHz, MultiSynth 80 -> "
+           "10.000000 MHz exactly", size=1.3, italic=True)
 
     # --- CLK1 out to an SMA ------------------------------------------------
     c1x, c1y = si.pin(9)
@@ -513,15 +533,24 @@ def helper(s):
            size=1.3, italic=True)
     s.text(293.37, 129.81, "+/-10 ppm moves the beat +/-100 Hz, which cannot avoid",
            size=1.3, italic=True)
-    s.text(293.37, 133.62, "the 60 Hz harmonic comb.  The TCXO can.", size=1.3, italic=True)
+    s.text(293.37, 133.62, "the 60 Hz comb.  The TCXO's +/-2.5 ppm is +/-25 Hz: enough to",
+           size=1.3, italic=True)
+    s.text(293.37, 137.43, "reach 1260 Hz at +85 C, so software re-centres the beat from",
+           size=1.3, italic=True)
+    s.text(293.37, 141.24, "the measured helper frequency; the heated board holds it anyway.",
+           size=1.3, italic=True)
 
     s.note(400.05, 46.0, 170.0, 0,
            "CLK1 IS THE NULL-CHANNEL SOURCE.\n"
            "Set it to exactly 10.000000 MHz and patch this SMA to channel 13 with a short "
-           "coax.  CLK1 and the helper CLK0 come off the same PLL, so their beat is exact and "
-           "noiseless and anything channel 13 reports is this board alone.  Doing it with a "
-           "cable rather than a jumper keeps every channel tile identical and puts a real "
-           "connector and cable in the loop, which is the honest thing to measure.",
+           "coax.  Round 28: CLK1 runs from PLLB in INTEGER mode (25 MHz x 32 = 800 MHz, "
+           "MultiSynth 80) and the helper from PLLA.  Same TCXO, so the beat is exactly "
+           "%.1f Hz; two PLLs, so what channel 13 reports is the front end plus the PLLs' "
+           "uncorrelated noise - an UPPER BOUND on the floor, not 'noiseless' as earlier rounds "
+           "said.  (CLK1 off PLLA would need MultiSynth 80.0099, the fractional mode the helper "
+           "was steered away from.)  A cable rather than a jumper keeps every channel tile "
+           "identical and puts a real connector in the loop, which is the honest thing to "
+           "measure." % D.F_BEAT,
            size=1.4, color=INFO, cols=100)
 
     # =================== band 2: source select and squarer ================
@@ -901,10 +930,12 @@ def housekeeping(s):
            "covers an unpopulated or unpowered DAC and the moment before the first I2C write. "
            "It does NOT cover the DAC powering up from its own EEPROM into something other "
            "than zero - and half scale is exactly the point of MAXIMUM pass-element "
-           "dissipation, 0.8 W in each of three SOT-223s.  The fix is to program the "
-           "MCP4725's EEPROM to zero once, at bring-up, with a Write-DAC-and-EEPROM command; "
-           "the part then powers up off every time.  DATASHEET NEEDED to confirm the "
-           "as-shipped EEPROM value - see the datasheet list in the notes.",
+           "dissipation, 0.8 W in each of three SOT-223s.  CONFIRMED in round 28 from the "
+           "MCP4725 datasheet, Table 5-3: the factory EEPROM is PD = 00 with D11 = 1, i.e. "
+           "MID-SCALE, 1.65 V on the gates from the first power-up.  So the fix is procedural "
+           "and it is the FIRST thing bringup.py does: Write-DAC-and-EEPROM = 0 with PD = 01 "
+           "(1k pull-down), after which the part powers up off every time.  Do not connect the "
+           "15 V jack to a board on which that has not yet run once.",
            size=1.4, color=NOTE, cols=122)
     s.note(300.0, 216.0, 275.0, 0,
            "WHY A DAC AND A LINEAR PASS FET, AND NOT PWM.\n"

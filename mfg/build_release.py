@@ -129,7 +129,7 @@ def main():
     print("\nupload to JLCPCB:")
     print("  PCB   ...... GPSDO-PYNQ-Z2_gerbers.zip")
     print("  BOM   ...... GPSDO-PYNQ-Z2_bom.csv")
-    print("  CPL   ...... GPSDO-PYNQ-Z2_cpl.csv")
+    print("  CPL   ...... GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv  (see FABRICATION_NOTES: ROTATION)")
     print("  and read FABRICATION_NOTES.txt into the order notes.")
     return 1 if bad else 0
 

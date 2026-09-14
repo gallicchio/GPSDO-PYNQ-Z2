@@ -4,14 +4,27 @@ Stackup, and why:
 
     L1  F.Cu      every component, and each channel's own short front-end runs
     L2  In1.Cu    solid GND, unbroken
-    L3  In2.Cu    the fourteen helper-clock branches, and NOTHING else
+    L3  In2.Cu    the fourteen helper-clock branches, the twenty-five beat and
+                  pps returns to the socket, and the board-level buses that
+                  the margins carry (I2C, +3V3_D, +15V_HTR, the three heater
+                  drains, HTR_DRIVE, ONEWIRE, +5V_HDR)
     L4  B.Cu      solid GND
 
-The helper branches are the only fast signals that go anywhere, and a helper
-edge coupling into a 10 MHz front end would move the very threshold crossing we
-are trying to measure.  Burying them on L3 between two ground planes makes them
-stripline: they cannot couple to anything on L1 at all.  The 10 MHz front ends
-stay on L1 as short microstrip over the L2 plane, local to their own tile.
+Round 15 wrote "the helper branches and NOTHING else" for L3, and round 18 let
+the maze router onto it because the returns would not fit on L1; the docstring
+was not updated and three reviews in round 28 caught it.  What is still true:
+the helper branches are the only fast signals that go anywhere; burying them on
+L3 between two ground planes makes them stripline, so they cannot couple into a
+10 MHz front end on L1; and the front ends stay on L1 as short microstrip over
+the L2 plane, local to their own tile.  What is not: L3 is not a private layer.
+The nets that share it with the helper are DC (rails, HTR_DRIVE), slow (I2C,
+1-Wire), or edges that are CAUSED by the helper (a beat is FF2's output, so it
+moves a few ns after a helper edge and ~95 ns before the next one) or arrive
+once a second (pps).  Round 28 scanned the finished copper: the closest
+parallel runs are HCLK_07 beside BEAT_09 for 14.5 mm at 0.25 mm, and
+HELPER_CLK beside HTR_DRIVE for 33 mm at 0.73 mm.  Neither can move a sampling
+edge.  A keep-out that gives the helper branches their own corridor is the
+right thing for a Rev B router and is not attempted here.
 
 There is no power plane.  The whole board draws about 100 mA, and the rail is
 deliberately shared, so +3V3_A and +3V3_D are poured on L1 in the space between
@@ -29,6 +42,7 @@ import helper as H
 import power as PW
 import maze as MZ
 import netmap
+import design as D          # REV and DATE for the silkscreen
 from sexp import parse, kids, kid, val, head
 
 ROOT = os.path.dirname(HERE)
@@ -715,7 +729,9 @@ def build():
     out.append(text(p5[0] + 5.0, p5[1], "+5V", "F.SilkS", 1.5, 0.28))
     out.append(text(pg[0] - 5.0, pg[1], "GND", "F.SilkS", 1.5, 0.28,
                     just="right"))
-    out.append(text(pg[0] - 3.0, 1.1, "BENCH 5 V IN - OR LEAVE OPEN.  PYNQ MUST "
+    # y = 2.2, not 1.1: at 1.1 the glyphs reached to 0.6 mm from the board
+    # edge and the DRC reported the line clipped by the outline.
+    out.append(text(pg[0] - 3.0, 2.2, "BENCH 5 V IN - OR LEAVE OPEN.  PYNQ MUST "
                     "BE POWERED: ITS PINS ARE ABS-MAX 0.55 V OFF",
                     "F.SilkS", 1.0, 0.16))
     # Round 21.  The PYNQ-Z2 user manual, table 15: an UNPOWERED Zynq I/O pin
@@ -1116,6 +1132,14 @@ def build():
     # and fifteen clearance errors the moment the grid changed.
     CLR, VIA_R = 0.15, 0.3
     VIA_GROW = 0.15
+    # Hole-to-hole.  A via drill is 0.3 mm; the board rule is 0.25 mm between
+    # drills and JLCPCB's same-net via-to-hole figure is 0.254.  Round 28: the
+    # grid had no notion of this at all, so two vias were drilled into
+    # through-hole pads of their own net.  0.35 leaves 0.1 mm over the rule.
+    HOLE_TO_HOLE = 0.35
+
+    def NOVIA_R(hd):
+        return (hd or 0.0) / 2.0 + 0.15 + HOLE_TO_HOLE
     # STRICTVIA turns on the two corrections round 20 found and could not yet
     # afford.  Off, the analytic checks are exactly what produced this board;
     # on, they are what the rules actually say.  See 20.4 in the write-up: the
@@ -1654,6 +1678,7 @@ def build():
     for ref, pn, ax, ay, tht, net, hd, rc in allpads:
         if tht:
             grid.block_rect(ax, ay, rc, 0.35)           # both layers
+            grid.block_via(ax, ay, NOVIA_R(hd))
         else:
             grid.block_rect(ax, ay, rc, 0.85, FCU)
     for vx, vy in vias:                                 # the ground vias
@@ -1697,6 +1722,9 @@ def build():
         trk = tracks if trk is None else trk
         for vx, vy in newvias:
             for _r, _p, ax, ay, tht, n2, _h, rc in allpads:
+                # hole-to-hole applies to the net's OWN through-hole pads too
+                if tht and _h and (vx - ax) ** 2 + (vy - ay) ** 2 < NOVIA_R(_h) ** 2:
+                    return False
                 if n2 == nm:
                     continue
                 if P.pad_gap(vx, vy, ax, ay, rc) < VR + CLR:
@@ -1903,6 +1931,7 @@ def build():
         for ref, pn, ax, ay, tht, net, hd, rc in allpads:
             if tht:
                 g.block_rect(ax, ay, rc, 0.35)
+                g.block_via(ax, ay, NOVIA_R(hd))
             else:
                 g.block_rect(ax, ay, rc, 0.85, FCU)
         for vx, vy in vias:
@@ -2069,6 +2098,8 @@ def build():
         for _r, _p, ax, ay, tht, net, hd, rc in allpads:
             own(net, g.cells_rect(ax, ay, rc, 0.5 if tht else 0.45,
                                   None if tht else FCU))
+            if tht:
+                g.block_via(ax, ay, NOVIA_R(hd))    # never lifted: see maze.py
         for vx, vy in vias:
             g.add(g.cells_disc(vx, vy, 0.75))
         for vx, vy, n2 in tile_vias:
@@ -2098,6 +2129,8 @@ def build():
             # anything is committed.
             g.block_rect(ax, ay, rc, 0.5 if tht else 0.45,
                          None if tht else FCU)
+            if tht:
+                g.block_via(ax, ay, NOVIA_R(hd))
         for vx, vy in vias:
             g.block_disc(vx, vy, 0.75)
         for vx, vy, _n in tile_vias:
@@ -2365,9 +2398,11 @@ def build():
     out.append(zone(numof["GND"], "GND", "F.Cu", poly, "GND-F.Cu", solid=True))
 
     # ---- silkscreen -------------------------------------------------------
-    out.append(text(4.0, G.BH - 22.0, "GPSDO DDMTD FRONT END   rev B",
+    # Round 28: the revision letter comes from design.py, the one place it is
+    # defined.  This said "rev B" by hand while every title block said Rev A.
+    out.append(text(4.0, G.BH - 22.0, "GPSDO DDMTD FRONT END   rev %s" % D.REV,
                     "F.SilkS", 1.8, 0.32))
-    out.append(text(4.0, G.BH - 19.4, "Jason Gallicchio   jason@hmc.edu   2026-09-13",
+    out.append(text(4.0, G.BH - 19.4, "Jason Gallicchio   jason@hmc.edu   %s" % D.DATE,
                     "F.SilkS", 1.2, 0.2))
     # Round 21.  The title, the author line, the SMA key and the whole
     # test-point legend used to live in the bottom-LEFT corner and at x = 108.

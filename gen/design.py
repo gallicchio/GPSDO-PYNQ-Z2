@@ -8,6 +8,7 @@ section 3 of ../README.md; if you change one, change both.
 
 PROJECT = "GPSDO-PYNQ-Z2"
 REV     = "A"
+DATE    = "2026-09-14"     # printed on the silkscreen beside the revision
 COMPANY = "Harvey Mudd College"
 
 # --- the numbers that define the measurement -------------------------------
@@ -67,7 +68,7 @@ HEADER = {
 28:("PPS_07","Y17","IO_L7N_T1_34","unit 8 pps - 2k2 pull-up on PYNQ-Z2"),
 29:("BEAT_08","Y19","IO_L17N_T2_34","unit 9 beat"),
 30:("GND","","GND",""),
-31:("BEAT_09","U18","IO_L12P_T1_MRCC_34","unit 10 beat - DNP 0R alternate helper input"),
+31:("BEAT_09","U18","IO_L12P_T1_MRCC_34","unit 10 beat"),   # U18 is the other MRCC ball on the header: the fallback helper input for a future revision, nothing is fitted for it
 32:("PPS_08","B20","IO_L1N_T0_AD0N_35","unit 9 pps"),
 33:("BEAT_10","W8","IO_L15N_T2_DQS_13","unit 11 beat"),
 34:("GND","","GND",""),
@@ -179,9 +180,12 @@ UNITS = [
    "'selected by JP_NULL - see the helper sheet'.  There is no JP_NULL, on the "
    "helper sheet or anywhere else -- unit 13 is an ordinary channel with its "
    "own SMA (J1301).  You make it a null by CABLING J3001, the CLK1 OUT jack, "
-   "into J1301.  CLK1 and the helper CLK0 come from the same Si5351 PLL, so "
-   "their difference is exact and the beat measures nothing but this board's "
-   "own front-end noise -- which is the point"),
+   "into J1301.  Round 28: CLK1 is PLLB in INTEGER mode (25 MHz x 32 / 80 = "
+   "10.000000 MHz) and the helper is PLLA; both lock to the one TCXO, so the "
+   "beat is exactly F_BEAT, but they are two PLLs, so what this channel reads "
+   "is the front end plus the PLLs' uncorrelated noise -- an UPPER BOUND on "
+   "the instrument floor, not a noiseless one.  (CLK1 off PLLA would need "
+   "MultiSynth 80.0099, the fractional mode the helper was steered away from.)"),
 ]
 
 # --- parts ------------------------------------------------------------------

@@ -62,12 +62,15 @@ def build(s, u):
                "The 10 MHz half above is fully populated, and its SMA is fed by a coax patch "
                "lead from whatever you want to measure the instrument against:\n\n"
                "    the CLK1 OUT jack on the Helper sheet  -  Si5351 CLK1 at exactly "
-               "10.000000 MHz.  CLK1 and the helper CLK0 come off the same PLL, so their beat "
-               "is exact and noiseless and anything this channel reports is this board and "
-               "nothing else.  This is the instrument floor.\n"
-               "    a splitter off one real GPSDO  -  instrument plus one real front end\n\n"
+               "10.000000 MHz, from PLLB in integer mode (25 MHz x 32 / 80) while the helper "
+               "is PLLA: one TCXO, so the beat is exactly %.1f Hz, but two PLLs, so what this "
+               "channel reports is the front end plus whatever the PLLs do not share.  An UPPER "
+               "BOUND on the instrument floor.\n"
+               "    a splitter off one real GPSDO into two channels  -  the other half of the "
+               "floor: two real front ends, no PLL noise at all\n\n"
                "There is no jumper: a patch lead keeps every channel tile identical and puts a "
-               "real connector and cable in the loop, which is the honest thing to measure.",
+               "real connector and cable in the loop, which is the honest thing to measure."
+               % D.F_BEAT,
                size=2.0, color=(225, 240, 225))
 
 
@@ -317,5 +320,9 @@ def _pps_notes(s):
            "exists for.\n"
            "No self-bias: a Schmitt sets its own thresholds and must not be biased into its "
            "own linear region.\n"
-           "Timed in the FPGA's 200.02 MHz domain to 5 ns, far below every GPSDO's own "
-           "sawtooth.", size=1.4, color=INFO, cols=80)
+           "Timestamped in the FPGA twice: against the helper counter (100 ns, the same "
+           "grid as the beats) and, from gateware v1.1, against the 100 MHz PS clock (10 ns). "
+           "The 10 ns one is what tells two channels' 10 MHz phases apart by whole 100 ns "
+           "cycles after a power cycle or a dropped edge; the picoseconds come from the beat. "
+           "(Rounds 10-27 said '200.02 MHz to 5 ns'; no such clock was ever built.)",
+           size=1.4, color=INFO, cols=80)

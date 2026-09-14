@@ -56,6 +56,15 @@ class Grid:
                 for j in range(self.ny):
                     if i < m or j < m or i >= self.nx - m or j >= self.ny - m:
                         b[j * self.nx + i] = 1
+        # Cells where a via's DRILL may not go, on any layer and for any net.
+        # Separate from `blocked` because it is a different rule: hole-to-hole
+        # spacing is about the drill, not the copper, and it applies even when
+        # the pad in question belongs to the net being routed -- which is how
+        # round 27's board came to have a via drilled inside J5001 pin 13
+        # (0.000 mm hole-to-hole) and another 0.238 mm from J4001 pin 4.  Both
+        # pads had been lifted out of `blocked` as the net's own copper, and
+        # nothing else said a drill could not go there.
+        self.novia = bytearray(self.n)
 
     def cell(self, x, y):
         return (int(round(x / PITCH)), int(round(y / PITCH)))
@@ -267,7 +276,22 @@ class Grid:
         return None
 
 
+    def block_via(self, x, y, r):
+        """Forbid a via centre within r of (x, y).  Use for every through-hole
+        drill: r = hole/2 + via drill/2 + the hole-to-hole rule."""
+        ci, cj = self.cell(x, y)
+        n = int(math.ceil(r / PITCH)) + 1
+        r2 = r * r
+        for di in range(-n, n + 1):
+            for dj in range(-n, n + 1):
+                i, j = ci + di, cj + dj
+                if 0 <= i < self.nx and 0 <= j < self.ny:
+                    if (i * PITCH - x) ** 2 + (j * PITCH - y) ** 2 <= r2:
+                        self.novia[j * self.nx + i] = 1
+
     def _via_ok(self, i, j):
+        if self.novia[j * self.nx + i]:
+            return False
         for di, dj in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)):
             ii, jj = i + di, j + dj
             if not (0 <= ii < self.nx and 0 <= jj < self.ny):
