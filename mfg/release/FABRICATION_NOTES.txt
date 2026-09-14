@@ -1,0 +1,66 @@
+GPSDO DDMTD FRONT END  --  fabrication notes
+============================================
+
+BOARD
+  Outline ............ 207.00 x 180.00 mm, rectangular, no cutouts, no slots
+  Copper layers ...... 4   (F.Cu / In1.Cu / In2.Cu / B.Cu)
+  Suggested stackup .. 1.6 mm FR-4, 1 oz outer, 0.5 oz inner  (JLC04161H-7628)
+  Surface finish ..... ENIG preferred (lead-free HASL acceptable)
+  Soldermask ......... any colour; silkscreen white
+  Impedance control .. NOT required.  See the note below.
+
+WHAT IS ON EACH LAYER
+  F.Cu      components, most routing, and a GND pour
+  In1.Cu    solid GND plane
+  In2.Cu    the helper-clock distribution, as stripline between In1 and B.Cu
+  B.Cu      solid GND plane; the Raspberry Pi socket mounts on this side
+
+MINIMUMS ACTUALLY USED  (all well inside JLCPCB's 4-layer capability)
+  Minimum track ...... 0.25 mm
+  Track widths used .. 0.25, 0.30, 0.35, 0.50
+  Via pad/drill ...... 0.60/0.30 mm      (599 vias)
+  Minimum via drill .. 0.3 mm
+  Pad drill sizes .... 1.00, 1.20, 1.50, 1.70
+  Minimum pad drill .. 1.0 mm
+
+IMPEDANCE
+  No controlled-impedance service is required.  The helper traces on In2.Cu
+  are drawn as nominal 50 ohm stripline against the two adjacent ground
+  planes, but every one of them is source-terminated at its driver and none is
+  longer than ~120 mm at 10 MHz, where the electrical length is a small
+  fraction of a wavelength.  Build to the standard stackup.
+
+ASSEMBLY
+  Surface mount, TOP SIDE ONLY.  Nothing on the bottom is to be placed:
+  the only bottom-side part is the Raspberry Pi socket, which is through hole
+  and is hand soldered afterwards.
+  See GPSDO-PYNQ-Z2_bom.csv and GPSDO-PYNQ-Z2_cpl.csv.
+  Parts NOT to be fitted are listed in excluded_from_assembly.csv and appear
+  in neither file -- please do not add them back.
+
+WHAT TO SET ON THE JLCPCB ORDER FORM
+  Base material ............ FR-4
+  Layers ................... 4
+  Dimensions ............... 207 x 180 mm, 1 piece, single design
+  PCB thickness ............ 1.6 mm
+  Impedance control ........ No
+  Via covering ............. Tented
+  Min via hole size/diameter 0.3 mm / 0.6 mm  (matches this design exactly)
+  Board outline tolerance .. regular (+/-0.2 mm)
+  Surface finish ........... ENIG  (lead-free HASL is acceptable)
+  Remove order number ...... "Specify a location" or "No" -- there is room in
+                             the lower-left margin below the title block
+  PCB assembly ............. Yes, TOP side, 5 boards
+  Tooling holes ............ Added by JLCPCB
+  Confirm parts placement .. Yes  (worth it on a first run of this board)
+
+FILES
+  GPSDO-PYNQ-Z2_gerbers.zip ........ Gerber RS-274X + Excellon drill + drill map
+  GPSDO-PYNQ-Z2_bom.csv ............ assembly BOM
+  GPSDO-PYNQ-Z2_cpl.csv ............ assembly placement file
+  GPSDO-PYNQ-Z2_assembly_top.pdf ... placement drawing, top
+  GPSDO-PYNQ-Z2_assembly_bottom.pdf  placement drawing, bottom
+  hand_solder_bom.csv ......... through-hole parts, NOT for assembly
+  excluded_from_assembly.csv .. DNP parts and bare test pads
+  annotated_bom.md / .csv ..... prices, stock and notes (for the buyer, not
+                                for the fab)

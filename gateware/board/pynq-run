@@ -1,0 +1,14 @@
+#!/bin/bash
+# Run something under the PYNQ venv as root, with the environment PYNQ needs.
+#
+#   ./pynq-run run_selftest.py
+#
+# Two traps this exists to avoid:
+#   * pynq lives in a virtualenv, so the system python3 has no pynq and no
+#     pydantic.  /usr/local/share/pynq-venv/bin/python3 is the interpreter.
+#   * XILINX_XRT is exported by /etc/profile.d/xrt_setup.sh, which sudo and any
+#     non-login shell do NOT source.  Without it pynq's ctypes loader leaves
+#     its XRT handle as None and every overlay load dies with
+#     "RuntimeError: No Devices Found" -- which says nothing about the cause.
+echo "${SUDO_PW:-xilinx}" | exec sudo -S env XILINX_XRT=/usr BOARD=Pynq-Z2 \
+     /usr/local/share/pynq-venv/bin/python3 "$@"

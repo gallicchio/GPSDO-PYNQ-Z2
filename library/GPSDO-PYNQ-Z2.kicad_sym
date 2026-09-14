@@ -134,11 +134,11 @@
 				)
 			)
 		)
-		(pin passive line
+		(pin no_connect line
 (at 5.08 0 180)
 (length 2.54)
 (hide yes)
-			(name "NR/SS"
+			(name "NC"
 				(effects
 					(font
 (size 1.27 1.27)

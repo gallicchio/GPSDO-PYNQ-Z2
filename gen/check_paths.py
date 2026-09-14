@@ -115,8 +115,70 @@ def series_diodes(nets, pins_of, comps):
     return out
 
 
+def shunt_diodes(nets, pins_of, comps, fn_of):
+    """Every diode ACROSS a rail, checked for which way round it is.
+
+    `series_diodes` deliberately skips these -- a shunt part is in no series
+    path, so nothing it does shows up in a supply trace -- which is exactly why
+    round 12's reversed TVS survived: D2005 was an SMAJ18A, a UNIdirectional
+    part, drawn with the bidirectional `Device:D_TVS` symbol and wired cathode
+    to ground.  That is a forward diode across the 15 V rail.  ERC was silent,
+    the netlist was correct, and the supply trace never went near it.
+
+    Two separate faults are possible and both are checked:
+
+      1. the part is drawn with a polarised symbol (pins A and K) and its
+         cathode is not the end on the rail;
+      2. the part is drawn with a NON-polarised symbol (pins A1 and A2) but the
+         part number is a unidirectional one.  Then the schematic cannot say
+         which way round it goes at all, and whether the board is right depends
+         entirely on the footprint's pad 1 being the cathode.  That is true of
+         every D_SMA/SOD footprint, but it is not something a reader can see,
+         so it is worth saying out loud.
+
+    A suffix of CA, CB or B on a TVS part number means bidirectional; anything
+    else is taken to be unidirectional, which is the safe way round for a
+    warning to be wrong.
+    """
+    BIDI = re.compile(r"(CA|CB|BA)\b|\bBIDIR", re.I)
+    out = []
+    for ref in sorted(pins_of):
+        if not ref.startswith("D") or len(pins_of[ref]) != 2:
+            continue
+        pins = sorted(pins_of[ref])
+        n1, n2 = pins_of[ref][pins[0]], pins_of[ref][pins[1]]
+        if ("GND" in (n1, n2)) is False or n1 == n2:
+            continue                                  # not a shunt
+        rail = n2 if n1 == "GND" else n1
+        rail_pin = pins[1] if n1 == "GND" else pins[0]
+        gnd_pin = pins[0] if n1 == "GND" else pins[1]
+        fns = {p: fn_of.get((ref, p), "") for p in pins}
+        val_ = comps.get(ref, "")
+        if set(fns.values()) >= {"A", "K"}:
+            if fns[rail_pin] != "K":
+                out.append("%s (%s) is REVERSED across %s: its ANODE is on the "
+                           "rail and its cathode on GND, which is a forward "
+                           "diode across the supply."
+                           % (ref, val_, rail))
+        elif set(fns.values()) == {"A1", "A2"} and not BIDI.search(val_):
+            out.append("%s (%s) is a UNIDIRECTIONAL part drawn with a "
+                       "bidirectional symbol (pins A1/A2), across %s.  The "
+                       "schematic cannot express its polarity, so whether the "
+                       "board is right rests entirely on pad 1 of its footprint "
+                       "being the cathode.  Pin %s is the one on the rail."
+                       % (ref, val_, rail, rail_pin))
+    return out
+
+
 def main(path):
     nets, pins_of, comps = load(path)
+    fn_of = {}
+    _doc = parse(open(path, encoding="utf-8").read())[0]
+    for _n in kids(kid(_doc, "nets"), "net"):
+        for _nd in kids(_n, "node"):
+            _f = kid(_nd, "pinfunction")
+            if _f:
+                fn_of[(val(kid(_nd, "ref")), val(kid(_nd, "pin")))] = val(_f)
     bad, warn = [], []
     del BACKWARDS[:]
 
@@ -166,6 +228,10 @@ def main(path):
     print("  checked %d nets" % len([n for n in nets if n not in RAILS and n != "GND"]))
 
     bad.extend(series_diodes(nets, pins_of, comps))
+    # A shunt part is in no series path, so nothing above would ever look at
+    # it.  Round 12's reversed TVS is exactly what this is here to catch.
+    for m in shunt_diodes(nets, pins_of, comps, fn_of):
+        (bad if "REVERSED" in m else warn).append(m)
     print()
     for m in warn:
         print("WARN  " + m)

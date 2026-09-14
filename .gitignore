@@ -1,0 +1,18 @@
+# Everything build.py regenerates.  Its header says "Everything below is
+# REGENERATED", and `python3 build.py --clean` deletes exactly this; a clean
+# rebuild reproduces the board bit for bit, so there is nothing here to diff.
+build/
+
+# Vivado's PS7 board-preset automation writes a summary into a directory named
+# from an unset variable, next to wherever it was launched.  Noise, not output.
+NA/
+
+# JLCPCB API responses: 5 MB, re-fetched on demand, and every entry is stamped
+# with the time of its own query so it goes stale by design.  The pricing that
+# matters is already baked into mfg/release/annotated_bom.md.
+mfg/jlc_cache.json
+
+# Scratch copies kept while rewriting the placer in round 14.
+*.r14
+
+# gateware/ has its own .gitignore for the Vivado project and build tree.

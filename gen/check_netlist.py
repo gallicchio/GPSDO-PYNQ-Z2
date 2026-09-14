@@ -7,6 +7,11 @@ two mistakes this generator actually made, both of which ERC passes silently:
     there, doing nothing.  It happens when a wire's ENDPOINT lands on the part's
     other pin, so the wire shorts across the body.
   * a two-terminal part with only one pin on any net at all.
+  * (round 21) a NAMED SIGNAL NET THAT HAS VANISHED, which is what happens when
+    a power symbol's riser lands on a signal wire: the signal is absorbed into
+    the rail, every pin that was on it is now on the rail, and ERC, the
+    two-terminal checks and the power-path checks all pass.  The only symptom
+    is that a net you expect by name is not in the netlist any more.
 """
 import sys, os
 from collections import defaultdict
@@ -44,7 +49,25 @@ def check(path):
         for m in bad:
             print("   " + m)
         return 1
-    print("\nOK: no shorted or half-connected two-terminal parts; all rails distinct.")
+    # ---- round 21: every net the design names must still exist ----------
+    import design as D
+    required = {"GND", "+3V3_A", "+3V3_D", "+5V_HDR", "+15V_HTR",
+                "I2C_SCL", "I2C_SDA", "ONEWIRE", "HTR_DRIVE",
+                "HELPER_CLK", "HELPER_SRC", "SI_XA", "SI_XB"}
+    for u in D.UNITS:
+        required.add(u[1])
+        if u[2]:
+            required.add(u[2])
+    have = {val(kid(n, "name")) for n in nets}
+    missing = sorted(required - have)
+    if missing:
+        print("\nFAIL: named nets that no longer exist in the netlist:")
+        for m in missing:
+            print("   %s  -- absorbed into another net?  Look for a power symbol "
+                  "or label landing on its wire." % m)
+        return 1
+    print("\nOK: no shorted or half-connected two-terminal parts; all rails distinct;")
+    print("    all %d named nets present." % len(required))
     return 0
 
 

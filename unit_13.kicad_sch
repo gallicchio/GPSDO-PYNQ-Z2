@@ -1702,7 +1702,7 @@
 		)
 		(uuid "eb650100-f874-7f19-353a-bb4fa576732d")
 	)
-	(text_box "PER-CHANNEL NOTE\nInstrument-only null. No pps. Source selected by JP_NULL - see the helper sheet"
+	(text_box "PER-CHANNEL NOTE\nInstrument-only null.  No pps.  Round 25: this used to say the source was 'selected by JP_NULL - see the helper sheet'.  There is no JP_NULL, on the helper sheet or anywhere else -- unit 13 is an ordinary channel with its own SMA (J1301).  You make it a null by CABLING J3001, the CLK1 OUT jack, into J1301.  CLK1 and the helper CLK0 come from the same Si5351 PLL, so their difference is exact and the beat measures nothing but this board's own front-end noise -- which is the point"
 		(exclude_from_sim no)
 		(at 365.7600 12.7000 0)
 		(size 213.3600 20.3200)
@@ -4888,7 +4888,7 @@
 			)
 		)
 	)
-	(text_box "WHY THE 74LVC1G80\nThe simplest D flip-flop there is: D, CLK,\n~Q and the two rails, and nothing else. No\npreset and no clear, so there is no\nasynchronous input that could reset a\nsampler which must never be reset, and\nnothing to tie off.\nSame 74LVC family and the same SOT-23-5\nfootprint as the squarer and the Schmitt, so\nthe whole board is one package type at\nassembly."
+	(text_box "WHY THE 74LVC1G80\nThe simplest D flip-flop there is: D, CLK,\none output and the two rails, and nothing\nelse. No preset and no clear, so there is no\nasynchronous input that could reset a\nsampler which must never be reset, and\nnothing to tie off.\nSame 74LVC family and the same SOT-23-5\nfootprint as the squarer and the Schmitt, so\nthe whole board is one package type at\nassembly."
 		(exclude_from_sim no)
 		(at 330.2000 167.6400 0)
 		(size 62.2300 31.7500)
@@ -5119,10 +5119,10 @@
 		)
 		(uuid "66c32cc3-1a5a-b15f-3599-7bc67e6c12e0")
 	)
-	(text_box "THE SAMPLING FLIP-FLOP (FF1) IS DELIBERATELY ALLOWED TO GO METASTABLE - that is\nmeasurement.  Never put a synchronizer in front of it.\nTHE RETIMER (FF2) re-clocks on the next helper edge, so what leaves the board is\nalways a clean transition aligned to a helper edge.  It costs exactly one helper\ncycle of latency and destroys no phase information.\nThe 74LVC1G80 output is ~Q, so two stages restore the sense."
+	(text_box "THE SAMPLING FLIP-FLOP (FF1) IS DELIBERATELY ALLOWED TO GO METASTABLE - that is\nmeasurement.  Never put a synchronizer in front of it.\nTHE RETIMER (FF2) re-clocks on the next helper edge, so what leaves the board is\nalways a clean transition aligned to a helper edge.  It costs exactly one helper\ncycle of latency and destroys no phase information.\nTHE 74LVC1G80 OUTPUT IS INVERTED, so the two stages restore the sense.  Both\ndatasheets NAME pin 4 'Q' in the pinout drawing and only say otherwise in the\ntext: TI SCES221T calls it 'Inverted output' and its Table 7-1 gives CLK up, D =\nH -> Q = L; Nexperia rev 17 Table 4 agrees.  Pinout confirmed from both: 1 D, 2\nCLK, 3 GND, 4 Q(inv), 5 VCC."
 		(exclude_from_sim no)
 		(at 144.7800 204.4700 0)
-		(size 121.9200 17.7800)
+		(size 121.9200 29.2100)
 		(margins 0.9525 0.9525 0.9525 0.9525)
 		(stroke
 			(width 0)

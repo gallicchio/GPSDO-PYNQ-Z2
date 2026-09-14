@@ -15,7 +15,24 @@ F_SIGNAL   = 10_000_000.0        # Hz, the references under test
 F_HELPER   = 10_001_234.4        # Hz, Si5351 CLK0
 F_BEAT     = F_HELPER - F_SIGNAL # 1234.4 Hz
 N_GAIN     = F_SIGNAL / F_BEAT   # ~8101, the DDMTD heterodyne gain
-T_RES_PS   = 1e12 / F_SIGNAL / N_GAIN   # ~12.3 ps single-shot
+
+# One helper cycle of beat-edge displacement, referred back to the 10 MHz
+# input.  The divisor is the HELPER period, not the signal period.  This was
+# 1e12/F_SIGNAL/N_GAIN, which is high by f_helper/f_signal = 123 ppm -- small,
+# but it is a SCALE error, so it grows with the phase being measured (6 ps at a
+# 50 ns reading) and it would never show up as noise.
+#
+# The identity that settles it: shifting an input by exactly one 10 MHz cycle
+# is unobservable, so one whole beat period of displacement must be exactly
+# 100 ns of input phase.  A beat period is F_HELPER/F_BEAT = 8102.1 helper
+# cycles -- NOT N_GAIN = 8101.1, which is the time-stretch gain and is a
+# different quantity that happens to be adjacent.  100 ns / 8102.1 = 12.3425
+# ps, which is the same as T_helper/N_GAIN.
+#
+# It also makes the schematic's own sentence true: 12.3425 ps x N_GAIN is
+# 99.988 ns, exactly one helper period, which is what "a full helper period at
+# the FPGA" means.  The old value gave 100.0 ns, which is not a helper period.
+T_RES_PS   = 1e12 / F_HELPER / N_GAIN   # ~12.34 ps single-shot
 
 # --- RPi 40-pin header -----------------------------------------------------
 # pin : (net, zynq_pin, site, use)
@@ -80,7 +97,12 @@ def _reorder_header():
         import geom as _G
     except Exception:
         return                      # layout not available; leave as authored
-    order = _G.units_by_x()          # e.g. [1, 8, 2, 9, 3, ...] left to right
+    # geom.units_by_x() carries the whole argument, including round 19's
+    # correction to the order WITHIN each bundle.  Nothing here touches pin 18,
+    # and nothing may: it is HELPER_CLK, and it is the one header pin that is a
+    # real clock input on BOTH the PYNQ-Z2 (Y7, IO_L13P_T2_MRCC_13) and the
+    # Icepi Zero (L1, PCLKT6_1).  See section 13 of the write-up.
+    order = _G.units_by_x()
     beat_pins = sorted((p for p, v in HEADER.items() if v[0].startswith("BEAT")),
                        reverse=True)     # descending pin no = left to right
     pps_pins = sorted((p for p, v in HEADER.items() if v[0].startswith("PPS")),
@@ -95,6 +117,36 @@ def _reorder_header():
 
 
 _reorder_header()
+# ---------------------------------------------------------------------------
+# Which pin of the 74LVC1G80 is D and which is the clock.  ROUND 22: SETTLED,
+# from the manufacturers, and the answer is that this was already right.
+#
+#   TI SCES221T (SN74LVC1G80), Figure 4-3, DBV 5-pin SOT-23 top view, and its
+#   Pin Functions table:        1 D,  2 CLK,  3 GND,  4 Q,  5 VCC
+#   Nexperia 74LVC1G80 rev 17, SOT753 (SC-74A) and SOT353-1:
+#                               1 D,  2 CP,   3 GND,  4 Q,  5 VCC
+#
+# Two manufacturers, same pinout, and it matches the stock KiCad symbol.  My
+# round-22 worry came from generalising the wrong way: the SN74LVC1G175
+# (SOT-23-6) and SN74LVC2G74 (8-pin) both put the clock on pin 1, but the
+# single-gate SOT-23-5 flip-flops do not follow those parts -- they put D
+# first.  Do not re-derive this from a sibling's pin order; it does not hold.
+#
+# THE OUTPUT IS INVERTED, and this is a genuine trap: BOTH datasheets NAME pin
+# 4 "Q" in the pinout drawings, and only the text says otherwise.  TI's Pin
+# Functions table calls it "Inverted output" and its Table 7-1 reads CLK up
+# with D = H giving Q = L; Nexperia's Table 4 says the same.  So the KiCad
+# symbol's "~{Q}" is more honest than the datasheets' own artwork, and the two
+# flip-flops in cascade per channel restore the sense -- see round 21.13.3,
+# which also shows the cascade would survive being wrong about this.
+#
+# Kept as a named pair anyway: it cost nothing, it documents what was checked,
+# and it is the right shape if a second source ever differs.
+FF_D_PIN, FF_CLK_PIN = 1, 2
+
+assert HEADER[18][0] == "HELPER_CLK", \
+    "pin 18 is the only header pin that is a clock input on both the PYNQ-Z2 " \
+    "and the Icepi Zero; nothing may reassign it"
 
 # --- the 13 channel tiles ---------------------------------------------------
 # Every unit is identical except for its names and its per-channel population.
@@ -123,7 +175,13 @@ UNITS = [
  (12,"BEAT_11","PPS_11","HP 10811B / FE-5680A Rb",   "IN", "0R", "2k2",
    "FE-5680A is the weakest source at 0.72 Vpp into 50R: never pad this one"),
  (13,"BEAT_12",None,    "NULL CHANNEL",              "IN", "0R", "2k2",
-   "Instrument-only null. No pps. Source selected by JP_NULL - see the helper sheet"),
+   "Instrument-only null.  No pps.  Round 25: this used to say the source was "
+   "'selected by JP_NULL - see the helper sheet'.  There is no JP_NULL, on the "
+   "helper sheet or anywhere else -- unit 13 is an ordinary channel with its "
+   "own SMA (J1301).  You make it a null by CABLING J3001, the CLK1 OUT jack, "
+   "into J1301.  CLK1 and the helper CLK0 come from the same Si5351 PLL, so "
+   "their difference is exact and the beat measures nothing but this board's "
+   "own front-end noise -- which is the point"),
 ]
 
 # --- parts ------------------------------------------------------------------

@@ -13,9 +13,16 @@ WARN = (255, 220, 220)
 INFO = (220, 235, 255)
 LEVEL = (226, 245, 226)
 
+# Round 21: pin 4 really is a no-connect.  TI SBVS338H section 4, "Pin
+# Functions: X2SON, SOT-23", lists N/C against SOT-23 pin 4 with the text "No
+# internal electrical connection", and the Features list says in so many words
+# "No noise-bypass capacitor required".  The TPS7A20's reference filter (a
+# 0.1 Hz first-order RC, section 6.3.1) and its soft-start are both on the die.
+# Earlier rounds had this pin named NR/SS with a 10 nF hung off it; that
+# capacitor did nothing and has been removed.
 LDO = kigen.SYMS.alias("Regulator_Linear:LP5907MFX-3.3",
                        "GPSDO-PYNQ-Z2:TPS7A2033PDBVR",
-                       pin_names={"4": "NR/SS"}, pin_types={"4": "passive"})
+                       pin_names={"4": "NC"}, pin_types={"4": "no_connect"})
 DS2482 = kigen.SYMS.define(
     "GPSDO-PYNQ-Z2:DS2482S-100",
     [(4, "SCL", "input", "l", 2.54), (5, "SDA", "bidirectional", "l", 0.0),
@@ -29,6 +36,7 @@ FP_SOT235 = "Package_TO_SOT_SMD:SOT-23-5"
 FP_0805R = "Resistor_SMD:R_0805_2012Metric"
 FP_0805C = "Capacitor_SMD:C_0805_2012Metric"
 FP_1206R = "Resistor_SMD:R_1206_3216Metric"
+FP_2010R = "Resistor_SMD:R_2010_5025Metric"
 
 
 def _head(s, title, sub):
@@ -124,15 +132,10 @@ def power(s):
         s.wire(x - 20.32, u.pin(3)[1], *u.pin(3))
         s.text(x - 20.32, y + 35.56, "EN tied high: always on", size=1.3, italic=True)
         gnd(s, *u.pin(2), drop=8.89, R=R)
-        # NR/SS capacitor, hung below and clear of the output run
-        nx = x + 17.78
-        cn = c_v(s, nx, u.pin(4)[1] + 12.7, R("C"), "10n")
-        s.wire(*u.pin(4), nx, u.pin(4)[1])
-        s.wire(nx, u.pin(4)[1], *cn.pin(1))
-        gnd(s, *cn.pin(2), drop=6.35, R=R)
-        s.text(nx - 12.7, 141.0, "NR/SS: this 10 nF is what buys the 3.8 uV",
+        s.nc(*u.pin(4))
+        s.text(x + 2.54, 138.0, "pin 4 = N/C, no bypass cap",
                size=1.3, italic=True)
-        # output run, well above the NR/SS branch
+        # output run
         ox, oy = u.pin(5)
         s.wire(ox, oy, x + 60.96, oy)
         testpoint(s, x + 15.24, oy, R("TP"), "TP_" + rail_net[1:])
@@ -163,10 +166,12 @@ def power(s):
            size=1.4, color=INFO, cols=80)
     s.note(274.32, 145.0, 122.0, 0,
            "WHY THE TPS7A2033.\n"
-           "3.8 uV RMS output noise, 300 mA, and 52 000 in stock at JLCPCB.  The obvious "
-           "alternative, the ADP151, is 9 uV and 200 mA and is not stocked there at all - only "
-           "re-marked house-brand parts are.  The 10 nF on NR/SS is what buys the low noise "
-           "figure; without it the part is ordinary.",
+           "7 uV RMS output noise (10 Hz - 100 kHz, 300 mA; 10 uV at 1 mA), 300 mA, and 52 000 "
+           "in stock at JLCPCB.  The obvious alternative, the ADP151, is 9 uV and 200 mA and is "
+           "not stocked there at all - only re-marked house-brand parts are.\n"
+           "The low noise needs NO external part: the reference filter is a 0.1 Hz first-order "
+           "RC on the die, and the soft-start is internal too.  Pin 4 of the SOT-23-5 is a true "
+           "no-connect.  Leave it open.",
            size=1.4, color=NOTE, cols=80)
     s.note(403.86, 145.0, 122.0, 0,
            "STUDENT-PROOFING THE 5 V INPUT.\n"
@@ -180,7 +185,14 @@ def power(s):
            "about 100 ms.  It is the deliberate sacrificial part, and it is a 16-cent SMB on "
            "the board edge.\n"
            "What is NOT protected: sustained reverse voltage beyond the SS34's 40 V, and "
-           "anything applied directly to an SMA or the header pins.",
+           "anything applied directly to an SMA or the header pins.\n"
+           "NEVER RUN OFF THE BENCH POSTS WITH THE PYNQ UNPOWERED.  PYNQ-Z2 user manual "
+           "table 15: an unpowered Zynq I/O pin is absolute-max 0.55 V.  This board would "
+           "then drive 3.3 V into all 13 beats, 12 pps returns and the helper clock.  The "
+           "PYNQ's own 200 R series resistors hold each one to about 14 mA, so it survives "
+           "a mistake, but it is out of spec every second it lasts.  The bench posts are "
+           "for powering the board when the PYNQ is ALSO on - to take the 3.3 V rails off "
+           "the host - not for running it alone.",
            size=1.4, color=WARN, cols=80)
     s.note(403.86, 100.0, 122.0, 0,
            "CURRENT BUDGET, ~100 mA TOTAL.\n"
@@ -201,8 +213,10 @@ def power(s):
                footprint="Connector_BarrelJack:BarrelJack_Horizontal", lcsc="C720557",
                ref_dxy=(-7.62, -14.0), val_dxy=(-7.62, -11.43))
     yj = jk.pin(1)[1]
-    f = s.sym("Device:Polyfuse", 71.12, yj, 90, ref=R("F"), value="500mA PPTC",
-              footprint="Fuse:Fuse_1206_3216Metric", lcsc="C720075",
+    # 1.1 A hold, not 500 mA: round 14.9 re-sized the heater array to 643 mA and
+    # a 500 mA polyfuse would simply trip whenever the heater came on.
+    f = s.sym("Device:Polyfuse", 71.12, yj, 90, ref=R("F"), value="1.1A PPTC",
+              footprint="Fuse:Fuse_1206_3216Metric", lcsc="C70076",
               ref_dxy=(0, -8.89), val_dxy=(0, -5.08))
     s.wire(jk.pin(1)[0], yj, f.pin(1)[0], yj)
     gnd(s, *jk.pin(2), drop=6.35, R=R)
@@ -214,17 +228,24 @@ def power(s):
                  ref_dxy=(0, -8.89), val_dxy=(0, -5.08), fang=0)
     s.wire(f.pin(2)[0], f.pin(2)[1], dsch.pin(2)[0], dsch.pin(2)[1])
     s.wire(dsch.pin(1)[0], dsch.pin(1)[1], 121.92, yj)
-    # rot 90 so the part stands up: at rot 0 the D_TVS body is horizontal and
-    # both of these wires come out diagonal.
-    # rot 270, not 90: pin 1 has to be the TOP one so the rail wire reaches it
-    # without passing through pin 2 on the way.
-    tv = s.sym("Device:D_TVS", 121.92, yj + 12.7, 270, ref=R("D"), value="SMAJ18A",
+    # rot 90 so the part stands up: at rot 0 the body is horizontal and both of
+    # these wires come out diagonal.  rot 270, not 90: pin 1 has to be the TOP
+    # one so the rail wire reaches it without passing through pin 2 on the way.
+    #
+    # D_Zener, not D_TVS.  Round 20: `Device:D_TVS` is the BIDIRECTIONAL symbol
+    # and its pins are called A1 and A2, so a drawing using it cannot say which
+    # way round the part goes -- and the part fitted, an SMAJ18A, is
+    # unidirectional.  Round 12 wired one of these cathode-to-ground, which is
+    # a forward diode across a 15 V supply, and nothing caught it: ERC was
+    # silent, the netlist was correct, and a shunt part appears in no supply
+    # path.  KiCad has no unidirectional-TVS symbol, so D_Zener is the right
+    # stand-in: a unidirectional TVS IS an avalanche diode, and the symbol has
+    # real A and K pins, which means the schematic states the polarity and
+    # check_paths.shunt_diodes() can verify it.
+    tv = s.sym("Device:D_Zener", 121.92, yj + 12.7, 270, ref=R("D"), value="SMAJ18A",
                footprint="Diode_SMD:D_SMA", ref_dxy=(3.81, -1.27), val_dxy=(3.81, 2.54))
-    # Pin 1 to the RAIL, not to ground.  Device:D_TVS is the BIDIRECTIONAL
-    # symbol, so its two pins look interchangeable -- but the part fitted is an
-    # SMAJ18A, which is unidirectional, and on a D_SMA footprint pad 1 is the
-    # banded cathode.  Wired the other way round the "protection" device is a
-    # forward-biased diode across a 15 V supply.
+    # Pin 1 is K, and it goes to the RAIL.  On a D_SMA footprint pad 1 is the
+    # banded cathode, so drawing and part now agree.
     s.wire(121.92, yj, tv.pin(1)[0], tv.pin(1)[1])
     gnd(s, *tv.pin(2), drop=6.35, R=R)
     s.wire(121.92, yj, 137.16, yj)
@@ -240,51 +261,109 @@ def power(s):
     # Heater array: TWENTY-FOUR in parallel, not eight.  The copper's lateral
     # thermal spreading length is about 40 mm, so heaters 76 mm apart leave a
     # ripple between them; 24 sit about 44 mm apart, which is what uniformity
-    # across the channel tiles actually requires.  2k0 keeps the TOTAL power at
-    # 1.7 W, the same as before, and puts 72 mW in each 0805.
+    # across the channel tiles actually requires.
+    #
+    # 560R, not 1k5, and 2512, not 1206.  Round 14.9 did the arithmetic: an
+    # enclosed board is about 1.87 K/W, so 3.6 W buys 6.7 K of elevation and a
+    # Los Angeles room without air conditioning swings 16-30 degC, which needs
+    # a 34 degC setpoint and therefore 9.6 W.  24 x 560R across 15 V is 9.6 W
+    # and 643 mA, which is 0.40 W per resistor -- over a 1206's 0.25 W rating.
+    # 2010 (0.75 W), not the 2512 round 14.9 suggested: a 2512's courtyard is
+    # 3.86 mm across and the free strip down a tile's outboard side, where the
+    # thirteen distributed heaters live, is 3.5.  A 2010 is 3.16 and runs at
+    # 53 % of rating.  F2002 goes to 1.1 A to suit.
     # The array is placed clear of the input chain in X, not just in Y.  Sharing
     # a column with it put one heater's riser through the fuse pin at x = 67.31
     # and another through the TVS's ground drop at x = 121.92 -- shorting the
     # bus to the 12 V input, and then the rail to ground.  The input chain lives
     # in x 40..140, so the heaters start at 160 and nothing can coincide.
+    #
+    # THREE pass FETs, eight heaters each, not one FET carrying all 24.
+    # The drive is linear (see the note below, and it is deliberate), so the
+    # pass element dissipates I(15 - IR), which peaks at half current at
+    # exactly a quarter of the heater's full power.  At the old 3.6 W that was
+    # 0.9 W and a single SOT-223 was fine; at 9.6 W it is 2.4 W, and a 2.4 W
+    # point source is the last thing a board built for thermal uniformity
+    # wants.  Split three ways it is 0.8 W each, the three packages sit far
+    # apart on the board, and their dissipation stops being a defect -- it is
+    # heat going into the copper, which is the entire point of the array.
+    # WHICH eight go to which FET is a BOARD question, not a drawing question.
+    # The first split was by schematic column -- heaters 1-4 and 13-16 on the
+    # first FET and so on -- which gave every FET eight heaters scattered over
+    # the whole board, and therefore three drain nets each crossing the array
+    # three times.  19 of those 30 connections would not route.
+    #
+    # On the board the heaters fall into three natural clumps: seven down the
+    # left-hand tile column (one per odd unit), six down the right-hand one,
+    # and eleven ringing the array in the two margins and along the bottom.
+    # Group them that way and each drain net lives in one part of the board:
+    #   Q2001  the seven in the LEFT tile column,  + one bottom-edge heater
+    #   Q2002  the six in the RIGHT tile column,   + the centre and one bottom
+    #   Q2003  the eight in the two MARGINS
+    # The tile heaters are what makes this worth doing: their pads already line
+    # up in two straight vertical columns 4.6 mm apart, one column of +15 V
+    # pads and one of drain pads, so each net is a single straight trunk
+    # running down its own column of pads.  Nothing has to cross anything.
+    # Still eight each, so the 0.8 W a linear pass element dissipates is still
+    # split evenly, and the three packages still sit far apart.
+    #
+    # R2001..R2013 are the in-tile heaters, one per unit, so R20nn is unit nn;
+    # R2014..R2024 are the ring, in the order hand_placed() lays them out
+    # (left margin top to bottom, right margin top to bottom, centre, bottom).
+    HGROUPS = ((1, 3, 5, 7, 9, 11, 13, 23),        # the left tile column
+               (2, 4, 6, 8, 10, 12, 22, 24),       # the right tile column
+               (14, 15, 16, 17, 18, 19, 20, 21))   # the margin ring
     xht, yht, ybus = 160.0, 240.0, 268.0
-    NH = 24
-    xs = []
+    NH, NG = 24, 3
+    # Each group takes four adjacent columns of the 12 x 2 array, so its bus
+    # wire spans only its own columns and no riser ever crosses another group's
+    # bus.  What changes is only WHICH heater lands in which slot.
+    slot = {}
+    for g, hs in enumerate(HGROUPS):
+        for k, h in enumerate(hs):
+            slot[h] = (g, 4 * g + k % 4, k // 4)
+    assert sorted(slot) == list(range(1, NH + 1)), "every heater in exactly one group"
+    groups = {}
     for i in range(NH):
-        col, row = i % 12, i // 12
+        g, col, row = slot[i + 1]
         # the second row is offset half a pitch in x: at the same x its risers
         # would run straight through the first row's resistors and short them
         x = xht + col * 21.59 + row * 10.8
         y = yht + row * 11.43
         rail(s, x, y - 7.62, "+15V_HTR", rise=5.08, R=R)
-        r_v(s, x, y, R("R"), "1k5", footprint=FP_1206R)
+        r_v(s, x, y, R("R"), "560R", footprint=FP_2010R)
         s.wire(x, y - 7.62, x, y - 3.81)
-        s.wire(x, y + 3.81, x, ybus)
-        xs.append(x)
-    s.wire(min(xs), ybus, 452.12, ybus)
-    q = s.sym("Transistor_FET:Q_NMOS_GDS", 462.28, ybus + 10.16, 0, ref=R("Q"),
-              value="DMN6068SE-13", footprint="Package_TO_SOT_SMD:SOT-223-3_TabPin2",
-              lcsc="C209902", ref_dxy=(7.62, -5.08), val_dxy=(7.62, -2.54))
-    s.wire(452.12, ybus, 452.12, q.pin(2)[1])
-    s.wire(452.12, q.pin(2)[1], *q.pin(2))
-    s.glabel(q.pin(1)[0] - 20.32, q.pin(1)[1], "HTR_DRIVE", shape="input", justify="right")
-    s.wire(q.pin(1)[0] - 20.32, q.pin(1)[1], *q.pin(1))
-    gnd(s, *q.pin(3), drop=8.89, R=R)
+        s.wire(x, y + 3.81, x, ybus + g * 20.32)
+        groups.setdefault(g, []).append(x)
+    for g in sorted(groups):
+        gx = sorted(groups[g])
+        by = ybus + g * 20.32
+        s.wire(gx[0], by, gx[-1] + 15.24, by)
+        q = s.sym("Transistor_FET:Q_NMOS_GDS", gx[-1] + 25.4, by + 10.16, 0,
+                  ref=R("Q"), value="DMN6068SE-13",
+                  footprint="Package_TO_SOT_SMD:SOT-223-3_TabPin2",
+                  lcsc="C209902", ref_dxy=(7.62, -5.08), val_dxy=(7.62, -2.54))
+        s.wire(gx[-1] + 15.24, by, gx[-1] + 15.24, q.pin(2)[1])
+        s.wire(gx[-1] + 15.24, q.pin(2)[1], *q.pin(2))
+        s.glabel(q.pin(1)[0] - 20.32, q.pin(1)[1], "HTR_DRIVE", shape="input",
+                 justify="right")
+        s.wire(q.pin(1)[0] - 20.32, q.pin(1)[1], *q.pin(1))
+        gnd(s, *q.pin(3), drop=8.89, R=R)
     s.text(400.0, ybus + 26.67, "heater return: its own trace back to the jack, meeting board "
            "ground at exactly one point", size=1.4, italic=True)
 
-    s.note(15.24, 312.0, 122.0, 0,
+    s.note(15.24, 348.0, 122.0, 0,
            "12 V ON ITS OWN JACK, HEATER ONLY.\n"
-           "It never touches the 3.3 V rails or the FPGA.  The heater's 3.6 W comes from the "
+           "It never touches the 3.3 V rails or the FPGA.  The heater's 9.6 W comes from the "
            "15 V, not from the PYNQ-Z2's 5 V rail - which matters because it is twice what "
-           "the rest of this board draws.  Full on is 240 mA, so a 1 A supply is plenty and "
-           "the silkscreen says so.  A RESETTABLE 500 mA fuse, a series Schottky for reverse "
+           "the rest of this board draws.  Full on is 643 mA, so a 1 A supply is plenty and "
+           "the silkscreen says so.  A RESETTABLE 1.1 A fuse, a series Schottky for reverse "
            "polarity and an 18 V TVS mean a wrong supply blows nothing; 18 V because a 15 V "
            "rail at +5 percent is 15.75 and a 16 V part would have sat 250 mV from conducting."
            "\n"
            "SILKSCREEN: 15 V DC, 1 A MIN - HEATER ONLY - CENTRE POSITIVE.",
            size=1.4, color=WARN, cols=80)
-    s.note(144.78, 312.0, 122.0, 0,
+    s.note(144.78, 348.0, 122.0, 0,
            "LINEAR, NOT PWM - AND THAT IS DELIBERATE.\n"
            "We are making heat on purpose, so dissipation in the pass element is not waste.  A "
            "linear element means there is no switching edge anywhere on a board doing "
@@ -292,19 +371,23 @@ def power(s):
            "somewhere, which is exactly what the helper-tree work is trying to keep off the "
            "ground plane.",
            size=1.4, color=INFO, cols=80)
-    s.note(274.32, 312.0, 122.0, 0,
-           "EIGHT HEATERS, NOT ONE.\n"
-           "24 x 1k5 in parallel is 62.5 ohm, so 3.6 W full on at 240 mA and 150 mW per "
-           "resistor - 60 percent of a 1206 - inside "
-           "the 1206 rating.  They are spread across the board because what hurts is not the "
+    s.note(274.32, 348.0, 122.0, 0,
+           "TWENTY-FOUR HEATERS, AND THREE PASS FETS.\n"
+           "24 x 560R in parallel is 23.3 ohm, so 9.6 W full on at 643 mA and 400 mW per "
+           "resistor - 53 percent of a 2010's 0.75 W rating.  Thirteen of them sit INSIDE the "
+           "channel tiles, one per channel, and eleven ring the array.  "
+           "They are spread across the board because what hurts is not the "
            "mean temperature but the GRADIENT: a gradient is what makes channel 3 drift "
            "differently from channel 11.  The four corner TMP1075s are what tell you whether "
            "the spread is good enough.",
            size=1.4, color=INFO, cols=80)
-    s.note(403.86, 312.0, 122.0, 0,
+    s.note(403.86, 348.0, 122.0, 0,
            "PASS FET WORST CASE.\n"
-           "Dissipation peaks at half voltage: 6 V x 70 mA = 0.42 W, which a SOT-223 "
-           "DMN6068SE (2 W, 60 V, 68 mohm) takes without complaint.  Drive comes from the "
+           "Linear drive means the pass element dissipates a QUARTER of the heater's full "
+           "power at half current: 2.4 W at 9.6 W total.  That is why there are three FETs "
+           "of eight heaters rather than one of twenty-four - 0.8 W each, in three SOT-223s "
+           "placed far apart, where the heat they make is useful instead of being a hot "
+           "spot on a board built for uniformity.  Drive comes from the "
            "MCP4725 on the housekeeping sheet, so the loop closes in Python on the PYNQ and "
            "costs no header pins.",
            size=1.4, color=NOTE, cols=80)
@@ -379,7 +462,14 @@ def helper(s):
     # VDD and VDDO share ONE filtered node.  They are 5.08 mm apart on the
     # symbol, so two separate bead-and-cap stacks land on top of each other,
     # and the datasheet's own reference design runs both from the same 3.3 V.
-    decouple(s, 175.26, 78.74, "+3V3_D", R, tall=False)
+    # Si5351 datasheet 7.2: "Unused VDDOx pins should be tied to VDD", and
+    # sharing the node also satisfies the sequencing requirement trivially.
+    # Round 21: 7.1 asks for "one 0.1 to 1.0 uF decoupling capacitor per power
+    # supply pin ... mounted as close to the VDD and VDDOx pins as possible
+    # without using vias", so BOTH capacitors are 100 nF and the placer puts
+    # one hard against pin 1 and the other hard against pin 7.  The 10 nF that
+    # used to sit here was below the datasheet's range.
+    decouple(s, 175.26, 78.74, "+3V3_D", R, tall=False, values=("100n", "100n"))
     s.wire(175.26, 78.74, 175.26, 84.0)
     s.wire(si.pin(1)[0], 84.0, si.pin(7)[0], 84.0)
     s.wire(*si.pin(1), si.pin(1)[0], 84.0)
@@ -404,6 +494,10 @@ def helper(s):
                lcsc=D.P["SMA"]["lcsc"], ref_dxy=(2.54, -10.16), val_dxy=(2.54, -7.62))
     s.wire(c1x, c1y, j1.pin(1)[0], c1y)
     gnd(s, *j1.pin(2), drop=5.08, R=R)
+    s.text(c1x + 20.32, c1y - 5.08, "OUT: 0/3.3 V CMOS into hi-Z,",
+           size=1.3, italic=True)
+    s.text(c1x + 20.32, c1y - 1.27, "1.6 Vpp into 50R (ZO = 50R)",
+           size=1.3, italic=True)
     s.nc(*si.pin(6))
 
     # --- DNP crystal alternative -------------------------------------------
@@ -459,14 +553,27 @@ def helper(s):
     # SMA; drawn as two branches meeting at the selector node, it cannot.
     yh = ys - 15.24
     s.glabel(40.64, yh, "HELPER_SRC", shape="input", justify="right", rot=180)
-    s.text(40.64, yh + 6.35, "10.0012344 MHz, 0/3.3 V CMOS, Si5351 CLK0",
+    s.text(40.64, yh - 3.81, "10.0012344 MHz, 0/3.3 V CMOS, Si5351 CLK0",
            size=1.3, italic=True)
     s.wire(40.64, yh, 62.23, yh)
+    # 0R, and round 21 puts it back after round 20 made it 33R.  The datasheet
+    # settles it: Figure 16 "Recommended Trace Characteristics" shows the CLK
+    # output driving a 50 ohm line through **R = 0 ohms**, described as an
+    # "optional resistor for EMI management", because the output stage is
+    # already a 50 ohm source (Table: Output Impedance ZO = 50 ohm) and the
+    # jitter specification only holds at that default drive strength.
+    #
+    # It is not neutral here either.  This node feeds the squarer through a
+    # 10 n and a 330 R, so 33 R adds 10 % to the series resistance that sets
+    # the edge rate at the inverter's threshold -- about 7 % less slew on the
+    # one edge in the instrument whose slew IS the measurement.  Round 17 asked
+    # for the resistor and round 20 fitted it; the datasheet says not to.
     r_h(s, 66.04, yh, R("R"), "0R")                        # R_INT, the Si5351 branch
     s.wire(69.85, yh, 88.9, yh)
     s.wire(88.9, yh, 88.9, ys)
     s.junction(88.9, ys)
-    s.text(93.98, ys + 8.89, "SELECT: fit R_INT or R_EXT, never both.", size=1.3, italic=True)
+    s.text(93.98, ys + 8.89, "SELECT: fit R_INT or R_EXT, never both.",
+           size=1.3, italic=True)
     s.text(93.98, ys + 12.7, "Two branches, two resistors, one node.", size=1.3, italic=True)
 
     # squarer, same topology as a channel
@@ -658,6 +765,26 @@ def rpi_header(s):
            "is a per-channel constant that the null test removes.",
            size=1.4, color=NOTE, cols=110)
 
+    s.note(15.24, 232.0, 251.0, 0,
+           "NO MODIFICATION TO THE PYNQ-Z2 IS NEEDED - BUT PMOD A BECOMES UNUSABLE.\n"
+           "This board is designed for a stock PYNQ-Z2.  It relies on the 200 ohm series "
+           "resistor the PYNQ puts in every Raspberry Pi GPIO, and on the 2k2 I2C pull-ups "
+           "above; both are fitted from the factory and neither should be removed.\n"
+           "What it does take is the WHOLE header.  The PYNQ-Z2 user manual, section 1: "
+           "'Raspberry Pi connector - 28 Total FPGA I/O (8 pins are shared with Pmod A)'.  "
+           "This design uses all 28, so all eight of Pmod A's I/O land on pins we drive: "
+           "JA1P/JA1N = " + D.HEADER[7][0] + "/" + D.HEADER[29][0] + ", "
+           "JA2P/JA2N = " + D.HEADER[27][0] + "/" + D.HEADER[28][0] + ", "
+           "JA3P/JA3N = " + D.HEADER[31][0] + "/" + D.HEADER[26][0] + ", and "
+           "JA4P/JA4N = the I2C bus itself.  Plugging anything into Pmod A puts a second "
+           "driver on those FPGA balls.  Verified ball by ball against the manual's Pmod "
+           "tables and against the TUL schematic's own SHARE PIN reference table: Pmod B "
+           "and all three Arduino headers share nothing with us and stay fully usable.\n"
+           "POWER: this board draws about 110 mA from the header's 5 V, on top of whatever "
+           "the Zynq is already taking.  The manual says the micro-USB port 'should provide "
+           "enough power for most designs' - use the barrel jack with J9 = REG instead.",
+           size=1.4, color=WARN, cols=110)
+
 
 # ===========================================================================
 def housekeeping(s):
@@ -732,12 +859,53 @@ def housekeeping(s):
         px, py = dac.pin(pn)
         s.wire(px - 15.24, py, px, py)
         s.glabel(px - 15.24, py, nm, shape="bidirectional", justify="right")
+    # A0 HIGH, not low.  Round 21, and this one would have stopped the board
+    # working: the MCP4725's address is 1100 A2 A1 A0, the "A0" in the part
+    # number fixes A2A1 = 00, so with this pin grounded the DAC answers on
+    # 0x60 -- and the Si5351A in the 10-MSOP package has NO A0 pin and is
+    # therefore permanently 0x60 too (datasheet Figure 6: "If a part does not
+    # have the A0 pin, the default address is 0x60").  Two devices, one
+    # address, one bus.  Tied high the DAC is 0x61 and the bus is
+    # 0x18 DS2482, 0x48-0x4F thermometers, 0x60 Si5351, 0x61 DAC.
+    # DOWN, not up.  A0, SDA and SCL are the symbol's three left-hand pins at
+    # 2.54 mm pitch with A0 lowest, so a riser going up from here lands exactly
+    # on the SCL wire and shorts the bus to the rail.
     ax, ay = dac.pin(6)
     s.wire(ax - 7.62, ay, ax, ay)
-    gnd(s, ax - 7.62, ay, drop=5.08, R=R)
+    rail(s, ax - 7.62, ay, "+3V3_D", rise=5.08, R=R, down=True)
+    # 100R in series, then 100k to ground.  Round 18.
+    #
+    # The DAC's output is an op-amp buffer and what it drives is three SOT-223
+    # gates on the far side of 200 mm of track: about 1.5 nF, which is exactly
+    # the kind of load an unisolated buffer rings into.  A megahertz oscillation
+    # on a board whose business is picoseconds is not acceptable even though
+    # the heater itself would not care.  100R into 1.5 nF is a 150 ns corner,
+    # which a thermal loop with a five-minute time constant will never see.
+    #
+    # The 100k matters when the DAC is NOT driving -- unpowered, unfitted, or
+    # simply before software first writes it.  Without it three power-FET gates
+    # float, and a floating gate on a pass element is how a board ends up warm
+    # with nobody able to say why.  It does NOT protect against the DAC powering
+    # up mid-scale, which is the maximum-dissipation point; see the note.
     ox, oy = dac.pin(1)
-    s.wire(ox, oy, ox + 25.4, oy)
-    s.glabel(ox + 25.4, oy, "HTR_DRIVE", shape="output", justify="left")
+    s.wire(ox, oy, ox + 7.62, oy)
+    r_h(s, ox + 11.43, oy, R("R"), "100R")
+    s.wire(ox + 15.24, oy, ox + 33.02, oy)
+    s.wire(ox + 22.86, oy, ox + 22.86, oy + 3.81)
+    r_v(s, ox + 22.86, oy + 7.62, R("R"), "100k")
+    gnd(s, ox + 22.86, oy + 11.43, drop=5.08, R=R)
+    s.glabel(ox + 33.02, oy, "HTR_DRIVE", shape="output", justify="left")
+    s.note(300.0, 246.0, 275.0, 0,
+           "WHAT THE GATE DOES BEFORE SOFTWARE WRITES THE DAC.\n"
+           "The 100k holds all three gates down whenever the DAC is not driving them, which "
+           "covers an unpopulated or unpowered DAC and the moment before the first I2C write. "
+           "It does NOT cover the DAC powering up from its own EEPROM into something other "
+           "than zero - and half scale is exactly the point of MAXIMUM pass-element "
+           "dissipation, 0.8 W in each of three SOT-223s.  The fix is to program the "
+           "MCP4725's EEPROM to zero once, at bring-up, with a Write-DAC-and-EEPROM command; "
+           "the part then powers up off every time.  DATASHEET NEEDED to confirm the "
+           "as-shipped EEPROM value - see the datasheet list in the notes.",
+           size=1.4, color=NOTE, cols=122)
     s.note(300.0, 216.0, 275.0, 0,
            "WHY A DAC AND A LINEAR PASS FET, AND NOT PWM.\n"
            "PWM is the cheap way to drive a heater and it is the wrong way here.  Switching "
@@ -768,8 +936,17 @@ def housekeeping(s):
     # null channel.  Every beat, pps and helper edge already has a test point
     # beside its own flip-flop, with a short ground return, which is a better
     # place to probe it anyway.
-    sigs = ["+3V3_A", "+3V3_D", "+5V_HDR", "I2C_SDA", "I2C_SCL",
-            "HTR_DRIVE", "ONEWIRE", None, None, None]
+    # Pin order is a LAYOUT decision here, like the RPi header's.  The connector
+    # lies along the bottom edge with pin 1 at its right-hand end, and six of
+    # these seven nets arrive down the left-hand margin in a fixed order -- so
+    # putting them on pins in that same order means none of them crosses
+    # another.  Left to right on the board the margin lanes run I2C_SCL,
+    # I2C_SDA, HTR_DRIVE, +3V3_D, +3V3_A, so those take pins 13, 11, 9, 7, 5.
+    # ONEWIRE comes down from the probe block to the north and takes pin 3, and
+    # +5V_HDR, which comes from the socket away to the east, takes pin 1, the
+    # end nearest it.
+    sigs = ["+5V_HDR", "ONEWIRE", "+3V3_A", "+3V3_D", "HTR_DRIVE",
+            "I2C_SDA", "I2C_SCL", None, None, None]
     for k in range(10):
         po, pe = dh.pin(2 * k + 1), dh.pin(2 * k + 2)
         if sigs[k] is None:

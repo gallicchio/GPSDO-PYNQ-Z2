@@ -178,13 +178,14 @@ def track(x0, y0, x1, y1, layer, net_no, tag, w=0.4):
                  A("uuid", S(uid("t", tag, x0, y0, x1, y1, layer)))), 1)
 
 
-def zone(net_no, net_name, layer, poly, tag):
+def zone(net_no, net_name, layer, poly, tag, solid=False):
     pts = A("pts", *[A("xy", px, py) for px, py in poly])
     return ser(A("zone", A("net", net_no), A("net_name", S(net_name)),
                  A("layers", S(layer)) if isinstance(layer, str) else layer,
                  A("uuid", S(uid("z", tag, layer))), A("name", S(tag)),
                  A("hatch", "edge", 0.5),
-                 A("connect_pads", A("clearance", 0.25)),
+                 (A("connect_pads", "yes", A("clearance", 0.25)) if solid
+                  else A("connect_pads", A("clearance", 0.25))),
                  A("min_thickness", 0.25), A("filled_areas_thickness", "no"),
                  A("fill", "yes", A("thermal_gap", 0.5), A("thermal_bridge_width", 0.5)),
                  A("polygon", pts)), 1)
@@ -198,57 +199,170 @@ def blocks(G):
     """Expressed against the board edges, so widening the board carries the
     blocks and the edge connectors with it instead of stranding them inboard."""
     return {
-        "probes": (G.BW - 30.0, 100.0, G.BW - 4.0, 132.0, "1-WIRE"),
-        # Moved out of the band under row B: that band is the only place the
-        # twenty-five beat/pulse returns can fan into the header, and they need
-        # F.Cu there as well as In2.
-        "house":  (166.0, 68.0, 238.0, 96.0, "HOUSEKEEPING"),
+        # right behind the five screw terminals it serves
+        # Starts at y = 21 now: the five probe cells and their two buses
+        # occupy y 8..19 and the auto-placer must not sit on them.
+        "probes": (12.0, 21.0, 78.0, 34.0, "1-WIRE"),
+        # Round 15 leaves only the bottom band for these two: the channel
+        # array now fills everything between the top band and the fan-in.
+        "house":  (40.0, 169.0, 104.0, 178.0, "HOUSEKEEPING"),
     }
 
 # Parts whose position is about USING the board, not about routing it.
 # Cabled connectors go on an EDGE; thermometers go where the heat is.
 def hand_placed(G):
-    # Barrel jack at rot 0: its body reaches 14 mm in -x from pin 1, so the
-    # opening already faces the left board edge.  Terminal blocks at rot 90 so
-    # their wire entry faces the RIGHT edge instead of down the board.
-    # The barrel jack and the two bench posts are placed by pcb/power.py, which
-    # owns that block's positions and its tracks together.
-    d = {"J5001": (258.0, 134.0)}                            # debug header
+    """Parts whose position is about USING the board, not routing it.
+
+    Round 15 leaves two 10 mm margins outside the 1 pps jacks and a band across
+    the top; between them they hold every cabled connector, the eight
+    thermometers and eleven of the twenty-four heaters.  The other thirteen
+    heaters go INSIDE the tiles -- see build(), which has the tile transform.
+    """
+    d = {}
+    # Five 1-Wire screw terminals along the top edge, entry facing outward,
+    # each with its own two 47R series resistors directly underneath it.
+    #
+    # They used to be auto-gridded with the rest of the 1-Wire block, which put
+    # all ten in one row alternating ONEWIRE, +3V3_D, ONEWIRE, +3V3_D...: two
+    # buses interleaved pad by pad, so neither could run straight without
+    # crossing the other's pads, and eight of round 18's remaining twenty
+    # connections were that.  A probe is a cell, like a channel is a cell.
+    #
+    # Both resistors at rot 90, which puts pad 1 -- the bus end -- at the TOP
+    # and pad 2 -- the screw-terminal end -- at the bottom, so each one drops
+    # straight down its own pin with nothing in the way.  The two buses then
+    # run on different layers at different heights and never meet: ONEWIRE
+    # along the data pads on F.Cu, +3V3_D along the power pads on In2.
     for i in range(5):
-        d["J600%d" % (i + 1)] = (G.BW - 8.0, 30.0 + i * 17.0, 90)
-    # Eight thermometers, spread to map the gradient rather than lumped in a
-    # block: four corners, the fan-out, the LDOs, and each end of the channels.
-    # Each lives in one of the four horizontal bands the tiles leave free:
-    # above row A (0..10), between row A and the fan-out (58.6..64), between
-    # the fan-out and row B (98..102) and between row B and the header.
-    temps = {"U5001": (24.0, 5.2, +1),   "U5002": (248.0, 5.2, -1),
-             "U5003": (24.0, 156.0, +1), "U5004": (248.0, 156.0, -1),
-             "U5005": (141.0, 93.5, +1),                   # under the fan-out
-             "U5006": (12.0, 120.0, +1),                   # beside the LDOs
-             "U5007": (30.0, 62.0, +1),                    # under unit 1
-             "U5008": (213.0, 128.0, +1)}                  # beside unit 13
-    for ref, (sx, sy, side) in temps.items():
-        d[ref] = (sx, sy)
-    # A thermometer's bead and capacitors have to travel WITH it.  Spreading the
-    # sensors while leaving their decoupling in the housekeeping block left one
-    # Vcc node spanning 310 mm, which is not decoupling at all.  They sit in a
-    # row beside the sensor, on whichever side has board left.
-    for i, (ref, (sx, sy, side)) in enumerate(sorted(temps.items())):
-        d["FB500%d" % (i + 1)] = (sx - 5.6 * side, sy)
-        d["C50%02d" % (2 * i + 1)] = (sx + 5.6 * side, sy)
-        d["C50%02d" % (2 * i + 2)] = (sx + 9.4 * side, sy)
+        jx = 16.0 + i * 13.0
+        d["J600%d" % (i + 1)] = (jx, 8.0, 180)
+        # Clear of the terminal block, which is 12 x 10 mm and therefore
+        # reaches down to y = 13 even though its pins are at 8.
+        d["R60%02d" % (2 * i + 2)] = (jx - 3.5, 14.6, 90)    # +3V3_D, 1206
+        d["R60%02d" % (2 * i + 3)] = (jx, 18.0, 90)          # ONEWIRE, 0805
+    # Debug header lies down in the bottom-left corner, clear of the socket.
+    # Debug header at rot 270, not 90, and shifted so pin 1 sits at the far
+    # (east) end.  At rot 90 its GROUND row sat at y = 171.46 -- between the
+    # signal row and the rest of the board -- so all seven signals had to be
+    # reached from the 6 mm strip between the connector and the bottom edge,
+    # and three of them could not be.  Turned round, the ground row faces the
+    # edge and the signal row is open to the whole band above it.
+    d["J5001"] = (36.86, G.BH - 6.0, 270)
 
-    # The twenty-four heaters, spread on a ~37 x 50 mm grid over the channel
-    # rows.  Lumping them in the power block would defeat the entire point: the
-    # copper only spreads heat about 40 mm, so the heaters have to BE where the
-    # channels are.  The rows sit in the same four free bands as the sensors.
-    hx = [46.0 + i * 37.0 for i in range(6)]
-    for i in range(24):
-        d["R20%02d" % (i + 1)] = (hx[i % 6], (5.0, 61.5, 100.0, 155.0)[i // 6])
+    # The DS2482 and the heater DAC, placed rather than auto-gridded.  Each is
+    # an eight- or six-pin part whose supply pin, ferrite bead and two
+    # capacitors are one 4 mm net, and the auto-grid scattered those four
+    # terminals round three sides of the package -- the same failure the eight
+    # thermometer stacks had.  Laid out with every V+ pad in one column, the
+    # net is two straight tracks; see build().
+    d["U6001"] = (16.0, 25.0, 0)          # DS2482-100, SOIC-8
+    d["FB6001"] = (13.53, 20.3, 270)      # bead above pin 1
+    d["C6001"] = (10.5, 25.635, 180)      # both caps to the left, V+ inward,
+    d["C6002"] = (10.5, 28.2, 180)        # below R2014's 2010 footprint
+    d["U5009"] = (46.0, 173.0, 0)         # MCP4725, SOT-23-6
+    d["FB5009"] = (44.86, 177.0, 90)      # bead below pin 3
+    d["C5017"] = (41.5, 173.95, 180)
+    d["C5018"] = (41.5, 171.0, 180)
+    # The three heater pass FETs, each at the centroid of the eight heaters it
+    # drives.  Round 18 regrouped the heaters geographically -- left column,
+    # right column, the ring -- so a FET beside its own group turns a drain net
+    # that crossed the whole board three times into a local one.  They are also
+    # about as far apart as this board allows, which is the other reason there
+    # are three of them: 0.8 W each instead of 2.4 W in one package, and out in
+    # the margins that 0.8 W is heat where the ring heaters want it anyway.
+    # Each sits at the end of its own group's trunk: the two column FETs in the
+    # clear band under the last tile row, at the foot of the column of heaters
+    # they drive, and the ring FET in the right-hand margin on the ring's own
+    # lane.  Three corners of the board, which is the other half of the reason
+    # there are three of them.
+    # Q2001 cannot do the same: unit 13's own heater sits at y = 158.4, 1.7 mm
+    # above where its tab would have to go.  Its gate keeps a 1.7 mm stub, which
+    # costs nothing because the trunk is already on F.Cu at that x.
+    d["Q2001"] = (70.9, 163.3 if os.environ.get("R13UP") else 165.0)
+    # Q2002 sits 1.7 mm higher than the obvious place, so that its GATE pad
+    # lands exactly on the y = 161 gate trunk.  Everything here is inside the
+    # band where twenty-five returns fan into the socket, and every extra
+    # millimetre of copper in that band costs a return: reaching a gate 1.7 mm
+    # BELOW the trunk cost five of them, and moving the FET to the head of its
+    # column instead -- where the gate faces the empty top band -- cost four.
+    # On the trunk line the connection costs one via and no new lane at all,
+    # because the last 2.5 mm of the trunk simply changes layer.  Round 19.
+    d["Q2002"] = (134.1, 163.3)          # foot of the right tile column
+    d["Q2003"] = (G.BW - 6.5, 33.0)      # right margin, on the ring lane
 
-    # X3001, U3001-U3007 and the rest of the helper chain are NOT here: they
-    # are placed together by pcb/helper.py, which owns both their positions and
-    # their tracks.
+    # Eight thermometers, four down each 10 mm margin.  Spread is the whole
+    # point -- a sensor tells you about the copper it sits on, and what we care
+    # about is the gradient across the array, not its mean.
+    # The right-hand three are MIRRORED, not copied: rot 180, and their support
+    # stack flipped with them.  Round 19 -- the left margin routed and the
+    # right one did not, and the reason was that the two were never mirror
+    # images at all.  A TMP1075 has SDA and SCL on pins 1-2 and V+ and the
+    # address straps on 5-8, so at rot 0 in the LEFT margin its I2C pins face
+    # outward, into the clear band at the board edge; in the RIGHT margin the
+    # same rotation faces them inward, into the 2.4 mm gap between the
+    # package's own two rows of pads -- which the part's own V+ track runs
+    # down, with the +3V3_A rail at x = 194.2 sealing the only other way out.
+    # U5002 at y = 48 escaped only because that rail starts at y = 62.7;
+    # U5004 and U5006 were walled in on all four sides.
+    temps, tmirror = {}, {}
+    for i, sy in enumerate((48.0, 90.0, 132.0)):
+        temps["U500%d" % (2 * i + 1)] = (6.5, sy)
+        temps["U500%d" % (2 * i + 2)] = (G.BW - 6.5, sy)
+        tmirror["U500%d" % (2 * i + 2)] = True
+    # One ON the helper, between its two jacks and directly above the block.
+    # The margins tell you about the gradient across the array; this one tells
+    # you about the thing whose drift actually moves the measurement, and
+    # round 15 left it out.
+    temps["U5007"] = (G.XC, 25.0)
+    temps["U5008"] = (6.5, 168.0)   # a fourth down the left margin;
+                                    # at (70, BH-6) its support stack ran
+                                    # off the bottom edge
+    d.update(temps)
+    # A thermometer's bead and capacitors travel WITH it, in the same margin
+    # strip -- but lying ACROSS the strip, not stood on end, and turned so that
+    # every V+ pad is on the same side.  Round 17 had them vertical with the
+    # bead's V+ pad pointing away from the part and each capacitor's ground pad
+    # pointing towards it, which put four terminals of one 4 mm net on three
+    # different sides of a SOIC-8.  Nothing could route it, and nothing did:
+    # thirty of the 141 remaining connections were eight copies of this.
+    #
+    # Turned this way all three V+ pads land on x = centre - 0.95, and the
+    # column between the SOIC's two rows of pins is free copper, so V+ is one
+    # straight track down the middle of the part plus a hop over the top to
+    # pin 8.  See the hand routes in build().
+    # s = +1 for a left-margin stack, -1 for a mirrored right-margin one.  Every
+    # offset is multiplied by it, so the two sides are exact reflections and
+    # every clearance that works on one works on the other by construction.
+    for i, (ref, (sx, sy)) in enumerate(sorted(temps.items())):
+        s = -1.0 if tmirror.get(ref) else 1.0
+        d[ref] = (sx, sy, 180 if s < 0 else 0)
+        rf = 0 if s < 0 else 180
+        d["FB500%d" % (i + 1)] = (sx, sy - s * 5.0, rf)
+        d["C50%02d" % (2 * i + 1)] = (sx, sy + s * 4.2, 180 - rf)
+        d["C50%02d" % (2 * i + 2)] = (sx, sy + s * 7.0, 180 - rf)
+
+    # Eleven heaters ring the array from the margins and the bottom band; the
+    # other thirteen sit one per tile (see build()).  Margin heaters go in the
+    # gaps the thermometer stacks leave.
+    # The LEFT margin ones are turned round.  A 2010 lying across a 10 mm margin
+    # puts one pad at x = 4.19 and the other at 8.81, and which is which decides
+    # whether the +15 V lane or the drain lane has to cross the other to reach
+    # it.  Both rails come DOWN THE MARGIN from the top, so both want their pad
+    # on the same side: the inboard one.  On the right margin pin 1 is already
+    # inboard; on the left it is not, so those four turn 180 degrees.  Round 18.
+    ring = [(6.5, y, 180) for y in (22.0, 68.0, 110.0, 150.0)]
+    ring += [(G.BW - 6.5, y, 0) for y in (22.0, 68.0, 110.0, 150.0)]
+    # The last three go BELOW the array, and they are set on the tile columns
+    # rather than anywhere convenient: a 2010 lying across x = 70.9 has its two
+    # pads at 68.59 and 73.21, which is exactly where the left column's drain
+    # and +15 V trunks already run, so it costs no copper at all to reach.  The
+    # same at 134.1 for the right column, and R2022 on the centre line under
+    # the helper, which is the one place the array has no heater near it.
+    ring += [(G.XC, 156.0, 0),              # R2022, centre, under the helper
+             (70.9, G.BH - 6.0, 180),       # R2023, astride the left columns
+             (134.1, 157.0, 0)]             # R2024, astride the right columns
+    for i, (hx, hy, hr) in enumerate(ring):
+        d["R20%02d" % (14 + i)] = (hx, hy, hr)
     return d
 
 
@@ -327,12 +441,35 @@ def build():
     # ---- the socket -------------------------------------------------------
     px, py = G.hdr_pin(1)
     put("J4001", px, py, 0, "B.Cu")
-    out.append(text(178.0, 168.0, "RPi 40-PIN SOCKET, UNDERSIDE", "F.SilkS", 1.6, 0.28))
+    out.append(text(G.BW - 4.0, G.BH - 2.0, "RPi 2x20 SOCKET, UNDERSIDE",
+                    "F.SilkS", 1.4, 0.24, just="right"))
+    # Round 22.  This board needs NO modification to a PYNQ-Z2, but it does
+    # take the whole Raspberry Pi header, and the PYNQ-Z2 user manual says of
+    # that header: "28 Total FPGA I/O (8 pins are shared with Pmod A)".  We use
+    # all 28, so all 8 of Pmod A's I/O balls are ours: JA1P/N, JA2P/N, JA3P/N
+    # carry BEAT_01, BEAT_04, BEAT_02, PPS_02, BEAT_06, PPS_00, and JA4P/N are
+    # the I2C bus itself.  Pmod B and all three Arduino headers are untouched
+    # -- checked ball by ball against the manual's tables.
+    out.append(text(G.BW - 2.0, G.BH - 8.4, "PMOD A IS UNUSABLE WHILE THIS "
+                    "BOARD IS ON:", "F.SilkS", 1.0, 0.16, just="right"))
+    out.append(text(G.BW - 2.0, G.BH - 6.0, "ITS 8 I/O SHARE FPGA BALLS WITH "
+                    "THIS HEADER", "F.SilkS", 1.0, 0.16, just="right"))
+    # ~110 mA at 5 V is modest, but it lands on top of whatever the Zynq is
+    # already drawing, and the manual warns that the micro-USB port "should
+    # provide enough power for MOST designs".  Say which one to use.
+    out.append(text(78.0, G.BH - 2.0, "PYNQ: USE THE BARREL JACK, J9 = REG",
+                    "F.SilkS", 1.0, 0.16))
     out.append(text(px + 2.5, py + 1.0, "1", "F.SilkS", 1.6, 0.3))
     # Every header pin named on the silk.  Rotated 90 so a three-character name
     # fits in the 2.54 mm pitch; odd row reads above the connector, even below.
     import design as _D
     def _short(net):
+        if net == "+3V3_HOST":
+            # Round 21: pins 1 and 17 are the PYNQ's own 3V3 and this board
+            # leaves them OPEN -- it makes its own 3.3 V from the 5 V pins and
+            # never loads the host regulator.  Labelling them "3V3" invited
+            # someone to probe them and believe the rail was ours.
+            return "nc"
         if net.startswith("+3V3"):
             return "3V3"
         if net.startswith("+5V"):
@@ -351,177 +488,355 @@ def build():
     for pinno in range(1, 41):
         gx, gy = G.hdr_pin(pinno)
         nm = _short(_D.HEADER[pinno][0])
-        if pinno % 2:
-            out.append(text(gx, gy - 3.4, nm, "F.SilkS", 1.0, 0.16, angle=90))
-        else:
-            out.append(text(gx, gy + 3.4, nm, "F.SilkS", 1.0, 0.16, angle=90,
-                            just="right"))
-
-    # ---- SMA jacks --------------------------------------------------------
-    smaxy = {}
-    for row in G.sma_rows():
-        for x, y, tag, desc in row:
-            smaxy[tag] = (x, y)
-            out.append(text(x, y - 6.8, tag, "F.SilkS", 2.4, 0.4))
-    for tag, ref in (("HIN", "J3002"), ("HO", "J3001")):
-        put(ref, *smaxy[tag])
+        # BOTH rows are named ABOVE the socket, reading up the board.  The
+        # even row used to be named below it, which on a 180 mm board puts a
+        # rotated label off the edge.  The two labels of a column sit 1.27 mm
+        # apart -- the far row's is the left one, matching the sidestep its
+        # track makes.
+        lx = gx if pinno % 2 else gx - 1.27
+        # Round 21: 169.3 put the tops of these rotated names at y = 166.3,
+        # straight through the test-point legend, and the plotted silk in that
+        # band was unreadable.  171.4 keeps the tops at 168.1, which is 0.7 mm
+        # clear of the legend's lowest line, and the bottoms 0.25 mm clear of
+        # the odd row's pad ring at 171.65.
+        out.append(text(lx, 171.4, nm, "F.SilkS", 0.9, 0.15, angle=90))
 
     # ---- the thirteen channel tiles ---------------------------------------
+    # Round 15: each unit is a horizontal strip pointing at the helper on the
+    # vertical centre line.  Left-hand units are the whole tile at rot 90 (its
+    # chain, which runs +y locally, then runs to the RIGHT); right-hand units
+    # at rot 270.  Either way the 10 MHz signal flows inward and meets the
+    # sampling clock where it is generated.
+    import math as _m
+
+    def xf(u):
+        ox, oy, urot = G.unit_origin(u)
+        a = _m.radians(-urot)
+        ca, sa = int(round(_m.cos(a))), int(round(_m.sin(a)))
+
+        def f(lx, ly, off=(0.0, 0.0)):
+            lx, ly = lx + off[0], ly + off[1]
+            return (ox + lx * ca - ly * sa, oy + lx * sa + ly * ca)
+        return f, urot
+
     byunit = {}
     for ref in fps:
         u, slot = unit_of(ref)
         if u:
             byunit.setdefault(u, {})[slot] = ref
-    TILE = T.tile(G.SMA_PITCH)
+    TILE = T.tile()
     for u in sorted(byunit):
-        ox, oy = G.unit_origin(u)
+        f, urot = xf(u)
         for slot, ref in byunit[u].items():
             if slot not in TILE:
                 out.append(text(4, 2, "UNPLACED %s" % ref, "Cmts.User", 1.0))
                 continue
-            dx, dy, rot = TILE[slot]
-            put(ref, ox + dx, oy + dy, rot)
+            dx, dy, prot = TILE[slot]
+            x, y = f(dx, dy)
+            put(ref, x, y, (prot + urot) % 360)
+
+    # every jack named on the silk, beside the unit it belongs to
+    for x, y, tag, desc in G.sma_rows():
+        out.append(text(x - 3.0, y - 6.4, tag, "F.SilkS", 2.4, 0.4))
+    for tag, ref in (("HIN", "J3002"), ("HO", "J3001")):
+        put(ref, *G.HELPER_SMA[tag])
 
     # ---- the tile's own tracks, stamped out thirteen times ----------------
     tracks = []          # (x0, y0, x1, y1, layer, netname, width)
+    tile_vias = []
+    in2_term = {}
 
     def netof(u, slot, pad):
         r = byunit.get(u, {}).get(slot)
         return nets.get(r, {}).get(pad) if r else None
 
-    def run(u, ox, oy, spec, xoff=0.0):
+    def run(u, spec, off=(0.0, 0.0)):
         (slot, pad), w, pts = spec
         nm = netof(u, slot, pad)
         if not nm or nm.startswith("unconnected-"):
             return
+        f, _ = xf(u)
         for i in range(len(pts) - 1):
-            x0, y0 = pts[i]
-            x1, y1 = pts[i + 1]
-            if (x0, y0) == (x1, y1):
-                continue
-            tracks.append((ox + xoff + x0, oy + y0, ox + xoff + x1, oy + y1,
-                           "F.Cu", nm, w))
+            p0, p1 = f(*pts[i], off=off), f(*pts[i + 1], off=off)
+            if p0 != p1:
+                tracks.append(p0 + p1 + ("F.Cu", nm, w))
 
-    tile_vias = []       # (x, y, netname)
-    in2_term = {}        # net -> [(x, y)] where the maze router may start
+    def escape(u, slot, pad, vx, vy, ey):
+        """In2 via plus the stub that takes it clear of the tile.
 
-    def escape(vx, vy, ey, nm, ex=None):
-        """Take an In2 via out of the crowded tile to a clear approach line.
-
-        The far end is snapped to the router's 0.5 mm grid: leaving it on the
-        via's own x put the hand-off segment off-grid, and two of those landed
-        0.13 mm apart against a 0.15 mm rule."""
-        tile_vias.append((vx, vy, nm))
-        ex = vx if ex is None else ex
-        sx = round(ex / MZ.PITCH) * MZ.PITCH
-        sy = round(ey / MZ.PITCH) * MZ.PITCH
-        if ex != vx:
-            tracks.append((vx, vy, ex, vy, "In2.Cu", nm, T.W_SIG))
-        tracks.append((ex, vy, ex, sy, "In2.Cu", nm, T.W_SIG))
-        if sx != ex:
-            tracks.append((ex, sy, sx, sy, "In2.Cu", nm, T.W_SIG))
+        All three of a unit's In2 nets come out on the same line just past its
+        inner end, so every unit hands them over in the same place."""
+        nm = netof(u, slot, pad)
+        if not nm:
+            return
+        f, _ = xf(u)
+        vp, ep = f(vx, vy), f(vx, ey)
+        sx = round(ep[0] / MZ.PITCH) * MZ.PITCH
+        sy = round(ep[1] / MZ.PITCH) * MZ.PITCH
+        tile_vias.append((vp[0], vp[1], nm))
+        tracks.append(vp + ep + ("In2.Cu", nm, T.W_SIG))
+        if (sx, sy) != ep:
+            tracks.append(ep + (sx, sy) + ("In2.Cu", nm, T.W_SIG))
         in2_term.setdefault(nm, []).append((sx, sy))
 
-    # Both rails of every tile stop on the same line, 1.4 mm under the taller
-    # of the two boxes, so one horizontal spine per row picks all of them up
-    # without ever entering a box.
-    def spine(row_y, xs, nm):
-        xs = sorted(xs)
-        tracks.append((xs[0], row_y + T.RAIL_FOOT, xs[-1], row_y + T.RAIL_FOOT,
-                       "F.Cu", nm, T.W_PWR))
-    railxs = {}
+    railends = {}
     for u in sorted(byunit):
-        ox, oy = G.unit_origin(u)
-        for spec in T.routes_10m():
-            run(u, ox, oy, spec)
+        f, urot = xf(u)
+        for spec in T.routes_10m(T.RAIL_HEAD_PPS):
+            run(u, spec)
         if byunit[u].get("U04"):
             for spec in T.routes_pps():
-                run(u, ox, oy, spec, G.SMA_PITCH)
-        railxs.setdefault(oy, []).extend(
-            [ox + T.RAIL_10M] + ([ox + T.RAIL_PPS] if byunit[u].get("U04") else []))
-        for slot, pad, vx, vy in T.VIAS_10M:
-            nm = netof(u, slot, pad)
-            if nm:
-                up = nm.startswith("HCLK") and oy > 60
-                escape(ox + vx, oy + vy, oy - 8.0 if up else oy + 45.5, nm,
-                       ox - 7.6 if up else None)
+                run(u, spec, off=T.PPS_OFFSET)
+        for slot, pad, vx, vy, ey in T.VIAS_10M:
+            escape(u, slot, pad, vx, vy, ey)
         if byunit[u].get("U04"):
-            for slot, pad, vx, vy in T.VIAS_PPS:
-                nm = netof(u, slot, pad)
-                if nm:
-                    escape(ox + G.SMA_PITCH + vx, oy + vy, oy + 45.5, nm)
+            for slot, pad, vx, vy, ey in T.VIAS_PPS:
+                escape(u, slot, pad, vx, vy, ey)
+        railends.setdefault(urot, []).append(f(T.RAIL_10M, T.RAIL_HEAD_PPS))
+        # One heater per tile, in the empty strip down the tile's outboard
+        # side: no ground pad lives there, so it costs nothing, and it puts a
+        # heater beside every channel instead of only around the outside.
+        hr = "R20%02d" % u
+        if hr in fps:
+            # Unit 13's heater sits 1.7 mm nearer its own row than the rest,
+            # which frees the strip below it for Q2001's tab -- and that in turn
+            # lets Q2001's GATE pad land on the y = 161 trunk, the trick that
+            # already freed Q2002 (round 19.5).  Nothing thermal depends on the
+            # 1.7 mm: the copper's spreading length here is 40-50 mm.  Round 20.
+            hx, hy = f(-5.0 if (u == 13 and os.environ.get("R13UP")) else -6.7,
+                       28.0)
+            put(hr, hx, hy, (90 + urot) % 360)
 
-    for oy, xs in railxs.items():
-        spine(oy, xs, "+3V3_A")
+    # One +3V3_A spine per side, straight up the margin outside the 1 pps
+    # jacks, picking up every unit's rail where it runs out of the gutter.
+    for urot, pts in railends.items():
+        xs = pts[0][0]
+        ys = sorted(p[1] for p in pts)
+        tracks.append((xs, ys[0], xs, ys[-1], "F.Cu", "+3V3_A", T.W_PWR))
 
     # ---- the helper oscillator and its fan-out ---------------------------
-    # Placed so the four second-stage buffers straddle the board centre line,
-    # which is only cosmetic -- round 10 killed branch-length matching -- but
-    # keeps the fourteen In2.Cu branches roughly symmetric about the middle.
-    HX, HY = G.BW / 2.0 - 88.5, 80.0
+    # At rot 270 so its chain, which runs +x locally, runs DOWN the centre
+    # line.  The source end sits at the top beside its own two SMAs; the four
+    # second-stage buffers stay clustered (round 10) rather than being spread
+    # out beside the rows they feed -- a buffer's threshold moves 5-10 ps/degC
+    # against 0.7 ps per 100 mm per 10 degC for the trace, so thermal
+    # clustering beats branch shortening by an order of magnitude.
+    # 1.5 mm east of where round 15 put it, which is round 19's last fix.  The
+    # thirteen left-hand returns and the twelve right-hand ones come down two
+    # corridors either side of this block: the left one was 4.5 mm wide for 13
+    # wires and the right one 12 mm for 12, and the odd one out -- BEAT_00,
+    # unit 1's, the outermost of the left fan because its source is highest up
+    # the board -- had nowhere to go.  Moving the block east lends the left
+    # corridor 1.5 mm of the right one's surplus and every return routes.
+    # Measured, not guessed.  On the 205 mm board: 0 mm left two unrouted,
+    # 1.5 mm left none, 3.0 mm left three -- by then the right corridor is the
+    # tight one.  Re-measured on the 207 mm board of round 20, where the band
+    # itself is 1 mm wider a side, 2.0 mm total is the best of 1.5, 2.0 and 2.5.
+    HX, HY = G.XC - 0.2 + float(os.environ.get("HSHIFT", "0")), 40.0
+                                  # spans x 89.0..108.6 inside the band,
+                                  # y 35..152 alongside the thirteen rows
+
+    def hf(lx, ly):
+        return (HX - ly, HY + lx)
+
     for ref, (dx, dy, rot) in sorted(H.PARTS.items()):
-        put(ref, HX + dx, HY + dy, rot)
+        put(ref, *hf(dx, dy), rot=(rot + 270) % 360)
 
     def hnet(slot, pad):
         return nets.get(slot, {}).get(pad)
 
-    for (slot, pad), w, pts in H.routes():
-        nm = hnet(slot, pad)
-        if not nm or nm.startswith("unconnected-"):
-            continue
-        for i in range(len(pts) - 1):
-            (x0, y0), (x1, y1) = pts[i], pts[i + 1]
-            if (x0, y0) != (x1, y1):
-                tracks.append((HX + x0, HY + y0, HX + x1, HY + y1,
-                               "F.Cu", nm, w))
-    for (slot, pad), w, pts in H.IN2_ROUTES:
-        nm = hnet(slot, pad)
-        if nm:
+    for lst, lyr in ((H.routes(), "F.Cu"), (H.IN2_ROUTES, "In2.Cu")):
+        for (slot, pad), w, pts in lst:
+            nm = hnet(slot, pad)
+            if not nm or nm.startswith("unconnected-"):
+                continue
             for i in range(len(pts) - 1):
-                (x0, y0), (x1, y1) = pts[i], pts[i + 1]
-                tracks.append((HX + x0, HY + y0, HX + x1, HY + y1,
-                               "In2.Cu", nm, w))
+                p0, p1 = hf(*pts[i]), hf(*pts[i + 1])
+                if p0 != p1:
+                    tracks.append(p0 + p1 + (lyr, nm, w))
+    # G.XC - 11.0 put this on U5007, the helper's own thermometer, which sits
+    # on the centre line at y = 25.  6.5 mm further left clears it.
+    out.append(text(G.XC - 17.5, 24.0, "HELPER", "F.SilkS", 2.0, 0.34))
+
+    # No escape stubs here.  The fourteen branch vias sit in a neat column 2.4 mm
+    # apart down the block's edge, already in the open lane; a stub sideways
+    # only walked into the left-hand units' hand-off column 1.8 mm away.
+    for slot, pad, vx, vy in H.VIAS:
+        nm = hnet(slot, pad)
+        if not nm:
+            continue
+        vp = hf(vx, vy)
+        tile_vias.append((vp[0], vp[1], nm))
+        if nm == "HELPER_SRC":          # hand-routed inside the block
+            continue
+        # The fourteen branch vias already sit on the block's left edge, in the
+        # open lane.  The two helper-SMA vias do not -- they are 9 and 15 mm
+        # INSIDE it, behind the block's own ground vias -- so they get a stub
+        # out to the edge, which is the only way anything can reach them.
+        ex = HX - 7.6 - 0.5
+        if vp[0] > ex + 0.5:
+            sx = round(ex / MZ.PITCH) * MZ.PITCH
+            sy = round(vp[1] / MZ.PITCH) * MZ.PITCH
+            tracks.append(vp + (sx, sy) + ("In2.Cu", nm, T.W_SIG))
+            in2_term.setdefault(nm, []).append((sx, sy))
+        else:
+            in2_term.setdefault(nm, []).append(vp)
+
     # ---- the power input block -------------------------------------------
     for ref, (px, py, prot) in sorted(PW.PARTS.items()):
-        put(ref, px, py, prot)
+        put(ref, *PW.place(px, py), rot=(prot + PW.ROT) % 360)
     for (slot, pad), w, pts in PW.routes():
         nm = nets.get(slot, {}).get(pad)
         if not nm or nm.startswith("unconnected-"):
             continue
         for i in range(len(pts) - 1):
-            (x0, y0), (x1, y1) = pts[i], pts[i + 1]
-            if (x0, y0) != (x1, y1):
-                tracks.append((x0, y0, x1, y1, "F.Cu", nm, w))
-    out.append(text(4.0, 20.0, "POWER", "F.SilkS", 2.0, 0.34))
-
-    LOCAL = {"HELPER_SRC"}          # hand-routed above, inside the block
-    for slot, pad, vx, vy in H.VIAS:
-        nm = hnet(slot, pad)
-        if not nm:
-            continue
-        if nm in LOCAL:
-            tile_vias.append((HX + vx, HY + vy, nm))
-        else:
-            escape(HX + vx, HY + vy, HY + 12.0, nm,
-                   None)
-    out.append(text(HX - 4.0, HY + H.RAIL_Y - 2.5,
-                    "HELPER OSCILLATOR AND FAN-OUT", "F.SilkS", 2.0, 0.34))
+            p0, p1 = PW.place(*pts[i]), PW.place(*pts[i + 1])
+            if p0 != p1:
+                tracks.append(p0 + p1 + ("F.Cu", nm, w))
+    out.append(text(PW.LABEL_XY[0], PW.LABEL_XY[1], "POWER", "F.SilkS", 2.0, 0.34))
 
     # ---- hand-placed: edges and hot spots ---------------------------------
     for ref, xy in sorted(hand_placed(G).items()):
         put(ref, xy[0], xy[1], xy[2] if len(xy) > 2 else 0)
-    for i, tx in enumerate(("15 V DC, 1 A MIN", "HEATER ONLY", "CENTRE POSITIVE")):
-        out.append(text(3.0, 14.0 + i * 3.2, tx, "F.SilkS", 1.5, 0.26))
-    out.append(text(3.0, 59.0, "BENCH SUPPLY  5 V, 0.5 A MIN", "F.SilkS", 1.4, 0.24))
-    out.append(text(3.0, 61.8, "NOT 15 V - THAT GOES TO THE JACK", "F.SilkS", 1.2, 0.2))
-    out.append(text(2.5, 64.6, "+5V", "F.SilkS", 1.5, 0.28))
-    out.append(text(2.5, 72.6, "GND", "F.SilkS", 1.5, 0.28))
-    for i in range(5):
-        out.append(text(206.0, 26.0 + i * 16.0, "P%d" % (i + 1), "F.SilkS", 1.8, 0.3))
-    out.append(text(212.0, 132.0, "DEBUG", "F.SilkS", 1.8, 0.3))
-    for r in ("U5001", "U5002", "U5003", "U5004", "U5005", "U5006", "U5007", "U5008"):
-        if r in placed:
-            out.append(text(placed[r][0] - 0.7, placed[r][1] + 5.2, "T", "F.SilkS", 1.8, 0.32))
+    # ---- silkscreen that belongs to a connector goes BESIDE that connector --
+    jx, jy = PW.place(*PW.PARTS["J2003"][:2])          # the 15 V barrel jack
+    out.append(text(172.0, 16.5, "15 V DC, 1 A MIN", "F.SilkS", 1.4, 0.24,
+                    just="right"))
+    # Round 21: at jy-8.0 this printed across D2005's cathode pad, and the
+    # "15 V DC" line above it across J2001's post.  Both moved down into the
+    # clear strip under the jack: x 149..175, y 15..21, between D2001/D2005
+    # above and D2004/F2001 below.
+    out.append(text(172.0, 19.5, "HEATER ONLY, CENTRE +", "F.SilkS", 1.2, 0.2,
+                    just="right"))
+    p5 = PW.place(*PW.PARTS["J2001"][:2])              # bench +5V post
+    pg = PW.place(*PW.PARTS["J2002"][:2])              # bench GND post
+    # BESIDE the posts, not below them: below is where D2001 and D2002 are, and
+    # both labels were printing on a Schottky's pad.
+    out.append(text(p5[0] + 5.0, p5[1], "+5V", "F.SilkS", 1.5, 0.28))
+    out.append(text(pg[0] - 5.0, pg[1], "GND", "F.SilkS", 1.5, 0.28,
+                    just="right"))
+    out.append(text(pg[0] - 3.0, 1.1, "BENCH 5 V IN - OR LEAVE OPEN.  PYNQ MUST "
+                    "BE POWERED: ITS PINS ARE ABS-MAX 0.55 V OFF",
+                    "F.SilkS", 1.0, 0.16))
+    # Round 21.  The PYNQ-Z2 user manual, table 15: an UNPOWERED Zynq I/O pin
+    # has an absolute maximum of 0.55 V.  Bench-powering this board with the
+    # PYNQ off drives 3.3 V into twenty-six of them.  The PYNQ's own 200 R
+    # series resistors hold it to about 14 mA a pin, so it is not instantly
+    # fatal, but it is still an abs-max violation on every return line.
+    # (the warning is folded into the line above -- the strip above the posts
+    # is only 2.5 mm tall and holds exactly one line)
+    # the two helper jacks, decoded right underneath themselves
+    # The jacks keep their short HIN / HO markers; the LEVELS go in the
+    # bottom legend with the other SMA ranges, because the strip round the two
+    # jacks holds the markers, C2003 and the power block and nothing else.
+    # ---- silkscreen markers that dodge pads -------------------------------
+    # Round 21.  Every one of these single letters is the key to the test-point
+    # legend, and the fab CLIPS silkscreen where it would land on a pad -- so a
+    # letter placed on a neighbour's pad is not a manufacturing fault, it is
+    # simply gone, or half gone, which is worse because a clipped B reads as an
+    # E.  Before this pass 60-odd of them were printing on pads.  Rather than
+    # hand-tune 60 offsets that the next placement change would invalidate, try
+    # a ring of candidate positions and take the first that lands on bare
+    # board.  gr_text with justify left is anchored on the left edge and
+    # CENTRED vertically, which is what the box below assumes; the 0.82 advance
+    # is calibrated against KiCad's own bounding boxes (see check_overlap.py).
+    # The cache is keyed on how many parts are placed, because the block
+    # packer adds the probe and housekeeping parts LATER -- after the
+    # test-point letters are emitted but before the wire-colour markers are.
+    # A cache that did not notice would have let the colour markers dodge a
+    # list that did not yet contain the 1-Wire pull-ups they were landing on.
+    _padbox = {"n": -1, "boxes": []}
+    _placed_markers = []
+
+    def pad_boxes():
+        if _padbox["n"] == len(placed):
+            return _padbox["boxes"]
+        _padbox["n"], _padbox["boxes"] = len(placed), []
+        for ref, (bx, by, brot) in sorted(placed.items()):
+            lib, name = fps[ref].split(":", 1)
+            d = (LOCAL_FP if lib == "GPSDO-PYNQ-Z2"
+                 else os.path.join(KFP, lib + ".pretty"))
+            for pn, ax, ay, tht, hd, prect in P.pads(d, name, bx, by, brot):
+                hw, hh, pang = prect
+                if round(pang) % 180:
+                    hw, hh = hh, hw
+                # A through-hole pad's annular ring can be bigger than the
+                # copper rectangle the footprint declares, and the SMA jacks
+                # are all through-hole -- without this the dodge happily walked
+                # a marker onto J201's centre pin.
+                if hd:
+                    hw, hh = max(hw, hd / 2.0), max(hh, hd / 2.0)
+                _padbox["boxes"].append((ax - hw, ay - hh, ax + hw, ay + hh))
+        return _padbox["boxes"]
+
+    def ring(dx0, dy0, step=0.9, rmax=9.0):
+        """The preferred offset first, then a widening spiral around it.
+
+        A fixed shortlist of six or eight offsets was not enough: the heater
+        markers inside a tile and the TP_SQ letters beside a BAV99 exhausted it
+        and fell back to a position on a pad.  A spiral always finds bare board
+        if there is any within rmax.
+        """
+        import math as _mm
+        out = [(dx0, dy0)]
+        r = step
+        while r <= rmax + 1e-9:
+            for k in range(12):
+                a = 2.0 * _mm.pi * k / 12.0
+                out.append((dx0 + r * _mm.cos(a), dy0 + r * _mm.sin(a)))
+            r += step
+        return out
+
+    def marker(px, py, s, size, thick, offsets, angle=0):
+        """`s` at the first offset whose ink clears every pad; else offsets[0].
+
+        At angle 90 KiCad turns left-justified text to read UP the board, so
+        the ink runs from the anchor towards smaller y and the box turns with
+        it.  That is how the probe-terminal wire colours are drawn.
+        """
+        w = len(s) * size * 0.82
+        half = size / 2.0 + thick / 2.0
+        # ...and against markers already placed.  Two heater `H` almost landed
+        # on each other at (156.3, 58.1) when the spiral pushed them into the
+        # same gap from opposite sides: dodging pads is not enough if the thing
+        # you dodge into is another dodger.
+        near = [q for q in pad_boxes() + _placed_markers
+                if q[0] < px + 22.0 and q[2] > px - 22.0
+                and q[1] < py + 22.0 and q[3] > py - 22.0]
+        for dx, dy in offsets:
+            x, y = px + dx, py + dy
+            M = 0.5
+            if angle:
+                box = (x - half - M, y - w - M, x + half + M, y + M)
+            else:
+                box = (x - M, y - half - M, x + w + M, y + half + M)
+            if not any(box[0] < q[2] and q[0] < box[2] and
+                       box[1] < q[3] and q[1] < box[3] for q in near):
+                _placed_markers.append(box)
+                return text(x, y, s, "F.SilkS", size, thick, angle=angle)
+        dx, dy = offsets[0]
+        x, y = px + dx, py + dy
+        if angle:
+            _placed_markers.append((x - half, y - w, x + half, y))
+        else:
+            _placed_markers.append((x, y - half, x + w, y + half))
+        return text(x, y, s, "F.SilkS", size, thick, angle=angle)
+
+    # A ring: the preferred spot first, then further out on each side.  The
+    # first entry of each list is the pre-round-21 position, so a marker that
+    # was already clear does not move.
+    RING_T = ring(-0.8, 5.0)
+    RING_H = ring(-0.8, 4.6)
+
+    # T under every thermometer, H under every heater
+    for r, (px, py, _rot) in sorted(placed.items()):
+        if r.startswith("U50") and r not in ("U5009",):
+            out.append(marker(px, py, "T", 1.7, 0.3, RING_T))
+    for r, (px, py, prot) in sorted(placed.items()):
+        if r.startswith("R20"):
+            out.append(marker(px, py, "H", 1.5, 0.28, RING_H))
+    out.append(text(G.BW - 4.0, G.BH - 12.0, "DEBUG", "F.SilkS", 1.6, 0.28,
+                    just="right"))
 
     # ---- a silkscreen box around each input circuit ------------------------
     # One per 10 MHz chain and one per pps chain, so each unit reads as two
@@ -536,12 +851,14 @@ def build():
     # millimetre per part.  A fixed rectangle also makes the two boxes of a
     # unit read as a pair, and gives the gutter a constant width for the rail.
     for u in sorted(byunit):
-        ox, oy = G.unit_origin(u)
-        groups = [(T.BOX_10M, 0.0)]
+        f, _ = xf(u)
+        boxes_u = [T.BOX_10M]
         if byunit[u].get("U04"):
-            groups.append((T.BOX_PPS, G.SMA_PITCH))
-        for (bx0, by0, bx1, by1), xoff in groups:
-            out.append(rect(ox + xoff + bx0, oy + by0, ox + xoff + bx1, oy + by1,
+            boxes_u.append(T.pps_box())
+        for bx0, by0, bx1, by1 in boxes_u:
+            cs = [f(bx0, by0), f(bx1, by0), f(bx1, by1), f(bx0, by1)]
+            out.append(rect(min(c[0] for c in cs), min(c[1] for c in cs),
+                            max(c[0] for c in cs), max(c[1] for c in cs),
                             "F.SilkS", 0.15))
 
     # ---- test point letters, next to the pad ------------------------------
@@ -550,17 +867,26 @@ def build():
             continue
         L = TPLETTER.get(vals.get(r, ""))
         if L:
-            out.append(text(xy[0] + 1.5, xy[1] - 1.4, L, "F.SilkS", 1.5, 0.3))
+            out.append(marker(xy[0], xy[1], L, 1.5, 0.3, ring(1.5, -1.4)))
 
     # ---- debug header, a name against every pin ---------------------------
     if "J5001" in placed:
-        hx, hy, _ = placed["J5001"]
-        sigs = ["+3V3_A", "+3V3_D", "+5V_HDR", "HELPER_CLK", "HCLK_00",
-                "BEAT_00", "BEAT_12", "PPS_00", "I2C_SDA", "I2C_SCL"]
-        for i, s in enumerate(sigs):
-            out.append(text(hx - 2.6, hy + i * 2.54 + 0.5, s, "F.SilkS", 1.1, 0.18,
-                            just="right"))
-            out.append(text(hx + 5.2, hy + i * 2.54 + 0.5, "GND", "F.SilkS", 1.1, 0.18))
+        hx, hy, hrot = placed["J5001"]
+        # Names come from the netlist, not a list typed here that goes stale --
+        # this one still claimed BEAT_00 and HELPER_CLK, which round 13 removed
+        # from the debug header on purpose.  And at rot 90 the labels have to
+        # turn with the connector.
+        jn = nets.get("J5001", {})
+        # At rot 270 pin 1 is at +x and the numbering runs back towards -x, and
+        # the names read above the connector, on the side the signal row faces.
+        step = -2.54 if hrot == 270 else 2.54
+        dy = -4.2 if hrot == 270 else 4.2
+        for i in range(10):
+            s = jn.get(str(2 * i + 1), "")
+            if not s or s.startswith("unconnected-"):
+                continue
+            out.append(text(hx + i * step, hy + dy, s, "F.SilkS", 1.0, 0.16,
+                            angle=90))
 
     # ---- everything else, in blocks ---------------------------------------
     byblock = {}
@@ -601,7 +927,10 @@ def build():
             put(r, cx + w / 2.0, cy + h / 2.0)
             cx += w + 1.6
             rowh = max(rowh, h)
-        out.append(text(bx, by - 2.0, label, "F.SilkS", 2.0, 0.3))
+        # Right-hand end, not the left: at the left the "1-WIRE" label sat on
+        # FB6001 and R6003, and "HOUSEKEEPING" ran into the author line.
+        out.append(text(bx1 + 4.0, by - 2.0, label, "F.SilkS", 2.0, 0.3,
+                        just="right"))
         out.append(rect(bx - 1.5, by - 4.5, bx1 + 1.5, by1 + 1.5, "Cmts.User", 0.12))
     if overflow:
         out.append(text(4.0, 99.0, "OVERFLOW: %d parts did not fit their block"
@@ -610,19 +939,31 @@ def build():
         print("OVERFLOW:", overflow, file=_s.stderr)
 
     # ---- probe terminal legend, on the board where the wires get screwed in
+    # A wire colour against every screw, which is what you need with five
+    # identical three-way blocks and fifteen wires in your hand.  Rotated 90 so
+    # a three-letter word fits the 3.5 mm screw pitch, and reading up the board
+    # out of the free strip between the terminals and the 1-Wire block.
     for i in range(5):
         pr = "J600%d" % (i + 1)
         if pr not in placed:
             continue
         lib, nm = fps[pr].split(":", 1)
         dd = LOCAL_FP if lib == "GPSDO-PYNQ-Z2" else os.path.join(KFP, lib + ".pretty")
-        for pn, ax, ay, _t, _h in P.pads(dd, nm, *placed[pr]):
-            lab = {"1": "DAT yel", "2": "VCC red", "3": "GND blk"}.get(pn)
+        pd = sorted(P.pads(dd, nm, *placed[pr]), key=lambda q: q[0])
+        for pn, ax, ay, _t, _h, _rc in pd:
+            lab = {"1": "yel", "2": "red", "3": "blk"}.get(pn)
             if lab:
-                out.append(text(ax - 7.5, ay + 0.5, lab, "F.SilkS", 1.25, 0.2,
-                                just="right"))
-    out.append(text(112.0, 97.5, "1-WIRE PROBES: STANDARD SPEED ONLY, no 4k7 pullup "
-                    "(the DS2482 has its own)", "F.SilkS", 1.3, 0.22))
+                # y = 16.2 ran these three-letter words straight up through the
+                # 1-Wire pull-ups at y 12.3..16.9.  Same dodge as the test-point
+                # letters: keep the original spot when it is clear, step down
+                # into the gap above the terminals otherwise.
+                out.append(marker(ax, 16.2, lab, 1.0, 0.16,
+                                  ring(0.45, 0.0, step=0.9, rmax=7.0),
+                                  angle=90))
+        out.append(text(placed[pr][0], 2.6, "P%d" % (i + 1), "F.SilkS", 1.5, 0.26))
+    out.append(text(14.0, 35.2, "1-WIRE PROBES   yel = DATA   red = VCC   "
+                    "blk = GND   -   standard speed, no 4k7 pullup needed",
+                    "F.SilkS", 1.1, 0.18))
 
     # ---- every SMD GND pad gets a stub and a via down to the plane ---------
     # This is what makes the ratsnest readable: with ground already connected,
@@ -633,10 +974,589 @@ def build():
     for ref, (px, py, prot) in sorted(placed.items()):
         lib, name = fps[ref].split(":", 1)
         d = LOCAL_FP if lib == "GPSDO-PYNQ-Z2" else os.path.join(KFP, lib + ".pretty")
-        for pn, ax, ay, tht, hd in P.pads(d, name, px, py, prot):
-            allpads.append((ref, pn, ax, ay, tht, nets.get(ref, {}).get(pn), hd))
+        _n0 = len(allpads)
+        for pn, ax, ay, tht, hd, prect in P.pads(d, name, px, py, prot):
+            allpads.append((ref, pn, ax, ay, tht, nets.get(ref, {}).get(pn), hd,
+                            prect))
+        # Every footprint must yield at least one pad.  Round 14's worst bug was
+        # a regex in place.pads() that silently matched nothing for our own SMA
+        # footprint, which writes its pads on one line -- so all 27 jacks'
+        # through-hole pads were invisible to every collision test on the board,
+        # including the ground-via search, for four rounds.  A reader of that
+        # code could not see it; this line would have.  It costs nothing and the
+        # pad reader has grown two more optional fields since.
+        assert len(allpads) > _n0, (
+            "%s (%s) yielded NO pads -- place.pads() failed to parse %s"
+            % (ref, fps[ref], os.path.join(d, name + ".kicad_mod")))
 
     gnd_no = numof["GND"]
+
+    # ---- bond every duplicated pad number to itself -----------------------
+    # SOT-223-3_TabPin2 declares pad "2" TWICE: the centre lead and the big
+    # tab.  They are the same pin of the same device, but KiCad's connectivity
+    # does NOT join two same-numbered pads across bare board -- it wants
+    # copper, like any other pair.  Round 21 found Q2002's centre lead sitting
+    # completely isolated on the finished board, with the tab 6.3 mm away
+    # carrying the whole drain net: one unconnected item, and pure luck that
+    # Q2001 and Q2003 had picked up a stub that happened to reach both.
+    #
+    # So bond them here rather than leaving it to the router, which has no
+    # reason to know the two pads are the same thing.  The copper between a
+    # tab and its own lead is the same net by definition, so a straight track
+    # is always safe.  This is written against duplicate pad NUMBERS, not
+    # against SOT-223, so any future tabbed package is covered too.
+    _bypad = {}
+    for ref, pn, ax, ay, tht, nname, hd, prect in allpads:
+        _bypad.setdefault((ref, pn), []).append((ax, ay, nname))
+    # ...but ONLY where the straight line is safe.  An SMA_Vertical_THT jack
+    # declares its four shield pads all as pad "2", and a straight track
+    # between two opposite ones runs clean through the centre pin.  So every
+    # candidate bond is checked against every pad of a DIFFERENT net first,
+    # and dropped if it does not clear.  Of 84 candidates on this board only a
+    # handful are real tab-to-lead pairs; the rest are shield rings that are
+    # already tied together by the ground pour and need nothing.
+    def _seg_pad_gap(x0, y0, x1, y1, px, py, hw, hh):
+        import math as _bm
+        dx, dy = x1 - x0, y1 - y0
+        L = dx * dx + dy * dy
+        s = 0.0 if L == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L))
+        cx, cy = x0 + s * dx, y0 + s * dy
+        return _bm.hypot(max(0.0, abs(cx - px) - hw), max(0.0, abs(cy - py) - hh))
+
+    _bonds, _skipped = 0, 0
+    for (ref, pn), lst in sorted(_bypad.items()):
+        if len(lst) < 2:
+            continue
+        nm = lst[0][2]
+        if not nm or nm.startswith("unconnected-"):
+            continue
+        if nm == "GND":
+            continue        # already tied together by the pour on three layers
+        ax, ay, _ = lst[0]
+        for bx, by, _ in lst[1:]:
+            ok = True
+            for oref, opn, ox, oy, otht, onm, ohd, oprect in allpads:
+                if onm == nm:
+                    continue
+                ohw, ohh, oang = oprect
+                if round(oang) % 180:
+                    ohw, ohh = ohh, ohw
+                if ohd:
+                    ohw, ohh = max(ohw, ohd / 2.0), max(ohh, ohd / 2.0)
+                if (_seg_pad_gap(ax, ay, bx, by, ox, oy, ohw, ohh)
+                        < 0.15 + T.W_PWR / 2.0):
+                    ok = False
+                    break
+            if ok:
+                tracks.append((ax, ay, bx, by, "F.Cu", nm, T.W_PWR))
+                _bonds += 1
+            else:
+                _skipped += 1
+    import sys as _bs
+    print("bonded %d duplicated pad pairs, skipped %d as unsafe"
+          % (_bonds, _skipped), file=_bs.stderr)
+
+    # ---- lane design aid --------------------------------------------------
+    # With SPINEDUMP set, write out everything that exists BEFORE the ground
+    # vias and the routers run -- every pad and every hand-laid track -- and
+    # stop.  Choosing a distribution lane means asking "what is already in this
+    # strip", and asking that against the FINISHED board gives the wrong answer:
+    # most of what is in the way at the end is the router's own output, which
+    # would have gone somewhere else had the lane been there first.
+    # The two column drains get their own margin lane 2.2 mm inside the
+    # +15 V one -- see LANES below for why that gap is wider than the rest.
+    DRAIN_X = {"Net-(Q2001-D)": 6.4, "Net-(Q2002-D)": G.BW - 6.4}
+
+    # ---- distribution lanes ----------------------------------------------
+    # Nine nets have to reach every corner of this board: the two 3.3 V rails,
+    # +15V_HTR, the three heater drains, I2C and 1-Wire.  Rounds 16 and 17 left
+    # them to the maze router and it could not finish them; more rip-up passes
+    # and thinner track did not move the number, because the obstacle is not
+    # the search order.  It is that by the time the router sees them, F.Cu is
+    # full of thirteen tiles and In2 is full of twenty-five returns.
+    #
+    # Look at the board BEFORE any of that is placed, though, and In2 is empty
+    # exactly where a distribution net wants to be:
+    #   - both 10 mm margins, x 1..11 and 194..204, clear from y 19 to 176;
+    #   - the top band, y 19..35, clear right across;
+    #   - the bottom band, y 157..169, clear right across;
+    #   - and at every in-tile heater's own row, a clear run from the margin
+    #     all the way in to its pads.
+    # Every part on this board is SMD on F.Cu, so In2 in the margins has
+    # nothing in it at all.  What fills those lanes by the end is the ground
+    # vias and the router's own output -- and both of those AVOID EXISTING
+    # TRACK.  So the lanes cost nothing if they are laid first.  That is the
+    # same trick that makes the +3V3_A rail work inside a tile.
+    #
+    # Each lane is a trunk, not a finished net: it gets the copper to within a
+    # couple of millimetres of every pad and leaves the last hop to the
+    # multi-terminal pass, which is a job that router is good at and was never
+    # being given.
+    #
+    # spine() refuses to lay anything that would not pass DRC.  Where a lane
+    # crosses something already there it hops to F.Cu for a millimetre or two
+    # and back; where it cannot, it drops that segment and says so.  A missing
+    # segment costs ratsnest, which is honest.  The first attempt at this had
+    # no such check, ran a link straight through the 1-Wire block, and produced
+    # four DRC errors and six MORE unconnected items than it started with.
+    W_LANE = 0.3
+    # CLR is the margin the analytic checks keep BEYOND the copper itself.  It
+    # is 0.15 while the rule kicad-cli enforces on this board is 0.2, and that
+    # is deliberate: these checks are a filter in front of the DRC, not a
+    # replacement for it, and 0.2 everywhere refuses so many candidate paths
+    # that eight nets stop routing.  Measured, round 20: at 0.15 the board
+    # comes out with zero violations; at 0.2 it comes out with eight fewer
+    # connections and still zero violations.  The DRC is what decides, and it
+    # is run on every build.
+    #
+    # VR is the real one.  A via is 0.6 mm across, so a track must stay
+    # 0.3 + clearance from its centre -- and THAT was wrong until round 20,
+    # written as a flat 0.45 which is 0.05 short.  It cost nothing for as long
+    # as the grid happened to keep things further apart than the check did,
+    # and fifteen clearance errors the moment the grid changed.
+    CLR, VIA_R = 0.15, 0.3
+    VIA_GROW = 0.15
+    # STRICTVIA turns on the two corrections round 20 found and could not yet
+    # afford.  Off, the analytic checks are exactly what produced this board;
+    # on, they are what the rules actually say.  See 20.4 in the write-up: the
+    # corrected checks are RIGHT and they cost five to eight nets, because they
+    # are now stricter than the GRID the router searches, and the two have to
+    # be made to agree before either can be tightened alone.
+    STRICT = bool(os.environ.get("STRICTVIA"))
+    VR = VIA_R + (0.05 if STRICT else 0.0)
+
+    def _pdist(px, py, x0, y0, x1, y1):
+        dx, dy = x1 - x0, y1 - y0
+        L2 = dx * dx + dy * dy
+        u = 0.0 if L2 == 0 else max(0.0, min(
+            1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
+        return _m.hypot(px - (x0 + u * dx), py - (y0 + u * dy))
+
+    def pt_why(px, py, lyr, nm, w, grow=0.0):
+        """Same test as pt_clear, but says WHAT is in the way."""
+        for _r, _p, ax, ay, tht, net, hd, rc in allpads:
+            if net == nm or not (tht or lyr == "F.Cu"):
+                continue
+            if P.pad_gap(px, py, ax, ay, rc) < w / 2.0 + 0.2 + grow:
+                return "pad %s.%s[%s]" % (_r, _p, net)
+        for a, b, c, d, l, n2, w2 in tracks:
+            if n2 == nm or l != lyr:
+                continue
+            if _pdist(px, py, a, b, c, d) < w / 2.0 + w2 / 2.0 + 0.2 + grow:
+                return "trk %s %s (%.1f,%.1f)-(%.1f,%.1f)" % (n2, l, a, b, c, d)
+        for vx, vy, n2 in tile_vias:
+            if n2 == nm:
+                continue
+            if (px - vx) ** 2 + (py - vy) ** 2 < (w / 2.0 + 0.5 + grow) ** 2:
+                return "via %s (%.1f,%.1f)" % (n2, vx, vy)
+        return None
+
+    def pt_clear(px, py, lyr, nm, w, grow=0.0):
+        """Could a track of width w on lyr sit here?  SMD pads live on F.Cu
+        only, so In2 sees only the through-hole ones -- which is the whole
+        reason there is room for these lanes."""
+        for _r, _p, ax, ay, tht, net, hd, rc in allpads:
+            if net == nm or not (tht or lyr == "F.Cu"):
+                continue
+            # The real rectangle, not the half-diagonal: these lanes have to
+            # thread between a SOIC-8's pins, where the circle is 1 mm wrong.
+            if P.pad_gap(px, py, ax, ay, rc) < w / 2.0 + 0.2 + grow:
+                return False
+        for a, b, c, d, l, n2, w2 in tracks:
+            if n2 == nm or l != lyr:
+                continue
+            if _pdist(px, py, a, b, c, d) < w / 2.0 + w2 / 2.0 + 0.2 + grow:
+                return False
+        for vx, vy, n2 in tile_vias:
+            if n2 == nm:
+                continue
+            if (px - vx) ** 2 + (py - vy) ** 2 < (w / 2.0 + 0.5 + grow) ** 2:
+                return False
+        return True
+
+    spine_report = []
+
+    def spine(nm, pts, w=W_LANE, lyr="In2.Cu"):
+        """Lay a hand-routed trunk, hopping to the other layer over anything
+        already in the way."""
+        if nm not in numof:
+            return
+        other = "F.Cu" if lyr == "In2.Cu" else "In2.Cu"
+        JOG, STEP = 0.8, 0.25
+        for i in range(len(pts) - 1):
+            (x0, y0), (x1, y1) = pts[i], pts[i + 1]
+            L = _m.hypot(x1 - x0, y1 - y0)
+            if L < 1e-9:
+                continue
+            ux, uy = (x1 - x0) / L, (y1 - y0) / L
+            n = max(2, int(L / STEP) + 1)
+            bad = [not pt_clear(x0 + ux * L * k / n, y0 + uy * L * k / n,
+                                lyr, nm, w) for k in range(n + 1)]
+            runs, k = [], 0
+            while k <= n:
+                if bad[k]:
+                    j = k
+                    while j <= n and bad[j]:
+                        j += 1
+                    runs.append((k * L / n, (j - 1) * L / n))
+                    k = j
+                else:
+                    k += 1
+            # Widen each blocked run into a jog window and merge any that now
+            # touch.  A window that runs off either end is not a failure: the
+            # segment simply STARTS (or ends) on the other layer, with the via
+            # at the segment's own endpoint.  That is the ordinary case for a
+            # spur leaving a trunk that has a neighbouring lane a couple of
+            # millimetres away -- there is no room to jog after setting off, so
+            # it sets off already on the other layer.
+            wins = []
+            for a, b in runs:
+                a, b = max(0.0, a - JOG), min(L, b + JOG)
+                if wins and a < wins[-1][1] + 0.8:
+                    wins[-1] = (wins[-1][0], b)
+                else:
+                    wins.append((a, b))
+            if wins and wins[0][0] <= 0.0 and wins[-1][1] >= L:
+                spine_report.append((nm, (x0, y0, x1, y1), "blocked end to end"))
+                continue
+            # Build the whole piece list first, then accept or reject it whole.
+            segs, vis, t = [], [], 0.0
+            for a, b in wins:
+                pa = (x0 + ux * a, y0 + uy * a)
+                pb = (x0 + ux * b, y0 + uy * b)
+                if a > 0.0:
+                    segs.append((x0 + ux * t, y0 + uy * t, pa[0], pa[1], lyr))
+                segs.append((pa[0], pa[1], pb[0], pb[1], other))
+                vis += [pa, pb]
+                t = b
+            if t < L:
+                segs.append((x0 + ux * t, y0 + uy * t, x1, y1, lyr))
+            ok, why = True, ""
+            for ax, ay, bx, by, sl in segs:
+                if _m.hypot(bx - ax, by - ay) < 1e-9:
+                    continue
+                m2 = max(2, int(_m.hypot(bx - ax, by - ay) / STEP) + 1)
+                for k in range(m2 + 1):
+                    qx = ax + (bx - ax) * k / m2
+                    qy = ay + (by - ay) * k / m2
+                    if not pt_clear(qx, qy, sl, nm, w):
+                        ok = False
+                        why = "%s at (%.1f,%.1f) hits %s" % (
+                            sl, qx, qy, pt_why(qx, qy, sl, nm, w))
+                        break
+                if not ok:
+                    break
+            for vx, vy in vis:
+                # A via needs its own 0.3 mm radius plus clearance, which is
+                # more than the track it replaces.
+                for sl in (lyr, other):
+                    if not pt_clear(vx, vy, sl, nm, w, VR - w / 2.0 + 0.05):
+                        ok = False
+                        why = why or "via (%.1f,%.1f) on %s hits %s" % (
+                            vx, vy, sl, pt_why(vx, vy, sl, nm, w, 0.15))
+            if not ok:
+                spine_report.append((nm, (x0, y0, x1, y1),
+                                     "%d jog(s): %s" % (len(wins), why)))
+                continue
+            for ax, ay, bx, by, sl in segs:
+                if _m.hypot(bx - ax, by - ay) > 1e-9:
+                    tracks.append((ax, ay, bx, by, sl, nm, w))
+            for vx, vy in vis:
+                tile_vias.append((vx, vy, nm))
+
+    # The margin lanes, west to east on the left and mirrored on the right.
+    # Each carries the y at which its two margins are linked across the top and
+    # how far down the margin it has to run.
+    #
+    # The ORDER is what makes the top band work: the outermost lane gets the
+    # HIGHEST link, and every lane starts at its own link, so a link only ever
+    # passes over lanes that have not begun yet.  Nothing crosses anything, and
+    # six nets get both margins joined without a single via.
+    #
+    # NOTHING here sends a spur inward.  That is a rule, not an accident: two
+    # lanes in the same 10 mm margin that both have to reach the tile array
+    # cannot both get there, because the outer one's spur has to cross the
+    # inner one, and there is nowhere in this margin for the jog to land -- the
+    # 8.97 mm pin column, the 6.5 mm bead column and the +3V3_A rail at 10.8
+    # leave no clear millimetre of F.Cu between them.  The heater rails go down
+    # the TILE COLUMNS instead (below), where their own pads already form the
+    # lane.
+    #   x     net              link y  down to
+    # The links sit at y = 26..34, not 20..28, because the two helper jacks put
+    # a 12 mm escape stub straight down the board from y = 12 to y = 24 and
+    # those stubs are laid blind, after this, by the two-point pass.  Higher up
+    # the first four links crossed them: five tracks_crossing errors, and the
+    # only ones that round produced.
+    #
+    # The pitch is 1.6 mm, not 0.8.  A lane is only useful if something can drop
+    # a VIA on it, and a via needs its own cell and its four neighbours clear on
+    # both layers -- 1.5 mm across.  At 0.8 mm pitch the six lanes blocked In2
+    # continuously from x = 0.35 to 4.85, so the thermometers' I2C pins had no
+    # via site anywhere in the margin and ten I2C connections could not be made.
+    # At 1.6 mm a via sits on its own lane with 1.1 mm to its neighbours.
+    #
+    # Left and right are NOT mirror images, because the parts are not.  A
+    # TMP1075 has SDA and SCL on pins 1-2 and V+ and the address straps on
+    # 5-8, and all eight parts are at rot 0, so in the left margin the I2C pins
+    # face outward and in the right margin they face inward.  Mirroring the
+    # lanes put the right-hand I2C lane 7 mm from its own pins with the part's
+    # other four pins in between.  Each side is ordered by what it has to
+    # reach.  The cost is that the links no longer nest, so a few of them cross
+    # in the top band; spine() jogs over those, and the top band is empty.
+    #   left x  net              right x  link y   down to
+    # The six links share a 4 mm band, 25.0 to 29.0.  Above it is the helper
+    # jacks' escape stub, which runs down to y = 24; below it is Q2003, whose
+    # SOT-223 pads occupy y 29.4..34.6 in the right margin.  A link needs no
+    # via site of its own -- only the verticals do -- so 0.8 mm between them is
+    # plenty here.
+    # The right margin is the MIRROR of the left, now that the parts in it are
+    # (see hand_placed).  That is why there is no separate right-hand column in
+    # this table: 205 - x, and every clearance holds on both sides.  Round 18
+    # placed the two sides independently, by where a via could be got in given
+    # parts that faced the wrong way, and no arrangement covered every pin.
+    #   left x  net              link y   down to
+    LANES = [(1.4, "I2C_SCL", 25.0, G.BH - 4.0),
+             (3.0, "I2C_SDA", 25.8, G.BH - 4.0),
+             (4.6, "Net-(Q2003-D)", 26.6, 155.0),
+             (6.2, "HTR_DRIVE", 27.4, G.BH - 4.0),
+             (7.8, "+3V3_D", 28.2, G.BH - 4.0),
+             (9.4, "+15V_HTR", 29.0, 155.0)]
+    LANE_X = {nm: lx for lx, nm, _l, _b in LANES}
+    LANE_Y = {nm: ly for _lx, nm, ly, _b in LANES}
+    LANE_RX = {nm: G.BW - lx for lx, nm, _l, _b in LANES}
+    for lx, nm, ly, by in LANES:
+        rx = G.BW - lx
+        spine(nm, [(lx, ly), (rx, ly)])                    # the top link
+        spine(nm, [(lx, ly), (lx, by)])                    # left margin
+        spine(nm, [(rx, ly), (rx, by)])                    # right margin
+
+    # ---- the heater rails down the tile columns ---------------------------
+    # Each in-tile heater is a 2010 lying across the tile's outboard strip with
+    # its +15 V pad inboard and its drain pad outboard, and the thirteen of them
+    # sit on two rows 17.8 mm apart -- so their pads already form four straight
+    # vertical lines: +15 V at x = 73.21 and 131.79, drain at 68.59 and 136.41.
+    # A trunk laid ON one of those lines runs through every pad it has to
+    # reach, crosses no other rail, and needs no spurs at all.
+    #
+    # The only thing in the way is the 1 pps escape stub, which leaves each
+    # tile horizontally at its row + 4.9 mm; the trunk hops to F.Cu for a
+    # couple of millimetres there.  That F.Cu is the tile's own empty outboard
+    # strip, which is why the heater is in it in the first place.
+    # dx from the unit's own origin, and how far down the column has to run:
+    # the left pair carries on to R2023 at y = 174 and the right pair stops at
+    # R2024 and the FET, well clear of the socket at 169.
+    # dx from the unit's own origin, then the top and bottom of the trunk.  The
+    # +15 V pair starts ON its own top link at y = 32 -- that is how it is fed;
+    # the two drains start BELOW every link, because they are fed from the FET
+    # at the foot of their own column and must not cross anything on the way.
+    HCOL = {("+15V_HTR", True): (30.31, 32.0, 176.0),
+            ("+15V_HTR", False): (30.31, 32.0, 160.0),
+            ("Net-(Q2001-D)", True): (25.69, 40.0, 176.0),
+            ("Net-(Q2002-D)", False): (25.69, 40.0, 168.0)}
+    for (nm, left), (dx, ytop, ybot) in sorted(HCOL.items()):
+        sgn = 1.0 if left else -1.0
+        cx = G.XC - sgn * G.SMA_10M_DX + sgn * dx
+        spine(nm, [(cx, ytop), (cx, ybot)])
+
+    # Two of the three heaters below the array sit ON the columns and need no
+    # copper of their own.  The third, R2022, is on the centre line under the
+    # helper: it is reached along the clear band at y = 151..153, which is under
+    # the last right-hand tile row and above the helper's foot.
+    LCOL_D = G.XC - G.SMA_10M_DX + 25.69       # left drain column, x = 68.59
+    LCOL_H = G.XC - G.SMA_10M_DX + 30.31       # left +15 V column, x = 73.21
+    RCOL_D = G.XC + G.SMA_10M_DX - 25.69       # right drain column, x = 136.41
+    RCOL_H = G.XC + G.SMA_10M_DX - 30.31       # right +15 V column, x = 131.79
+    spine("Net-(Q2002-D)", [(RCOL_D, 153.0), (104.81, 153.0), (104.81, 156.0)])
+    spine("+15V_HTR", [(RCOL_H, 151.0), (100.19, 151.0), (100.19, 156.0)])
+    # The gate line has to reach all three FETs, and two of them sit at the
+    # foot of their own tile column.  y = 161 is the one clear row between the
+    # last tile and the socket comb.
+    # ...and its last 2.5 mm on F.Cu rather than In2, so that it arrives on
+    # Q2002's gate pad without needing a lane of its own down to it.
+    spine("HTR_DRIVE", [(LANE_X["HTR_DRIVE"], 161.0), (128.5, 161.0)])
+    spine("HTR_DRIVE", [(128.5, 161.0), (131.0, 161.0)], w=T.W_SIG, lyr="F.Cu")
+    if (pt_clear(128.5, 161.0, "F.Cu", "HTR_DRIVE", T.W_SIG, VIA_GROW) and
+            pt_clear(128.5, 161.0, "In2.Cu", "HTR_DRIVE", T.W_SIG, VIA_GROW)):
+        tile_vias.append((128.5, 161.0, "HTR_DRIVE"))
+    else:
+        spine_report.append(("HTR_DRIVE", (128.5, 161.0, 128.5, 161.0),
+                             "no room for the gate trunk's F.Cu hop"))
+    # All three gates, laid by hand.  A SOT-223's gate is 2.3 mm from its own
+    # drain tab on the same x, and the router kept losing one or other of these
+    # last hops -- and losing them silently, because a missing gate shows up in
+    # the DRC report as whichever pair of items happens to be closest across
+    # the two halves of the net, which was twice a pad 130 mm from the actual
+    # break.  They are short, forced and identical, so there is no reason for a
+    # search to be involved at all.
+    #
+    # Q2001 and Q2002 sit just under the y = 161 gate trunk, so each drops
+    # straight down its own x.  Q2003 is up in the right margin beside the gate
+    # lane, so it runs across at its gate's own y, under its own package and
+    # clear of the tab above it and the source pin beyond it.
+    def _lerp(a, b, step=0.25):
+        n = max(2, int(_m.hypot(b[0] - a[0], b[1] - a[1]) / step) + 1)
+        return [(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n)
+                for k in range(n + 1)]
+
+    def _trunk_is_fcu(px, py):
+        return any(l == "F.Cu" and n2 == "HTR_DRIVE" and
+                   _pdist(px, py, a, b, c, d) < 0.2
+                   for a, b, c, d, l, n2, _w in tracks)
+
+    for qref in ("Q2001", "Q2002", "Q2003"):
+        if qref not in placed:
+            continue
+        qx, qy, _qr = placed[qref]
+        gpx, gpy = qx - 3.15, qy - 2.3          # the gate pad
+        # Where each one meets the gate net: Q2003 across to the right-hand
+        # margin lane at its own y, Q2002 straight up to the top link, Q2001
+        # straight up to the y = 161 trunk it sits under.
+        if qref == "Q2002" or (qref == "Q2001" and os.environ.get("R13UP")):
+            continue          # its gate pad sits on the trunk itself
+        vx, vy = {"Q2003": (LANE_RX["HTR_DRIVE"], gpy),
+                  "Q2001": (gpx, 161.0)}[qref]
+        # Ask BEFORE laying the stub, or the stub is what the answer finds.
+        need_via = not _trunk_is_fcu(vx, vy)
+        # All on F.Cu, right up to the point where the via drops onto the
+        # trunk.  Q2002's run crosses four In2 links on the way, which costs it
+        # nothing because they are on the other layer -- whereas breaking the
+        # run into In2 pieces between them leaves 2.6 mm gaps with nowhere to
+        # jog, which is what the first attempt did.
+        spine("HTR_DRIVE", [(gpx, gpy), (vx, vy)], w=T.W_SIG, lyr="F.Cu")
+        if not need_via:
+            continue                            # the trunk is already F.Cu here
+        if (pt_clear(vx, vy, "F.Cu", "HTR_DRIVE", T.W_SIG, VIA_GROW) and
+                pt_clear(vx, vy, "In2.Cu", "HTR_DRIVE", T.W_SIG, VIA_GROW)):
+            tile_vias.append((vx, vy, "HTR_DRIVE"))
+        else:
+            spine_report.append(("HTR_DRIVE", (vx, vy, vx, vy),
+                                 "no room for %s's gate via" % qref))
+
+    # ---- the five 1-Wire probe cells -------------------------------------
+    # Pad geometry follows from the placement: an 0805 at rot 90 puts pad 1
+    # 0.91 mm above centre, a 1206 puts it 1.46 mm above.
+    ONE_Y, PWR_Y = 18.91, 17.0
+    spine("ONEWIRE", [(16.0, ONE_Y), (68.0, ONE_Y)], w=T.W_SIG, lyr="F.Cu")
+    spine("+3V3_D", [(LANE_X["+3V3_D"], PWR_Y), (64.5, PWR_Y)])
+    # ...and up the margin to meet the lane, which starts at its own link.
+    spine("+3V3_D", [(LANE_X["+3V3_D"], PWR_Y),
+                     (LANE_X["+3V3_D"], LANE_Y["+3V3_D"])])
+    for i in range(5):
+        jx = 16.0 + i * 13.0
+        n = i + 1
+        spine("Net-(J600%d-Pin_1)" % n, [(jx, 17.09), (jx, 8.0)],
+              w=T.W_SIG, lyr="F.Cu")
+        spine("Net-(J600%d-Pin_2)" % n, [(jx - 3.5, 13.14), (jx - 3.5, 8.0)],
+              w=T.W_SIG, lyr="F.Cu")
+        # the power resistor's own hop down to the In2 bus, 1 mm above it
+        spine("+3V3_D", [(jx - 3.5, 16.06), (jx - 3.5, PWR_Y)],
+              w=W_LANE, lyr="F.Cu")
+        if (pt_clear(jx - 3.5, PWR_Y, "F.Cu", "+3V3_D", W_LANE, VIA_GROW) and
+                pt_clear(jx - 3.5, PWR_Y, "In2.Cu", "+3V3_D", W_LANE, VIA_GROW)):
+            tile_vias.append((jx - 3.5, PWR_Y, "+3V3_D"))
+        else:
+            spine_report.append(("+3V3_D", (jx - 3.5, PWR_Y, jx - 3.5, PWR_Y),
+                                 "no room for the bus via"))
+
+    # ---- adjacent pins of the same net, jumpered ------------------------
+    # A TMP1075's three address pins are strapped high or low to set its I2C
+    # address, so on most of the eight, two of them are adjacent and both on
+    # +3V3_D -- 1.27 mm apart on the same x, with nothing whatever in between.
+    # The router kept losing one of those, which is an absurd thing to ask a
+    # maze search for: the answer is a straight line 1.27 mm long.  Any two
+    # pads of one part, on one net, within 1.4 mm of each other, get joined.
+    for ref in sorted({r for r, _p, _x, _y, _t, _n, _h, _rc in allpads
+                       if r.startswith("U50") or r.startswith("U60")}):
+        mine = [(pn, ax, ay, net) for r, pn, ax, ay, _t, net, _h, _rc in allpads
+                if r == ref and net and not net.startswith("unconnected-")]
+        for i in range(len(mine)):
+            for j in range(i + 1, len(mine)):
+                if mine[i][3] != mine[j][3] or mine[i][3] == "GND":
+                    continue
+                if _m.dist(mine[i][1:3], mine[j][1:3]) > 1.4:
+                    continue
+                spine(mine[i][3], [mine[i][1:3], mine[j][1:3]],
+                      w=T.W_SIG, lyr="F.Cu")
+
+    # ---- the helper's own thermometer, out to the I2C links --------------
+    # U5007 sits on the centre line with the two I2C links passing a couple of
+    # millimetres below it, but its SDA and SCL pins are pins 1 and 2, with the
+    # ALERT and GND pins between them and the links.  Step west clear of the
+    # package first, then drop.
+    if "U5007" in placed:
+        cx, cy, _r7 = placed["U5007"]
+        for pin, nm7, dx7 in (("2", "I2C_SCL", 4.6), ("1", "I2C_SDA", 5.6)):
+            n7 = nets.get("U5007", {}).get(pin)
+            if not n7 or n7 not in numof:
+                continue
+            py7 = cy - (0.635 if pin == "2" else 1.905)
+            spine(n7, [(cx - 2.47, py7), (cx - dx7, py7),
+                       (cx - dx7, LANE_Y[nm7])], w=T.W_SIG, lyr="F.Cu")
+            if (pt_clear(cx - dx7, LANE_Y[nm7], "F.Cu", n7, T.W_SIG, VIA_GROW) and
+                    pt_clear(cx - dx7, LANE_Y[nm7], "In2.Cu", n7, T.W_SIG, VIA_GROW)):
+                tile_vias.append((cx - dx7, LANE_Y[nm7], n7))
+            else:
+                spine_report.append((n7, (cx - dx7, LANE_Y[nm7]) * 2,
+                                     "no room for U5007's %s via" % nm7))
+
+    # ---- the DS2482 and the DAC, one straight supply track each -----------
+    # SOIC-8 pins 1-4 sit 2.47 mm left of centre at y offsets -1.905..+1.905;
+    # SOT-23-6 pins 1-3 sit 1.14 mm left at -0.95, 0, +0.95.
+    if "U6001" in placed:
+        cx, cy, _r = placed["U6001"]
+        vnm = nets.get("U6001", {}).get("1")
+        spine(vnm, [(cx - 4.55, cy + 3.2), (cx - 4.55, cy - 1.905),
+                    (cx - 2.47, cy - 1.905)], w=T.W_SIG, lyr="F.Cu")
+        spine(vnm, [(cx - 2.47, cy - 3.79), (cx - 2.47, cy - 1.905)],
+              w=T.W_SIG, lyr="F.Cu")
+        # the bead's own +3V3_D end drops onto the probe-cell bus
+        spine("+3V3_D", [(cx - 2.47, cy - 5.61), (cx - 2.47, PWR_Y)],
+              w=W_LANE, lyr="F.Cu")
+        if (pt_clear(cx - 2.47, PWR_Y, "F.Cu", "+3V3_D", W_LANE, VIA_GROW) and
+                pt_clear(cx - 2.47, PWR_Y, "In2.Cu", "+3V3_D", W_LANE, VIA_GROW)):
+            tile_vias.append((cx - 2.47, PWR_Y, "+3V3_D"))
+    if "U5009" in placed:
+        cx, cy, _r = placed["U5009"]
+        vnm = nets.get("U5009", {}).get("3")
+        spine(vnm, [(cx - 3.55, cy - 2.0), (cx - 3.55, cy + 0.95),
+                    (cx - 1.14, cy + 0.95)], w=T.W_SIG, lyr="F.Cu")
+        spine(vnm, [(cx - 1.14, cy + 3.09), (cx - 1.14, cy + 0.95)],
+              w=T.W_SIG, lyr="F.Cu")
+
+    # ---- the eight thermometer stacks ------------------------------------
+    # Each one is the same four terminals: the bead's output, the part's V+ pin
+    # and two capacitors.  With the passives turned so their V+ pads share a
+    # column (see hand_placed), the whole net is one straight run between the
+    # SOIC's two rows of pins and one hop over the top of the package.  0.25 mm
+    # signal track: this carries the 45 uA a TMP1075 draws.
+    for i in range(1, 9):
+        ic = "U500%d" % i
+        if ic not in placed:
+            continue
+        cx, cy, crot = placed[ic]
+        vnm = nets.get(ic, {}).get("8")
+        if not vnm:
+            continue
+        s = -1.0 if crot == 180 else 1.0      # mirrored right-margin stack
+        spine(vnm, [(cx - s * 0.95, cy - s * 5.0),
+                    (cx - s * 0.95, cy + s * 7.0)], w=T.W_SIG, lyr="F.Cu")
+        spine(vnm, [(cx - s * 0.95, cy - s * 3.5),
+                    (cx + s * 2.475, cy - s * 3.5),
+                    (cx + s * 2.475, cy - s * 1.905)], w=T.W_SIG, lyr="F.Cu")
+
+    if spine_report:
+        import sys as _sp
+        print("spines: %d segment(s) dropped" % len(spine_report), file=_sp.stderr)
+        for nm, sg, why in spine_report:
+            print("   %-16s (%.1f,%.1f)-(%.1f,%.1f)  %s"
+                  % (nm, sg[0], sg[1], sg[2], sg[3], why), file=_sp.stderr)
+
+    if os.environ.get("SPINEDUMP"):
+        import pickle
+        pickle.dump({"pads": allpads, "tracks": list(tracks),
+                     "vias": list(tile_vias), "placed": placed, "fps": fps},
+                    open(os.environ["SPINEDUMP"], "wb"))
+        return out, placed, fps, boxes
 
     # ---- lay the tile tracks and their In2 vias ---------------------------
     # Done before the ground vias so the ground-via search can see them: a via
@@ -655,7 +1575,7 @@ def build():
             u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - x0) * dx +
                                                        (py - y0) * dy) / L2))
             qx, qy = x0 + u * dx, y0 + u * dy
-            if (px - qx) ** 2 + (py - qy) ** 2 < (rad + w / 2.0 + 0.15) ** 2:
+            if (px - qx) ** 2 + (py - qy) ** 2 < (rad + w / 2.0 + CLR) ** 2:
                 return False
         for tx, ty, _n in tile_vias:
             if (px - tx) ** 2 + (py - ty) ** 2 < (rad + 0.45) ** 2:
@@ -663,19 +1583,24 @@ def build():
         return True
 
     vias, nvia, skipped = [], 0, 0
-    for ref, pn, ax, ay, tht, net, _hd in allpads:
+    for ref, pn, ax, ay, tht, net, _hd, _rc in allpads:
         if net != "GND" or tht:
             continue
         best = None
-        for rad in (1.35, 1.8, 2.3, 2.8):
-            for k in range(8):
-                th = k * _m.pi / 4.0
+        # Sixteen directions and six radii, not eight and four.  The margin
+        # lanes leave 1.1 mm gaps between them which a 0.6 mm via fits in
+        # comfortably, but a search that only looks along the eight compass
+        # points at four distances mostly misses them: round 19 left 62 pads
+        # with no via at all, up from 32 before the lanes went in.
+        for rad in (1.35, 1.6, 1.85, 2.1, 2.45, 2.8):
+            for k in range(16):
+                th = k * _m.pi / 8.0
                 vx, vy = ax + rad * _m.cos(th), ay + rad * _m.sin(th)
                 # 0.3 via radius + that pad's OWN half-diagonal + 0.25 clearance.
                 # A constant was fine for 0805s and far too small for the
                 # SOT-223 tab and the SMA diodes.
-                ok = all((vx - qx) ** 2 + (vy - qy) ** 2 > (0.55 + qh) ** 2
-                         for _r, _p, qx, qy, _t, _n, qh in allpads
+                ok = all(P.pad_gap(vx, vy, qx, qy, qrc) > 0.55
+                         for _r, _p, qx, qy, _t, _n, qh, qrc in allpads
                          if not (_r == ref and _p == pn))
                 ok = ok and all((vx - wx) ** 2 + (vy - wy) ** 2 > 1.5 ** 2
                                 for wx, wy in vias)
@@ -684,11 +1609,13 @@ def build():
                 if ok:
                     for f in (0.35, 0.6, 0.85):
                         sx, sy = ax + (vx - ax) * f, ay + (vy - ay) * f
-                        if not all((sx - qx) ** 2 + (sy - qy) ** 2 > (0.43 + qh) ** 2
-                                   for _r, _p, qx, qy, _t, _n, qh in allpads
+                        if not all(P.pad_gap(sx, sy, qx, qy, qrc) > 0.43
+                                   for _r, _p, qx, qy, _t, _n, qh, qrc in allpads
                                    if not (_r == ref and _p == pn)):
                             ok = False
                             break
+                # and it must not hang off the board edge
+                ok = ok and (0.8 < vx < G.BW - 0.8 and 0.8 < vy < G.BH - 0.8)
                 ok = ok and seg_clear(vx, vy, 0.3)
                 if ok:
                     for f in (0.3, 0.5, 0.7, 0.9):
@@ -708,6 +1635,10 @@ def build():
         vias.append((vx, vy))
         out.append(track(ax, ay, vx, vy, "F.Cu", gnd_no, ref + pn, 0.35))
         out.append(via(vx, vy, gnd_no, ref + pn))
+        # ...and into `tracks`, so the routers know this copper exists.  They
+        # did not: only the VIAS were being registered, so every F.Cu route
+        # was free to run straight over a ground stub.
+        tracks.append((ax, ay, vx, vy, "F.Cu", "GND", 0.35))
         nvia += 1
     out.append(text(4.0, G.BH - 2.0, "%d ground vias (%d pads had no room)"
                     % (nvia, skipped), "Cmts.User", 1.2, 0.2))
@@ -720,11 +1651,11 @@ def build():
     _ntracks0, _nvias0 = len(tracks), len(tile_vias)
     grid = MZ.Grid(G.BW, G.BH)
     IN2, FCU = 0, 1
-    for ref, pn, ax, ay, tht, net, hd in allpads:
+    for ref, pn, ax, ay, tht, net, hd, rc in allpads:
         if tht:
-            grid.block_disc(ax, ay, hd + 0.35)          # both layers
+            grid.block_rect(ax, ay, rc, 0.35)           # both layers
         else:
-            grid.block_disc(ax, ay, hd + 0.85, FCU)
+            grid.block_rect(ax, ay, rc, 0.85, FCU)
     for vx, vy in vias:                                 # the ground vias
         grid.block_disc(vx, vy, 0.62)
     for vx, vy, _nm in tile_vias:
@@ -732,6 +1663,97 @@ def build():
     for x0, y0, x1, y1, lyr, nm, w in tracks:
         grid.block_seg(x0, y0, x1, y1, w / 2.0 + 0.3,
                        IN2 if lyr == "In2.Cu" else FCU)
+
+    def _segdist(a, b, c, d, e, f, g_, h):
+        """Minimum distance between segments (a,b)-(c,d) and (e,f)-(g_,h)."""
+        def pd(px, py, x0, y0, x1, y1):
+            dx, dy = x1 - x0, y1 - y0
+            L2 = dx * dx + dy * dy
+            u = 0.0 if L2 == 0 else max(0.0, min(
+                1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
+            return _m.hypot(px - (x0 + u * dx), py - (y0 + u * dy))
+        d1 = (c - a, d - b)
+        d2 = (g_ - e, h - f)
+        den = d1[0] * d2[1] - d1[1] * d2[0]
+        if den:
+            s = ((e - a) * d2[1] - (f - b) * d2[0]) / den
+            u = ((e - a) * d1[1] - (f - b) * d1[0]) / den
+            if 0 <= s <= 1 and 0 <= u <= 1:
+                return 0.0
+        return min(pd(a, b, e, f, g_, h), pd(c, d, e, f, g_, h),
+                   pd(e, f, a, b, c, d), pd(g_, h, a, b, c, d))
+
+    def vias_clear(newvias, nm, trk=None):
+        """The same analytic check, for the VIAS a path wants to place.
+
+        path_clear() only ever looked at segments, so a candidate via was
+        accepted on the grid's word alone -- and the grid is a model.  That was
+        invisible while the grid was rebuilt per net from the same code that
+        drew it, and it showed up the moment the grid changed: the
+        reference-counted version routed everything and left fifteen clearance
+        errors, every one of them a via.  A via is 0.6 mm across and needs
+        0.15 mm to anything on ANY layer, because it goes through all of them.
+        """
+        trk = tracks if trk is None else trk
+        for vx, vy in newvias:
+            for _r, _p, ax, ay, tht, n2, _h, rc in allpads:
+                if n2 == nm:
+                    continue
+                if P.pad_gap(vx, vy, ax, ay, rc) < VR + CLR:
+                    return False
+            for a, b, c, d, _lyr, n2, w2 in trk:
+                if n2 == nm:
+                    continue
+                if _segdist(vx, vy, vx, vy, a, b, c, d) < VR + w2 / 2.0 + CLR:
+                    return False
+            for qx, qy in vias:
+                if (vx - qx) ** 2 + (vy - qy) ** 2 < (2 * VR + CLR) ** 2:
+                    return False
+            for qx, qy, n2 in tile_vias:
+                if n2 == nm:
+                    continue
+                if (vx - qx) ** 2 + (vy - qy) ** 2 < (2 * VR + CLR) ** 2:
+                    return False
+        return True
+
+    def path_clear(newsegs, nm, trk=None):
+        """Analytic clearance check on a candidate path.
+
+        The grid is a model of the board and every bug in this pass so far has
+        been a place where the model and the board disagreed.  This checks the
+        real geometry instead, and simply refuses a path that would not pass
+        DRC -- a lost join shows as ratsnest, which is honest, where a bad one
+        shows as an error."""
+        trk = tracks if trk is None else trk
+        for x0, y0, x1, y1, l0, w0 in newsegs:
+            lyr0 = "In2.Cu" if l0 == IN2 else "F.Cu"
+            # Pads too.  This used to check only tracks and vias, which was
+            # fine while the grid blocked every pad by 0.85 mm -- but 0.85 mm
+            # on a 1.27 mm pin pitch walls a SOIC-8 in completely, so the grid
+            # is looser now and the real check has to live here.
+            for _r, _p, ax, ay, tht, n2, _h, rc in allpads:
+                if n2 == nm or not (tht or lyr0 == "F.Cu"):
+                    continue
+                n = max(2, int(_m.hypot(x1 - x0, y1 - y0) / 0.25) + 1)
+                if any(P.pad_gap(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n,
+                                 ax, ay, rc) < w0 / 2.0 + CLR
+                       for k in range(n + 1)):
+                    return False
+            for a, b, c, d, lyr, n2, w2 in trk:
+                if n2 == nm or lyr != lyr0:
+                    continue
+                if _segdist(x0, y0, x1, y1, a, b, c, d) < \
+                        w0 / 2.0 + w2 / 2.0 + CLR:
+                    return False
+            for vx, vy in vias:
+                if _segdist(x0, y0, x1, y1, vx, vy, vx, vy) < w0 / 2.0 + VR + CLR:
+                    return False
+            for vx, vy, n2 in tile_vias:
+                if n2 == nm:
+                    continue
+                if _segdist(x0, y0, x1, y1, vx, vy, vx, vy) < w0 / 2.0 + VR + CLR:
+                    return False
+        return True
 
     # Each header pin gets a stub up to a common y = 160.5 approach line.  The
     # two rows share an x, so an even-row (far) pin cannot be entered from
@@ -744,7 +1766,11 @@ def build():
     # early routing failures were simply a boxed-in destination.  Staggering
     # the rows makes the spacing 2.54 mm within each line, at the price of a
     # 3 mm-deep comb instead of a single row.
-    ODD_Y, EVEN_Y = 160.0, 157.0
+    # Relative to the board edge, not absolute: when round 15 took the board
+    # from 170 to 180 these stayed put, which turned a 2.5 mm stub into a
+    # 12.5 mm one and made the picket fence in front of the socket five
+    # times deeper than it needed to be.
+    ODD_Y, EVEN_Y = G.BH - 10.0, G.BH - 13.0
     hdrnets = nets.get("J4001", {})
     targets = {}
     for n in range(1, 41):
@@ -779,6 +1805,11 @@ def build():
             # The helper clock to the FPGA goes with the branches, before the
             # fan-in: it starts in the middle of the fan-out and would be
             # walled in by the time the returns are done.
+            # Branches before returns.  Tried it the other way round on the
+            # theory that 7 branches hopping to F.Cu beats 13 returns doing
+            # it; measured, it is worse -- 33 routed against 37 -- because a
+            # branch that has already crossed the lane leaves a gap a return
+            # can use, while a return bundle leaves nothing.
             jobs.append((nm, pts[0], targets[nm],
                          -1 if nm == "HELPER_CLK" else 0))
     for nm in sorted(src):
@@ -787,12 +1818,15 @@ def build():
             jobs.append((nm, aa, bb, -1))
     for nm in ("Net-(J3001-In)", "Net-(J3002-In)"):
         pts = list(src.get(nm, []))
-        for ref, pn, ax, ay, tht, net, _hd in allpads:
+        for ref, pn, ax, ay, tht, net, _hd, _rc in allpads:
             if net == nm and tht:
                 # A vertical SMA's centre pin sits inside a ring of four
                 # ground pins 2.54 mm away, so nothing can start next to it:
-                # give it a stub straight up the 1.14 mm gutter between them.
-                ey = round((ay - 12.0) / MZ.PITCH) * MZ.PITCH
+                # give it a stub straight up the 1.14 mm gutter between them --
+                # or DOWN, for the two helper jacks, which since round 15 sit
+                # in the top band where "up" is off the board.
+                d = 12.0 if ay > G.BH / 2.0 else -12.0
+                ey = round((ay - d) / MZ.PITCH) * MZ.PITCH
                 tracks.append((ax, ay, ax, ey, "In2.Cu", nm, T.W_SIG))
                 grid.block_seg(ax, ay, ax, ey, 0.4, IN2)
                 pts.append((ax, ey))
@@ -804,6 +1838,21 @@ def build():
     # the header fan-in from the OUTSIDE in, so the long runs claim the outer
     # lanes and the short ones nest inside them.
     ctr = (144.02 + 192.28) / 2.0
+    # The topmost unit of each lane: its return is the outermost wire of its
+    # fan, so it is the one with no slack.  units_by_x() ends each lane with
+    # its topmost unit, so these are the last of each half.
+    _by_lane = G.units_by_x()
+    _left = [u for u in _by_lane if G.UNIT_ROW[u][2] == 90]
+    _right = [u for u in _by_lane if G.UNIT_ROW[u][2] != 90]
+    _top = (_left[-1], _right[-1])          # units_by_x ends each lane at its top
+    OUTERMOST = set()
+    for _u in _top:
+        OUTERMOST.add("BEAT_%02d" % (_u - 1))
+        OUTERMOST.add("PPS_%02d" % (_u - 1))
+
+    def _K2(j):
+        return (0 if abs(j[1][0] - j[2][0]) < 15.0 else 1, j[2][0])
+
     ORD = int(os.environ.get("RTORDER", "2"))
     CAP = int(os.environ.get("RTCAP", "2000000"))
     _k = {0: lambda j: -abs(j[1][0] - ctr),
@@ -821,7 +1870,29 @@ def build():
           #    claim their lanes before the short ones box them in.
           6: lambda j: (0 if j[1][0] > j[2][0] else 1, j[2][0]),
           7: lambda j: -abs(j[1][0] - j[2][0]),
-          8: lambda j: (0 if j[1][0] > j[2][0] else 1, -j[2][0])}[ORD]
+          8: lambda j: (0 if j[1][0] > j[2][0] else 1, -j[2][0]),
+          # 9: stage-aware.  With the header order nested (round 19), a return
+          #    bundle is a fan turning a corner, and the wire that ends at the
+          #    furthest pin is the OUTERMOST of the fan -- it has to hug the
+          #    outside of both the descent and the run along the socket, so it
+          #    must claim those lanes before the inner ones box it in.  Longest
+          #    first, therefore, but only for the returns: ordering the HELPER
+          #    BRANCHES that way as well (which is what plain order 7 does)
+          #    costs four of them, because a branch is not part of a fan.
+          # 10: the OUTERMOST wire of each bundle first, and everything else
+          #     exactly as order 2.  With the header nested (round 19) a bundle
+          #     is a fan turning a corner, and the wire belonging to the unit
+          #     highest up the board is the one that has to hug the outside of
+          #     both the descent and the run along the socket.  It is the only
+          #     one in the bundle with no slack, so it is the only one that has
+          #     to be laid before the rest -- reordering the WHOLE stage by
+          #     length (order 9) makes the early searches wander instead, and
+          #     takes five times as long for a worse answer.
+          10: lambda j: ((0 if j[3] == 0 and j[0] in OUTERMOST else 1,) +
+                         tuple(_K2(j))),
+          9: lambda j: ((-abs(j[1][0] - j[2][0]), 0.0) if j[3] == 0 else
+                        (0.0 if abs(j[1][0] - j[2][0]) < 15.0 else 1.0,
+                         j[2][0]))}[ORD]
     jobs.sort(key=lambda j: (j[3], _k(j)))
     # Rip-up and retry.  A maze router's finished route is a wall, so the
     # order decides who gets boxed in; the standard cure is to put whoever
@@ -829,11 +1900,11 @@ def build():
     # layer.  Three passes is enough here -- it goes 37, 40, 41.
     def one_pass(order, base_tracks, base_vias):
         g = MZ.Grid(G.BW, G.BH)
-        for ref, pn, ax, ay, tht, net, hd in allpads:
+        for ref, pn, ax, ay, tht, net, hd, rc in allpads:
             if tht:
-                g.block_disc(ax, ay, hd + 0.35)
+                g.block_rect(ax, ay, rc, 0.35)
             else:
-                g.block_disc(ax, ay, hd + 0.85, FCU)
+                g.block_rect(ax, ay, rc, 0.85, FCU)
         for vx, vy in vias:
             g.block_disc(vx, vy, 0.62)
         for vx, vy, _nm in base_vias:
@@ -859,17 +1930,33 @@ def build():
                        [(bb[0], bb[1], path[-1][2])])
                 if path[-1][2] != IN2:
                     pts.append((bb[0], bb[1], IN2))
+                cand, candv = [], []
                 for i in range(len(pts) - 1):
                     x0, y0, l0 = pts[i]
                     x1, y1, l1 = pts[i + 1]
                     if l0 != l1:
-                        newv.append((x0, y0, nm))
-                        g.block_disc(x0, y0, 0.62)
+                        candv.append((x0, y0, nm))
                     elif (x0, y0) != (x1, y1):
-                        newt.append((x0, y0, x1, y1,
-                                     "In2.Cu" if l0 == IN2 else "F.Cu", nm,
-                                     T.W_SIG))
-                        g.block_seg(x0, y0, x1, y1, 0.4, l0)
+                        cand.append((x0, y0, x1, y1, l0, T.W_SIG))
+                # The grid lets a route step ONTO a goal cell even when that
+                # cell is blocked -- it has to, or nothing could ever terminate
+                # on a pad -- and when the goal is another net's copper that is
+                # a short.  Check the real geometry, the way the multi-terminal
+                # pass does; a refused path costs ratsnest, a bad one costs an
+                # error.
+                if not (path_clear(cand, nm, base_tracks + newt) and
+                        (not STRICT or
+                         vias_clear([(q[0], q[1]) for q in candv], nm,
+                                    base_tracks + newt))):
+                    path = None
+            if path:
+                for x0, y0, _n in candv:
+                    newv.append((x0, y0, nm))
+                    g.block_disc(x0, y0, 0.62)
+                for x0, y0, x1, y1, l0, w0 in cand:
+                    newt.append((x0, y0, x1, y1,
+                                 "In2.Cu" if l0 == IN2 else "F.Cu", nm, w0))
+                    g.block_seg(x0, y0, x1, y1, 0.4, l0)
             else:
                 fail.append(nm)
                 if os.environ.get("RTDEBUG"):
@@ -890,18 +1977,366 @@ def build():
     base_t, base_v = list(tracks), list(tile_vias)
     order = list(jobs)
     best = None
-    for attempt in range(3):
+    for attempt in range(int(os.environ.get("RTPASSES", "6"))):
         nt, nv, nfail = one_pass(order, base_t, base_v)
         if best is None or len(nfail) < len(best[2]):
             best = (nt, nv, nfail)
         if not nfail:
             break
+        # Failed nets to the front, and rotate the rest, so a pass that keeps
+        # failing the same few is not simply repeated.
         bad = set(nfail)
-        order = ([j for j in order if j[0] in bad] +
-                 [j for j in order if j[0] not in bad])
+        rest = [j for j in order if j[0] not in bad]
+        rest = rest[attempt + 1:] + rest[:attempt + 1]
+        order = [j for j in order if j[0] in bad] + rest
     nt, nv, nfail = best
     tracks.extend(nt)
     tile_vias.extend(nv)
+
+    # ---- multi-terminal nets: the rails, I2C and 1-Wire -------------------
+    # These are not two-point nets, so they need a spanning tree, and the rule
+    # that matters is: route each disconnected piece to the NEAREST POINT OF
+    # WHAT IS ALREADY CONNECTED, not to the nearest other pad.  A two-point
+    # router does the latter and produces a daisy chain with the wrong
+    # topology; the multi-goal mode in pcb/maze.py exists for this.
+    # 0.3 mm, not 0.5: these are DISTRIBUTION runs, not the trunk.  The trunk
+    # inside the power block is already 0.5 and carries the whole 643 mA; a
+    # branch to one heater carries 27 mA and the +3V3_D rail about 60 mA total,
+    # for which 0.3 mm on 35 um is good for ~700 mA.  Halving the width is the
+    # single biggest thing available for routability here.
+    W_DIST = 0.3
+    # EVERY net, not a hand-written list of eleven.  Rounds 15-17 named the
+    # rails and the buses here and left everything else to the two-point pass,
+    # which only ever sees nets that have an In2 escape terminal -- so a
+    # thermometer's bead-and-capacitor group, a probe terminal's pull-up, the
+    # DS2482's own decoupling, thirty connections in all, were never offered to
+    # ANY router.  They showed as ratsnest and looked like congestion.  They
+    # were not: nothing had tried.
+    #
+    # Cheap to do, because a net that is already whole costs one union-find
+    # pass and no grid: the expensive part, rebuilding the obstacle grid, only
+    # happens for a net that still has two pieces.
+    PWRNETS = ("+3V3_A", "+3V3_D", "+5V_HDR", "+15V_HTR", "Net-(Q2001-D)",
+               "Net-(Q2002-D)", "Net-(Q2003-D)")
+    _npads = {}
+    for _r, _p, ax, ay, _t, net, _h, _rc in allpads:
+        _npads.setdefault(net, []).append((ax, ay))
+
+    def _span(nm):
+        pts = _npads.get(nm, [])
+        if len(pts) < 2:
+            return 0.0
+        return (max(p[0] for p in pts) - min(p[0] for p in pts) +
+                max(p[1] for p in pts) - min(p[1] for p in pts))
+
+    # Most-constrained first: a two-pad group 2 mm across has one way to go and
+    # a rail has a thousand, so the rail must be the one that bends round it.
+    MULTI = sorted(((nm, W_DIST if nm in PWRNETS else T.W_SIG)
+                    for nm in numof
+                    if nm and nm != "GND" and not nm.startswith("unconnected-")
+                    and len(_npads.get(nm, ())) > 1),
+                   key=lambda q: _span(q[0]))
+
+    # The grid is rebuilt from scratch for each net, with only THAT net's pads
+    # left open.  Freeing a disc around a pad in a shared grid also wipes the
+    # blocking of whatever else happens to pass within a millimetre of it --
+    # first the neighbouring pins of the same SOIC, then, once that was fixed,
+    # other nets' tracks.  Rebuilding costs a couple of seconds a net and
+    # removes the whole class of bug.
+    # ---- the same grid, built once ---------------------------------------
+    # Rebuilding it per net is correct and it is where a build spends 33 of its
+    # 40 minutes: 600 pads and 2000 tracks rasterised into 2 x 148k cells, once
+    # for every net that still has two pieces, three times over.  With the
+    # cells REFERENCE COUNTED (see maze.Grid) a net's own copper can be lifted
+    # out of the finished grid and put back exactly, which is O(that net's
+    # copper) instead of O(the whole board).  Setting cells to zero instead is
+    # the round-18 bug this avoids: freeing the disc round a pad also freed
+    # whatever else happened to pass within a millimetre of it.
+    _fast = {}
+
+    def _fast_grid():
+        """The all-nets-blocked grid, plus each net's own contribution."""
+        if _fast:
+            return _fast["g"], _fast["cells"]
+        g = MZ.Grid(G.BW, G.BH, counted=True)
+        cells = {}
+
+        def own(nm, cs):
+            if nm:
+                cells.setdefault(nm, []).extend(cs)
+            g.add(cs)
+
+        for _r, _p, ax, ay, tht, net, hd, rc in allpads:
+            own(net, g.cells_rect(ax, ay, rc, 0.5 if tht else 0.45,
+                                  None if tht else FCU))
+        for vx, vy in vias:
+            g.add(g.cells_disc(vx, vy, 0.75))
+        for vx, vy, n2 in tile_vias:
+            own(n2, g.cells_disc(vx, vy, 0.75))
+        for x0, y0, x1, y1, lyr, n2, w2 in tracks:
+            own(n2, g.cells_seg(x0, y0, x1, y1, w2 / 2.0 + 0.5,
+                                IN2 if lyr == "In2.Cu" else FCU))
+        _fast["g"], _fast["cells"] = g, cells
+        return g, cells
+
+    def build_g2(open_net=None):
+        if os.environ.get("FASTGRID"):
+            g, cells = _fast_grid()
+            g.sub(cells.get(open_net, ()))
+            _fast["open"] = open_net
+            return g
+        g = MZ.Grid(G.BW, G.BH)
+        for _r, _p, ax, ay, tht, net, hd, rc in allpads:
+            if net == open_net:
+                continue
+            # 0.45 mm, not 0.85.  A 0.25 mm track needs 0.275 mm of clear
+            # copper from a pad edge; 0.85 is three times that, and on a
+            # SOIC-8's 1.27 mm pin pitch it leaves no free cell at all between
+            # two pins, so the part's own pins cannot be escaped.  That -- not
+            # congestion -- is why the I2C bus and the 3.3 V straps could not
+            # be finished.  path_clear() checks the real clearance before
+            # anything is committed.
+            g.block_rect(ax, ay, rc, 0.5 if tht else 0.45,
+                         None if tht else FCU)
+        for vx, vy in vias:
+            g.block_disc(vx, vy, 0.75)
+        for vx, vy, _n in tile_vias:
+            g.block_disc(vx, vy, 0.75)
+        # w/2 + 0.5, not + 0.3: the clearance a neighbour needs depends on the
+        # width of the track being ADDED, not the one already there, and these
+        # add 0.5 mm rails next to 0.25 mm signals.
+        for x0, y0, x1, y1, lyr, n2, w2 in tracks:
+            if n2 == open_net:
+                continue        # its own copper is the TREE, not an obstacle
+            g.block_seg(x0, y0, x1, y1, w2 / 2.0 + 0.5,
+                        IN2 if lyr == "In2.Cu" else FCU)
+        return g
+
+    def _near(px, py, s, tol, rc=None):
+        """Does this track touch this pad?
+
+        The centre-within-tol version said no whenever a track stopped on the
+        EDGE of a pad, which is what a hand route normally does -- so about
+        forty tile VCC nets, every one of them properly connected and none of
+        them in the ratsnest, looked like two pieces to this pass and were
+        re-routed from scratch.  Test against the pad rectangle, which is what
+        KiCad's own connectivity does."""
+        x0, y0, x1, y1 = s
+        dx, dy = x1 - x0, y1 - y0
+        L2 = dx * dx + dy * dy
+        u = 0.0 if L2 == 0 else max(0.0, min(
+            1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
+        if (px - (x0 + u * dx)) ** 2 + (py - (y0 + u * dy)) ** 2 <= tol * tol:
+            return True
+        if rc is None:
+            return False
+        n = max(2, int(_m.hypot(dx, dy) / 0.25) + 1)
+        return any(P.pad_gap(x0 + dx * k / n, y0 + dy * k / n, px, py, rc) < 0.05
+                   for k in range(n + 1))
+
+    def _samples(s, step=1.5):
+        x0, y0, x1, y1 = s
+        n = max(1, int(_m.hypot(x1 - x0, y1 - y0) / step))
+        return [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n)
+                for k in range(n + 1)]
+
+    def _thin(pts, cap=1500):
+        return pts if len(pts) <= cap else pts[::(len(pts) // cap) + 1]
+
+    def _multi_pass(order):
+        """One full attempt at the multi-terminal nets.  Returns the
+        names whose joins failed."""
+        pwr_fail = []
+        for nm, w in order:
+            if nm not in numof:
+                continue
+            # Every terminal and every piece of copper carries the LAYER it
+            # lives on.  It did not, and that one omission is what stopped the
+            # rails: the router was asked to start on F.Cu and end on F.Cu (the
+            # default when end_layer is None), so a hop from a pad to a lane
+            # that lives on In2 ended one layer ABOVE the lane with no via, and
+            # reported success.  The board showed a 0.5 mm stub sitting beside
+            # the lane it was supposed to join, and the ratsnest still showed
+            # the break.
+            pds = [(ax, ay, _rc, None if _t else FCU)      # THT reaches both
+                   for _r, _p, ax, ay, _t, net, _h, _rc in allpads if net == nm]
+            sgs = [(a, b, c, d, IN2 if l == "In2.Cu" else FCU)
+                   for a, b, c, d, l, n2, _w in tracks if n2 == nm]
+            vis = [(vx, vy) for vx, vy, n2 in tile_vias if n2 == nm]
+            if len(pds) < 2:
+                continue
+            P_, S_, V_ = len(pds), len(sgs), len(vis)
+            par = list(range(P_ + S_ + V_))
+
+            def find(i, par=par):
+                while par[i] != i:
+                    par[i] = par[par[i]]
+                    i = par[i]
+                return i
+
+            def uni(i, j, par=par):
+                a, b = find(i), find(j)
+                if a != b:
+                    par[a] = b
+
+            for i, (px, py, prc, pl) in enumerate(pds):
+                for j, s in enumerate(sgs):
+                    if pl is not None and s[4] != pl:
+                        continue          # an SMD pad only touches F.Cu
+                    if _near(px, py, s[:4], 0.5, prc):
+                        uni(i, P_ + j)
+            # A via of this net bridges the two layers, and is the ONLY thing
+            # that does; without it two pieces that merely cross are not joined.
+            for k, (vx, vy) in enumerate(vis):
+                for i, (px, py, _rc, _pl) in enumerate(pds):
+                    if (px - vx) ** 2 + (py - vy) ** 2 < 0.36:
+                        uni(i, P_ + S_ + k)
+                for j, s in enumerate(sgs):
+                    if _pdist(vx, vy, s[0], s[1], s[2], s[3]) < 0.3:
+                        uni(P_ + j, P_ + S_ + k)
+            # Segment to segment by real distance, not endpoint to endpoint.
+            # Endpoint-to-endpoint misses a T -- one track starting halfway
+            # along another -- which is how a tile's stub joins its rail, so
+            # nearly every net inside a tile looked like two pieces.  About a
+            # hundred nets that were already whole, and not one of them in the
+            # ratsnest, were being handed to the router to "fix", which cost
+            # half an hour a build and laid redundant copper in the gaps other
+            # nets needed.
+            for j in range(S_):
+                for k in range(j + 1, S_):
+                    if sgs[j][4] != sgs[k][4]:
+                        continue          # crossing is not connecting
+                    if _segdist(sgs[j][0], sgs[j][1], sgs[j][2], sgs[j][3],
+                                sgs[k][0], sgs[k][1], sgs[k][2], sgs[k][3]) < 0.2:
+                        uni(P_ + j, P_ + k)
+            comps = {}
+            for i in range(P_ + S_ + V_):
+                comps.setdefault(find(i), []).append(i)
+            # A via on its own is not a piece worth routing to -- it is always
+            # part of something else -- so drop any component that is only vias.
+            comps = {r: m for r, m in comps.items()
+                     if any(i < P_ + S_ for i in m)}
+            if len(comps) < 2:
+                continue
+            cpts = {}
+            for r, mem in comps.items():
+                pts = []
+                for i in mem:
+                    if i < P_:
+                        pts.append((pds[i][0], pds[i][1], pds[i][3]))
+                    elif i < P_ + S_:
+                        s = sgs[i - P_]
+                        pts.extend((qx, qy, s[4]) for qx, qy in _samples(s[:4]))
+                cpts[r] = pts
+            # A pad is blocked in the grid so OTHER nets keep away from it -- but
+            # its own net has to be able to reach it, and every terminal here IS a
+            # pad, sitting in the middle of its own blocking disc with no free
+            # neighbour to step to.  That is why the first attempt failed all 118
+            # joins.  Open this net's pads up, and close them again afterwards.
+            if os.environ.get("RTPROG"):
+                import sys as _pg
+                print("    multi %-18s %d pieces" % (nm, len(comps)), file=_pg.stderr)
+            g2 = build_g2(nm)
+            order2 = sorted(cpts, key=lambda r: -len(cpts[r]))
+            tree = _thin(list(cpts[order2[0]]))
+            left = order2[1:]
+            while left:
+                best_r, best_a, best_d = None, None, 1e18
+                for r in left:
+                    for p in cpts[r]:
+                        d = min(abs(p[0] - q[0]) + abs(p[1] - q[1]) for q in tree)
+                        if d < best_d:
+                            best_d, best_r, best_a = d, r, p
+                # Start on the layer the source piece is actually on, and try
+                # ending on each layer the tree actually offers, against only
+                # the goals that live there.  Keep the cheaper of the two.
+                sl = FCU if best_a[2] is None else best_a[2]
+                path = None
+                for el in (FCU, IN2):
+                    goals = [(q[0], q[1]) for q in tree if q[2] in (el, None)]
+                    if not goals:
+                        continue
+                    for tn in (None, 0.4):
+                        kw = {} if tn is None else {"turn": tn}
+                        cand = g2.route((best_a[0], best_a[1]), goals,
+                                        layers=(FCU, IN2), start_layer=sl,
+                                        end_layer=el, cap=CAP,
+                                        strict_goals=True, **kw)
+                        if cand and (path is None or len(cand) < len(path)):
+                            path = cand
+                        if cand:
+                            break
+                newsegs, newvias = [], []
+                if path:
+                    for i in range(len(path) - 1):
+                        x0, y0, l0 = path[i]
+                        x1, y1, l1 = path[i + 1]
+                        if l0 != l1:
+                            newvias.append((x0, y0))
+                        elif (x0, y0) != (x1, y1):
+                            newsegs.append((x0, y0, x1, y1, l0, w))
+                    if not (path_clear(newsegs, nm) and
+                            (not STRICT or vias_clear(newvias, nm))):
+                        path = None
+                if path:
+                    for x0, y0 in newvias:
+                        tile_vias.append((x0, y0, nm))
+                        g2.block_disc(x0, y0, 0.75)
+                    for x0, y0, x1, y1, l0, w0 in newsegs:
+                        tracks.append((x0, y0, x1, y1,
+                                       "In2.Cu" if l0 == IN2 else "F.Cu", nm, w0))
+                        g2.block_seg(x0, y0, x1, y1, w0 / 2.0 + 0.5, l0)
+                        tree.extend((qx, qy, l0)
+                                    for qx, qy in _samples((x0, y0, x1, y1)))
+                else:
+                    pwr_fail.append(nm)
+                tree.extend(cpts[best_r])
+                tree = _thin(tree)
+                left.remove(best_r)
+            if os.environ.get("FASTGRID") and _fast.get("open") == nm:
+                # Put this net's own copper back before moving to the next one.
+                # What the pass ADDED during its routing stays blocked, which is
+                # right: it is an obstacle for everything that follows.
+                _fast["g"].add(_fast["cells"].get(nm, ()))
+                _fast["open"] = None
+        return pwr_fail
+
+    # Rip-up and retry, which this pass did not have: it took each join once and
+    # gave up, while the two-point router got six passes.  Everything the pass
+    # adds goes onto `tracks`, so a retry means restoring the snapshot and
+    # running the nets in a different order -- hardest first next time.
+    # A way to try two-point routing orders without paying for the twenty
+    # minutes the multi-terminal pass costs.
+    if os.environ.get("RTSKIPMULTI"):
+        import sys as _sk
+        print("routed %d of %d off-block nets"
+              % (len(jobs) - len(nfail), len(jobs)), file=_sk.stderr)
+        print("  FAILED:", nfail, file=_sk.stderr)
+        return out, placed, fps, boxes
+    base_t2, base_v2 = list(tracks), list(tile_vias)
+    best_pwr, order_m = None, list(MULTI)
+    for attempt in range(3):
+        _fast.clear()           # `tracks` is about to be restored; rebuild it
+        if os.environ.get("RTPROG"):
+            import sys as _pg
+            print("  multi-terminal attempt %d of 3" % (attempt + 1), file=_pg.stderr)
+        tracks[:] = list(base_t2)
+        tile_vias[:] = list(base_v2)
+        pwr_fail = _multi_pass(order_m)
+        if best_pwr is None or len(pwr_fail) < len(best_pwr[2]):
+            best_pwr = (list(tracks), list(tile_vias), list(pwr_fail))
+        if not pwr_fail:
+            break
+        bad = set(pwr_fail)
+        order_m = ([j for j in order_m if j[0] in bad] +
+                   [j for j in order_m if j[0] not in bad])
+    tracks[:], tile_vias[:] = best_pwr[0], best_pwr[1]
+    pwr_fail = best_pwr[2]
+    import sys as _sy
+    print("multi-terminal: %d joins failed %s"
+          % (len(pwr_fail), sorted(set(pwr_fail))), file=_sy.stderr)
+
+
     import sys as _s
     print("routed %d of %d off-block nets" % (len(jobs) - len(nfail), len(jobs)),
           file=_s.stderr)
@@ -918,29 +2353,57 @@ def build():
     poly = [(0.3, 0.3), (G.BW - 0.3, 0.3), (G.BW - 0.3, G.BH - 0.3), (0.3, G.BH - 0.3)]
     for lyr in ("In1.Cu", "B.Cu"):
         out.append(zone(numof["GND"], "GND", lyr, poly, "GND-" + lyr))
+    # ...and a pour on F.Cu as well.  That is what actually clears the ground
+    # ratsnest: 32 SMD ground pads never found room for a via, and a pad sitting
+    # in a ground pour does not need one.  It costs a little capacitance on the
+    # high-impedance squarer input -- roughly 0.3 pF over that node's 6 mm,
+    # against the 0.7 pF it already has to the In1 plane 0.21 mm below -- which
+    # is small beside the 5 pF the gate input presents anyway.
+    # Solid pad connection, not thermal relief: this is a ground pour on a
+    # signal layer, so the lower inductance is what you want, and the relief
+    # spokes could not reach 15 of the crowded SOT-23-5 ground pads anyway.
+    out.append(zone(numof["GND"], "GND", "F.Cu", poly, "GND-F.Cu", solid=True))
 
     # ---- silkscreen -------------------------------------------------------
-    out.append(text(6.0, 164.0, "GPSDO DDMTD FRONT END   rev A", "F.SilkS", 2.4, 0.4))
-    out.append(text(6.0, 168.0, "Jason Gallicchio   jason@hmc.edu   2026-09-09",
-                    "F.SilkS", 1.8, 0.3))
-    out.append(text(58.0, 8.0, "n = 10 MHz IN    Pn = 1 pps IN    13 = NULL    "
-                    "HIN = EXT HELPER IN    HO = CLK1 OUT", "F.SilkS", 1.5, 0.26))
-    # Two columns as two text objects at fixed x.  Padding one string with
-    # spaces cannot align them: KiCad's stroke font is not fixed-width, so an
-    # "I" and a "W" advance by different amounts.
-    out.append(text(124.0, 149.0, "TEST POINTS - the letter beside each pad.  "
-                    "Ranges, not per-channel values", "F.SilkS", 1.5, 0.24))
-    LC = ["I  at the SMA        1.0-8.0 Vpp",
-          "B  beat out          0/3.3 V, 1.1-1.4 kHz",
-          "X  Si5351 drive      0.5-1.0 Vpp, 25 MHz",
-          "A  +3V3_A            3.25-3.35 V"]
-    RC = ["S  at the squarer   0.6-3.3 Vpp, mid-rail",
-          "P  pps out          0/3.3 V, 1 Hz",
-          "W  1-Wire bus        5  5 V rail 4.6-5.3 V",
-          "D  +3V3_D           3.25-3.35 V"]
-    for i, (a, c) in enumerate(zip(LC, RC)):
-        out.append(text(124.0, 152.6 + i * 3.0, a, "F.SilkS", 1.35, 0.22))
-        out.append(text(196.0, 152.6 + i * 3.0, c, "F.SilkS", 1.35, 0.22))
+    out.append(text(4.0, G.BH - 22.0, "GPSDO DDMTD FRONT END   rev B",
+                    "F.SilkS", 1.8, 0.32))
+    out.append(text(4.0, G.BH - 19.4, "Jason Gallicchio   jason@hmc.edu   2026-09-13",
+                    "F.SilkS", 1.2, 0.2))
+    # Round 21.  The title, the author line, the SMA key and the whole
+    # test-point legend used to live in the bottom-LEFT corner and at x = 108.
+    # Plotted, that band was unreadable: the legend's three rows crossed the
+    # forty rotated header pin names, the title ran through the debug header's
+    # seven rotated pin names and through the HOUSEKEEPING block label, and the
+    # SMA key sat on the pads of C5015, C5018 and U5009.  The one rectangle in
+    # this band with nothing in it is x 141..205, y 155..170 -- Q2002 occupies
+    # 129.7..138.5 and the channel array stops at y = 158 -- so the legend goes
+    # there, as four rows in two columns, with the header names now dropped to
+    # y = 171.4 so their tops clear it.
+    LX1, LX2 = 141.0, 176.0
+    out.append(text(LX1, 152.2, "TEST POINTS - the letter beside each pad",
+                    "F.SilkS", 1.15, 0.19))
+    COLS = ((LX1, ["I  at the SMA  0.7-8.0 Vpp",
+                   "S  squarer  0.6-3.3 Vpp",
+                   "B  beat  0/3.3 V, 1.1-1.4 kHz",
+                   "5  +5 V  4.6-5.3 V"]),
+            (LX2, ["P  pps  0/3.3 V, 1 Hz",
+                   "X  Si5351 XA  0.5-1.0 Vpp",
+                   "W  1-Wire bus",
+                   "A/D  +3V3  3.25-3.35 V"]))
+    for lx, col in COLS:
+        for i, s in enumerate(col):
+            out.append(text(lx, 154.6 + i * 2.4, s, "F.SilkS", 1.05, 0.17))
+    # What may be applied to an SMA, which the board never said before.  0.7 Vpp
+    # is the FE-5680A into 50 ohm, the weakest source in the inventory; 8.0 Vpp
+    # is the TM-4 open circuit, the hottest.  Both come from design.SOURCES.
+    # The old legend said "1.0 - 8.0", which matched neither the terminated
+    # range (1.2 to 2.6) nor the open-circuit one (2.8 to 8.0).
+    out.append(text(LX1, 164.2, "n = 10 MHz IN 0.7-8.0 Vpp AC    "
+                    "Pn = 1 pps IN 0-5.5 V DC    13 = NULL",
+                    "F.SilkS", 1.0, 0.16))
+    out.append(text(LX1, 166.6, "HIN 0.7-3.3 Vpp AC in    "
+                    "HO 0/3.3 V CMOS, 1.6 Vpp into 50R",
+                    "F.SilkS", 1.0, 0.16))
 
     return out, placed, fps, boxes
 
@@ -982,7 +2445,9 @@ def render():
 
 if __name__ == "__main__":
     txt, placed, bad = render()
-    open(os.path.join(ROOT, "GPSDO-PYNQ-Z2.kicad_pcb"), "w", encoding="utf-8").write(txt)
+    open(os.environ.get("OUTPCB",
+                        os.path.join(ROOT, "GPSDO-PYNQ-Z2.kicad_pcb")),
+         "w", encoding="utf-8").write(txt)
     print("placed %d parts" % len(placed))
     if bad:
         print("OVERLAPS: %d" % len(bad))

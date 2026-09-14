@@ -76,8 +76,18 @@ PARTS = {
     "Y3001": (16.0, 0.25, 0),
     "U3001": (24.0, 0.5, 0),
     "FB3002": (30.5, -5.6, 270),
-    "C3004": (27.0, -5.6, 90),
-    "C3005": (23.4, -5.6, 90),
+    # Round 21: both 100 nF now (Si5351 7.1 wants 0.1-1.0 uF per supply pin,
+    # and asks for them "as close to the VDD and VDDOx pins as possible without
+    # using vias").  Pulled 1.4 mm down the board and C3005 slid to x = 21.888
+    # so it sits DIRECTLY above VDD on pin 1: 2.75 mm pad to pad, straight
+    # down, no via, where it used to be 4.42 mm and diagonal.  VDDO on pin 7
+    # cannot be reached the short way -- a straight drop from above would run
+    # along the right-hand pin row and short CLK0, CLK1 and GND -- so it keeps
+    # the path around the outside at x = 31.  VDDO feeds only the CMOS output
+    # drivers, and their supply noise is common to every channel, so it
+    # cancels in the channel-to-channel differences that are the measurement.
+    "C3004": (27.0, -4.2, 90),
+    "C3005": (21.888, -4.2, 90),
     # ---- source select: the synthesiser, or the external SMA ----------
     "R3003": (34.0, -6.0, 0),        # 51R terminator for the external input
     "R3004": (36.0, -3.4, 0),        # 0R, DNP: external in
@@ -154,8 +164,8 @@ def routes():
     A((("FB3002", "2"), SIG, [(21.888, -3.0), (31.0, -3.0)]))
     A((("FB3002", "2"), SIG, [(21.888, -3.0), (21.888, -0.5)]))     # VDD
     A((("FB3002", "2"), SIG, [(31.0, -3.0), (31.0, 1.0), (26.112, 1.0)]))  # VDDO
-    A((("C3004", "1"), SIG, [(27.0, -4.65), (27.0, -3.0)]))
-    A((("C3005", "1"), SIG, [(23.4, -4.65), (23.4, -3.0)]))
+    A((("C3004", "1"), SIG, [(27.0, -3.25), (27.0, -3.0)]))
+    A((("C3005", "1"), SIG, [(21.888, -3.25), (21.888, -3.0)]))
     # ---- both clock outputs drop to In2 within 3 mm of the package ----
     A((("U3001", "10"), SIG, [(26.112, -0.5), (27.6, -0.5), VIA_CLK1]))
     A((("U3001", "9"), SIG, [(26.112, 0.0), (29.0, 0.0), VIA_CLK0]))

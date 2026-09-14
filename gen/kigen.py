@@ -117,9 +117,11 @@ class SymCache:
         """
         Derive a project-local symbol from a stock one, optionally relabelling
         pins.  Used where the pinout is right but the stock symbol's pin NAMES
-        would mislead on the plotted sheet -- e.g. the TPS7A2033 in SOT-23-5 has
-        exactly the LP5907's pin numbering, but pin 4 is NR/SS, not NC, and that
-        distinction is visible to whoever reads the schematic.
+        would mislead on the plotted sheet -- e.g. the TPS7A2033 in SOT-23-5
+        has exactly the LP5907's pin numbering, so the LP5907 symbol is the
+        right shape, but the part number on the sheet has to be the one you
+        actually buy.  (Round 21: an earlier version of this comment claimed
+        pin 4 was NR/SS rather than NC.  It is not -- see SBVS338H section 4.)
         """
         import copy
         node = copy.deepcopy(self._flatten(base_lib_id))

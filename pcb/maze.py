@@ -25,10 +25,30 @@ TURN_COST = 3.0
 
 
 class Grid:
-    def __init__(self, w, h, margin=1.0):
+    """Obstacles on a 0.5 mm grid, one plane per routing layer.
+
+    `counted` makes each cell a REFERENCE COUNT rather than a flag, which is
+    what lets a net's own copper be lifted out of a finished grid and put back
+    exactly.  Without it the only safe way to route net N with its own pads open
+    is to rebuild the whole grid from scratch with N left out -- 600 pads and
+    2000 tracks rasterised into 2 x 148k cells, per net, per attempt -- and that
+    is where a build spends 33 of its 40 minutes.  Setting a cell to 0 instead
+    of decrementing it is the round-18 bug that this exists to avoid: freeing
+    the disc round a pad also freed whatever else passed within a millimetre.
+
+    In counted mode `free_disc` is meaningless and must not be called; use
+    sub()/add() with the cell set an object contributed.
+    """
+
+    def __init__(self, w, h, margin=1.0, counted=False):
         self.nx, self.ny = int(w / PITCH) + 1, int(h / PITCH) + 1
         self.n = self.nx * self.ny
-        self.blocked = [bytearray(self.n) for _ in range(NL)]
+        self.counted = counted
+        if counted:
+            from array import array
+            self.blocked = [array("H", bytes(2 * self.n)) for _ in range(NL)]
+        else:
+            self.blocked = [bytearray(self.n) for _ in range(NL)]
         m = int(margin / PITCH)
         for L in range(NL):
             b = self.blocked[L]
@@ -59,13 +79,107 @@ class Grid:
                         for LL in ([L] if L is not None else range(NL)):
                             self.blocked[LL][j * self.nx + i] = v
 
+    # ---- counted mode: an object's cells, and add/sub on them -----------
+    def cells_disc(self, x, y, r, L=None):
+        ci, cj = self.cell(x, y)
+        n = int(math.ceil(r / PITCH)) + 1
+        r2 = r * r
+        out = []
+        for di in range(-n, n + 1):
+            for dj in range(-n, n + 1):
+                i, j = ci + di, cj + dj
+                if 0 <= i < self.nx and 0 <= j < self.ny:
+                    if (i * PITCH - x) ** 2 + (j * PITCH - y) ** 2 <= r2:
+                        k = j * self.nx + i
+                        for LL in ([L] if L is not None else range(NL)):
+                            out.append((LL, k))
+        return out
+
+    def cells_seg(self, x0, y0, x1, y1, r, L=None):
+        n = max(2, int(math.hypot(x1 - x0, y1 - y0) / (PITCH * 0.5)) + 1)
+        out = set()
+        for k in range(n + 1):
+            t = k / float(n)
+            out.update(self.cells_disc(x0 + (x1 - x0) * t,
+                                       y0 + (y1 - y0) * t, r, L))
+        return out
+
+    def cells_rect(self, x, y, rect, clr, L=None):
+        hw, hh, ang = rect
+        ca, sa = math.cos(math.radians(ang)), math.sin(math.radians(ang))
+        rr = math.hypot(hw, hh) + clr
+        ci, cj = self.cell(x, y)
+        n = int(math.ceil(rr / PITCH)) + 1
+        out = []
+        for di in range(-n, n + 1):
+            for dj in range(-n, n + 1):
+                i, j = ci + di, cj + dj
+                if not (0 <= i < self.nx and 0 <= j < self.ny):
+                    continue
+                dx, dy = i * PITCH - x, j * PITCH - y
+                ux, uy = dx * ca - dy * sa, dx * sa + dy * ca
+                gx, gy = max(0.0, abs(ux) - hw), max(0.0, abs(uy) - hh)
+                if gx * gx + gy * gy <= clr * clr:
+                    k = j * self.nx + i
+                    for LL in ([L] if L is not None else range(NL)):
+                        out.append((LL, k))
+        return out
+
+    def add(self, cells):
+        b = self.blocked
+        for L, k in cells:
+            b[L][k] += 1
+
+    def sub(self, cells):
+        b = self.blocked
+        for L, k in cells:
+            if b[L][k]:
+                b[L][k] -= 1
+
     def block_disc(self, x, y, r, L=None):
+        if self.counted:
+            self.add(self.cells_disc(x, y, r, L))
+            return
         self._disc(L, x, y, r, 1)
 
     def free_disc(self, x, y, r, L=None):
         self._disc(L, x, y, r, 0)
 
+    def block_rect(self, x, y, rect, clr, L=None, v=1):
+        """Block the cells within `clr` of a pad RECTANGLE.
+
+        A pad is not a circle, and pretending it is one is expensive where it
+        hurts most.  A SOIC-8 pad is 1.95 x 0.6 mm, so the half-diagonal model
+        makes it a 2.04 mm disc: with 0.85 mm of clearance on top, every cell
+        within 2.9 mm of every pin is blocked, which walls in the whole package
+        and 2 mm of board around it.  Nothing can reach such a part's pins, and
+        that -- not congestion -- is why the rails could not be finished.
+        The real rectangle leaves the 0.97 mm of clear copper that is genuinely
+        between two adjacent pins."""
+        if self.counted:
+            self.add(self.cells_rect(x, y, rect, clr, L))
+            return
+        hw, hh, ang = rect
+        ca, sa = math.cos(math.radians(ang)), math.sin(math.radians(ang))
+        rr = math.hypot(hw, hh) + clr
+        ci, cj = self.cell(x, y)
+        n = int(math.ceil(rr / PITCH)) + 1
+        for di in range(-n, n + 1):
+            for dj in range(-n, n + 1):
+                i, j = ci + di, cj + dj
+                if not (0 <= i < self.nx and 0 <= j < self.ny):
+                    continue
+                dx, dy = i * PITCH - x, j * PITCH - y
+                ux, uy = dx * ca - dy * sa, dx * sa + dy * ca
+                gx, gy = max(0.0, abs(ux) - hw), max(0.0, abs(uy) - hh)
+                if gx * gx + gy * gy <= clr * clr:
+                    for LL in ([L] if L is not None else range(NL)):
+                        self.blocked[LL][j * self.nx + i] = v
+
     def block_seg(self, x0, y0, x1, y1, r, L=None):
+        if self.counted:
+            self.add(self.cells_seg(x0, y0, x1, y1, r, L))
+            return
         n = max(2, int(math.hypot(x1 - x0, y1 - y0) / (PITCH * 0.5)) + 1)
         for k in range(n + 1):
             t = k / float(n)
@@ -73,10 +187,30 @@ class Grid:
 
     # -- A* over (cell, layer, direction) ---------------------------------
     def route(self, a, b, layers=(0,), start_layer=0, end_layer=None,
-              turn=TURN_COST, cap=400000):
-        """a, b are (x, y).  `layers` are the layers the route may use.
-        Returns [(x, y, layer), ...] corners, or None."""
-        s, t = self.cell(*a), self.cell(*b)
+              turn=TURN_COST, cap=400000, strict_goals=False):
+        """a is (x, y); b is (x, y) OR a list of them.
+
+        A list makes it a multi-GOAL search, which is what a multi-terminal net
+        needs: you want the nearest point of the tree so far, not the nearest
+        other terminal, and the difference is the whole quality of a power
+        distribution.  Returns [(x, y, layer), ...] corners, or None."""
+        s = self.cell(*a)
+        many = isinstance(b, (list, tuple, set)) and b and \
+            isinstance(next(iter(b)), (list, tuple))
+        goals = {self.cell(*q) for q in b} if many else {self.cell(*b)}
+        if strict_goals:
+            # A goal cell is allowed to be blocked, so the router can always
+            # terminate on a pad or on its own stub.  For a multi-terminal net
+            # the goal set is the whole tree -- hundreds of cells -- and any of
+            # them that happened to be blocked by ANOTHER net became a legal
+            # step.  Here the net's own copper is already unblocked, so a
+            # blocked goal cell means somebody else is there: drop it.
+            free = {g for g in goals
+                    if not self.blocked[end_layer if end_layer is not None
+                                        else start_layer][g[1] * self.nx + g[0]]}
+            if free:
+                goals = free
+        t = min(goals, key=lambda g: abs(g[0] - s[0]) + abs(g[1] - s[1]))
         end_layer = start_layer if end_layer is None else end_layer
         nx, ny = self.nx, self.ny
         blk = self.blocked
@@ -95,7 +229,7 @@ class Grid:
             if key in best:
                 continue
             best[key] = g
-            if (i, j) == t and L == end_layer:
+            if (i, j) in goals and L == end_layer:
                 out, k = [], key
                 while k is not None:
                     out.append((k[0] * PITCH, k[1] * PITCH, k[2]))
@@ -106,15 +240,16 @@ class Grid:
                 ii, jj = i + di, j + dj
                 if not (0 <= ii < nx and 0 <= jj < ny):
                     continue
-                if blk[L][jj * nx + ii] and (ii, jj) != t:
+                if blk[L][jj * nx + ii] and (ii, jj) not in goals:
                     continue
                 nk = (ii, jj, L, nd)
                 if nk in best:
                     continue
                 ng = g + 1.0 + (turn if (d >= 0 and nd != d) else 0.0)
                 par.setdefault(nk, key)
-                heapq.heappush(pq, (ng + abs(ii - t[0]) + abs(jj - t[1]),
-                                    ng, len(par), ii, jj, L, nd))
+                hh = min(abs(ii - g[0]) + abs(jj - g[1]) for g in goals) \
+                    if len(goals) < 40 else 0
+                heapq.heappush(pq, (ng + hh, ng, len(par), ii, jj, L, nd))
             for LL in layers:
                 # A via is 0.6 mm plus clearance: the cell it lands on is not
                 # enough, its four neighbours have to be clear on BOTH layers
@@ -126,8 +261,9 @@ class Grid:
                     continue
                 ng = g + VIA_COST
                 par.setdefault(nk, key)
-                heapq.heappush(pq, (ng + abs(i - t[0]) + abs(j - t[1]),
-                                    ng, len(par), i, j, LL, d))
+                hh = min(abs(i - g[0]) + abs(j - g[1]) for g in goals) \
+                    if len(goals) < 40 else 0
+                heapq.heappush(pq, (ng + hh, ng, len(par), i, j, LL, d))
         return None
 
 

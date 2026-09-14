@@ -13,6 +13,7 @@ SIZE = {
     "Resistor_SMD:R_0805_2012Metric": (3.0, 1.9),
     "Inductor_SMD:L_0805_2012Metric": (3.0, 1.9),
     "Resistor_SMD:R_1206_3216Metric": (4.2, 2.2),
+    "Resistor_SMD:R_2010_5025Metric": (6.4, 3.2),
     "Fuse:Fuse_1206_3216Metric": (4.2, 2.2),
     "Package_TO_SOT_SMD:SOT-23-5": (3.2, 3.2),
     "Package_TO_SOT_SMD:SOT-23-6": (3.2, 3.2),
@@ -211,11 +212,32 @@ def pads(libdir, name, x, y, rot):
     # 27 jacks' through-hole pads were invisible to every collision check on
     # this board -- including the ground-via search.
     for m in _re.finditer(r'\(pad "([^"]*)"\s+(\w+)\s+\w+[^()]*'
-                          r'\(at ([-\d.]+) ([-\d.]+)[^)]*\)\s*'
+                          r'\(at ([-\d.]+) ([-\d.]+)\s*([-\d.]*)[^)]*\)\s*'
                           r'\(size ([\d.]+) ([\d.]+)\)', t):
         lx, ly = float(m.group(3)), float(m.group(4))
-        w, h = float(m.group(5)), float(m.group(6))
+        pang = float(m.group(5)) if m.group(5) else 0.0
+        w, h = float(m.group(6)), float(m.group(7))
+        # Half-diagonal AND the real rectangle.  The half-diagonal is what the
+        # grid routers use, where a conservative circle is the right trade; it
+        # is far too pessimistic for a fine-pitch part, though -- a SOIC-8's
+        # 1.95 x 0.6 mm pad becomes a 2.04 mm circle, so on that model nothing
+        # can ever approach pin 8 without fouling pin 7, when in reality there
+        # is 0.97 mm of clear copper between them.  Anything that checks real
+        # clearance wants (hw, hh, angle) instead.
         out.append((m.group(1), x + lx * ca - ly * sa, y + lx * sa + ly * ca,
                     m.group(2) != "smd",           # True when it is a plated hole
-                    0.5 * (w * w + h * h) ** 0.5))  # half-diagonal, for clearance
+                    0.5 * (w * w + h * h) ** 0.5,  # half-diagonal
+                    (0.5 * w, 0.5 * h, rot + pang)))
     return out
+
+
+def pad_gap(px, py, cx, cy, rect):
+    """Distance from a point to a pad RECTANGLE (0 if inside)."""
+    import math
+    hw, hh, ang = rect
+    a = math.radians(ang)
+    dx, dy = px - cx, py - cy
+    ux = dx * math.cos(a) - dy * math.sin(a)
+    uy = dx * math.sin(a) + dy * math.cos(a)
+    gx, gy = max(0.0, abs(ux) - hw), max(0.0, abs(uy) - hh)
+    return math.hypot(gx, gy)

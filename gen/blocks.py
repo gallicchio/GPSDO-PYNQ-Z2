@@ -41,14 +41,26 @@ def gnd(s, x, y, drop=6.35, ref=None, R=None):
           hide_ref=True, in_bom=False, on_board=False, val_dxy=(0, 3.81))
 
 
-def rail(s, x, y, net, rise=6.35, ref=None, R=None):
-    """Power symbol `rise` above (x,y), wired down to it.  Power comes from the top."""
+def rail(s, x, y, net, rise=6.35, ref=None, R=None, down=False):
+    """Power symbol `rise` above (x,y), wired down to it.  Power comes from the
+    top -- except where the only clear side is downward.
+
+    Round 21 added `down` for exactly one pin: the MCP4725's A0 strap.  Its A0,
+    SDA and SCL pins are all on the symbol's left side at 2.54 mm pitch with
+    A0 the lowest, so a riser going UP from A0 lands on the SCL wire and
+    SHORTS I2C_SCL to +3V3_D.  That is what happened on the first attempt at
+    the 0x61 fix, and it survived ERC, check_netlist and check_paths -- see
+    check_netlist's REQUIRED_NETS, added the same round to catch it.
+    """
+    dy = -rise if down else rise
     if rise:
-        s.wire(x, y, x, y - rise)
+        s.wire(x, y, x, y - dy)
     lib = "power:+3V3" if net.startswith("+3V3") else (
           "power:+5V" if net.startswith("+5V") else "power:+12V")
-    s.sym(lib, x, y - rise, 0, ref=ref or (R.pwr() if R else "#PWR002"), value=net,
-          hide_ref=True, in_bom=False, on_board=False, val_dxy=(0, -3.81))
+    s.sym(lib, x, y - dy, 180 if down else 0,
+          ref=ref or (R.pwr() if R else "#PWR002"), value=net,
+          hide_ref=True, in_bom=False, on_board=False,
+          val_dxy=(0, 3.81) if down else (0, -3.81))
 
 
 def r_h(s, x, y, ref, val, dnp=False, below=False, **kw):
@@ -102,7 +114,8 @@ def testpoint(s, x, y, ref, name):
           ref_dxy=(1.905, -1.27), val_dxy=(1.905, 1.27))
 
 
-def decouple(s, x_vcc, y_vcc, rail_net, R, note="", tall=True):
+def decouple(s, x_vcc, y_vcc, rail_net, R, note="", tall=True,
+             values=("100n", "10n")):
     """
     Per-gate supply: a ferrite bead in this gate's own Vcc feed off the shared
     rail, then 100 nF X7R + 10 nF C0G right at the pin.  Drawn above the gate so
@@ -112,6 +125,10 @@ def decouple(s, x_vcc, y_vcc, rail_net, R, note="", tall=True):
     One shared rail (so threshold drift is common mode and cancels in the
     differences) plus per-gate local decoupling, which is what every gate on
     this board gets.
+
+    `values` overrides the pair.  The Si5351 asks for 0.1 to 1.0 uF per supply
+    pin (datasheet section 7.1), and it has two of them, so it passes
+    ("100n", "100n") and the layout puts one at pin 1 and one at pin 7.
     """
     fb_ref, c1_ref, c2_ref = R("FB"), R("C"), R("C")
     y_node = y_vcc - (22.86 if tall else 10.16)   # decoupled node, above the gate
@@ -123,7 +140,7 @@ def decouple(s, x_vcc, y_vcc, rail_net, R, note="", tall=True):
     rail(s, x_vcc, y_fb - 3.81, rail_net, rise=6.35, R=R)
     s.junction(x_vcc, y_node)
     prev = x_vcc
-    for i, (ref, val) in enumerate(((c1_ref, "100n"), (c2_ref, "10n"))):
+    for i, (ref, val) in enumerate(((c1_ref, values[0]), (c2_ref, values[1]))):
         xc = x_vcc + 8.89 + i * 11.43
         s.wire(prev, y_node, xc, y_node)
         c_v(s, xc, y_node + 5.08, ref, val)

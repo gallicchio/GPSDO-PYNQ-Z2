@@ -89,7 +89,7 @@ def build():
     out.append(rect(p0[0], p0[1], p1[0], p1[1], "Dwgs.User", 0.2))
     out.append(text(2, 99.0, "PYNQ-Z2 outline (measured 137.0 x 87.0) - only this 9 mm strip is over it",
                     "Dwgs.User", 1.2, 0.2))
-    for x0, x1, h, nm in G.PZ_TALL:
+    for x0, x1, h, nm, under in G.PZ_TALL:
         a, b = G.B(x0, G.PZ_H), G.B(x1, 0)
         if b[0] < 0:                            # entirely left of our left edge
             continue

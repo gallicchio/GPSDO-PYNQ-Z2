@@ -34,8 +34,12 @@ SMA_PITCH = 15.24
 # ---------------------------------------------------------------------------
 Y_U1, IC_PITCH = 20.2, 8.0
 Y_U2, Y_U3 = Y_U1 + IC_PITCH, Y_U1 + 2 * IC_PITCH
-RAIL_10M = 8.9              # +3V3_A rail, in the gutter right of the 10M box
-RAIL_PPS = SMA_PITCH + 6.46  # and right of the pps box
+RAIL_10M = 8.9              # +3V3_A rail, in the gutter beside the tile.  One
+RAIL_PPS = 8.9              # rail now serves both halves: since round 15 they
+                            # are in LINE rather than side by side, so the same
+                            # gutter runs the whole length of the unit.
+RAIL_HEAD_PPS = -32.1       # the rail runs out past the 1 pps block to meet the
+                            # board-edge +3V3_A spine
 RAIL_FOOT = 44.0             # where both rails meet the row's horizontal spine,
                              # 1.4 mm below the bottom of the taller box
 RAIL_HEAD = -5.0             # both rails run the FULL height of the box, not
@@ -74,6 +78,13 @@ for _slot, _y in (("01", Y_U1), ("02", Y_U2), ("03", Y_U3)):
     PARTS_10M["C%02d" % (2 * int(_slot))] = _p["CA"]       # C02 C04 C06
     PARTS_10M["C%02d" % (2 * int(_slot) + 1)] = _p["CB"]   # C03 C05 C07
 
+# Round 15: the 1 pps block sits IN LINE with the 10 MHz block, on its far
+# side from the helper, rather than beside it.  Its own origin (the 1 pps jack)
+# is this far back along the chain from the 10 MHz jack: the 1 pps box is
+# 25.4 mm long, then a 1.5 mm gap, then the 10 MHz box starts 6 mm above its
+# own jack.
+PPS_OFFSET = (0.0, -26.9)
+
 Y_U4 = 12.6
 PARTS_PPS = {
     "J02":  (0.0, 0.0, 0),
@@ -88,19 +99,27 @@ PARTS_PPS = {
 }
 
 # The two boxes, as fixed rectangles about their own SMA.
-BOX_10M = (-8.4, -6.0, 8.4, 42.6)
-BOX_PPS = (-5.9, -6.0, 5.9, 19.4)
+BOX_10M = (-8.4, -6.0, 8.4, 42.6)          # 16.8 x 48.6
+BOX_PPS = (-5.9, -6.0, 5.9, 19.4)          # 11.8 x 25.4, about its own origin
 
 TILE_10M = list(PARTS_10M)
 TILE_PPS = list(PARTS_PPS)
 
 
-def tile(pitch=SMA_PITCH):
+def tile(pitch=None):
     """Both halves in one dict, in unit-local coordinates."""
+    ox, oy = PPS_OFFSET
     d = dict(PARTS_10M)
     for slot, (dx, dy, rot) in PARTS_PPS.items():
-        d[slot] = (dx + pitch, dy, rot)
+        d[slot] = (dx + ox, dy + oy, rot)
     return d
+
+
+def pps_box():
+    """BOX_PPS moved onto the unit's own origin."""
+    ox, oy = PPS_OFFSET
+    x0, y0, x1, y1 = BOX_PPS
+    return (x0 + ox, y0 + oy, x1 + ox, y1 + oy)
 
 
 # ---------------------------------------------------------------------------
@@ -122,7 +141,9 @@ def _ic_power_routes(fb, y, rail):
     ]
 
 
-def routes_10m():
+def routes_10m(head=RAIL_HEAD):
+    """head: where the rail starts -- above the 1 pps block, or above the
+    10 MHz block for unit 13, which has no 1 pps half."""
     R = []
     # --- the input node: SMA centre pin down, terminator left, test point right
     R.append((("J01", "1"), W_SIG, [(0, 0), (0, 6.088)]))
@@ -162,8 +183,10 @@ def routes_10m():
     for fb, y in (("FB01", Y_U1), ("FB02", Y_U2), ("FB03", Y_U3)):
         R += _ic_power_routes(fb, y, RAIL_10M)
     # --- the rail itself, down the gutter past all three ferrites
-    R.append((("D01", "1"), W_PWR, [(RAIL_10M, RAIL_HEAD), (RAIL_10M, RAIL_FOOT)]))
+    R.append((("D01", "1"), W_PWR, [(RAIL_10M, head), (RAIL_10M, RAIL_FOOT)]))
     return R
+
+
 
 
 def routes_pps():
@@ -175,19 +198,30 @@ def routes_pps():
     R.append((("U04", "4"), W_SIG, [(-0.95, Y_U4 + 1.1375), (-0.95, 16.6),
                                     (PPS_VIA[0], 16.6)]))
     vy = Y_U4 + 1.1375
-    R.append((("FB04", "1"), W_PWR, [(RAIL_PPS - SMA_PITCH, vy), (4.862, vy)]))
-    R.append((("FB04", "1"), W_PWR, [(RAIL_PPS - SMA_PITCH, RAIL_HEAD),
-                                     (RAIL_PPS - SMA_PITCH, RAIL_FOOT)]))
+    R.append((("FB04", "1"), W_PWR, [(RAIL_PPS, vy), (4.862, vy)]))
     R.append((("FB04", "2"), W_SIG, [(2.738, vy), (0.95, vy)]))
     R.append((("FB04", "2"), W_SIG, [(2.85, vy), (2.85, 17.0)]))
     R.append((("FB04", "2"), W_SIG, [(2.85, vy), (2.85, 10.8)]))
     return R
 
 
-# Vias that take a tile signal down to In2.Cu.
+# Vias that take a tile signal down to In2.Cu, and where each one's stub comes
+# back out into the open.  All three run to the same line just past the inner
+# end of the unit, which since round 15 is the edge of the helper band -- so
+# every unit hands its three In2 nets over in the same place.
+#
+# These are in TILE coordinates (the 1 pps via has already been moved onto the
+# unit's own origin), because the whole unit gets rotated 90 or 270 depending
+# on which side of the centre line it lives.
+ESC_Y    = 43.0   # The hand-off line stops at the BOX EDGE, not out in the
+                  # helper band.  At 48 every unit's three escape stubs ran
+                  # 5 mm into the return lane and lay across it, so a return
+                  # descending the lane had to cross three of them per row
+                  # it passed -- which is what left eight of them unrouted.
 BEAT_VIA = (-6.0, 39.8)
 HCLK_VIA = (-2.2, 31.5)
-PPS_VIA  = (-4.9, 16.6)
-VIAS_10M = [("U03", "4") + BEAT_VIA,           # beat out
-            ("U02", "2") + HCLK_VIA]           # helper clock in
-VIAS_PPS = [("U04", "4") + PPS_VIA]            # pps out
+PPS_VIA  = (-4.9, PPS_OFFSET[1] + 16.6)           # pps-local (-4.9, 16.6)
+
+VIAS_10M = [("U03", "4") + BEAT_VIA + (ESC_Y,),
+            ("U02", "2") + HCLK_VIA + (ESC_Y,)]
+VIAS_PPS = [("U04", "4") + PPS_VIA + (ESC_Y,)]

@@ -184,18 +184,19 @@ def _ten_mhz(s, R, beat, hclk, rser, rsh2, term, L):
         decouple(s, ff.pin(5)[0], ff.pin(5)[1], RAIL_A, R)
     s.note(330.2, y + 62.23, 62.23, 0,
            "WHY THE 74LVC1G80\n"
-           "The simplest D flip-flop there is: D, CLK, ~Q and the two rails, and nothing else. "
+           "The simplest D flip-flop there is: D, CLK, one output and the two rails, and "
+           "nothing else. "
            "No preset and no clear, so there is no asynchronous input that could reset a "
            "sampler which must never be reset, and nothing to tie off.\n"
            "Same 74LVC family and the same SOT-23-5 footprint as the squarer and the Schmitt, "
            "so the whole board is one package type at assembly.",
            size=1.4, color=INFO, cols=44)
-    dx, dy = ff1.pin(1)
+    dx, dy = ff1.pin(D.FF_D_PIN)
     s.wires((b[0], y), (dx - 12.7, y), (dx - 12.7, dy), (dx, dy))
-    qx, qy = ff1.pin(4); d2x, d2y = ff2.pin(1)
+    qx, qy = ff1.pin(4); d2x, d2y = ff2.pin(D.FF_D_PIN)
     s.wires((qx, qy), (d2x - 12.7, qy), (d2x - 12.7, d2y), (d2x, d2y))
     for ff in (ff1, ff2):
-        cx, cy = ff.pin(2)
+        cx, cy = ff.pin(D.FF_CLK_PIN)
         s.wire(cx - 22.86, cy, cx, cy)
         s.glabel(cx - 22.86, cy, hclk, shape="input", justify="right")
     ox, oy = ff2.pin(4)
@@ -237,7 +238,11 @@ def _ten_mhz_notes(s, L, term):
            "THE RETIMER (FF2) re-clocks on the next helper edge, so what leaves the board is "
            "always a clean transition aligned to a helper edge.  It costs exactly one helper "
            "cycle of latency and destroys no phase information.\n"
-           "The 74LVC1G80 output is ~Q, so two stages restore the sense.",
+           "THE 74LVC1G80 OUTPUT IS INVERTED, so the two stages restore the sense.  Both "
+           "datasheets NAME pin 4 'Q' in the pinout drawing and only say otherwise in the "
+           "text: TI SCES221T calls it 'Inverted output' and its Table 7-1 gives CLK up, "
+           "D = H -> Q = L; Nexperia rev 17 Table 4 agrees.  Pinout confirmed from both: "
+           "1 D, 2 CLK, 3 GND, 4 Q(inv), 5 VCC.",
            size=1.4, color=INFO, cols=80)
 
 

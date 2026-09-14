@@ -22,13 +22,30 @@ over the ground pin in between.
 """
 SIG, PWR = 0.25, 0.5
 
+# Round 15 puts this block in the top band, lying on its side: the coordinates
+# below are unchanged, and the whole block is placed at rot 270 about ORIGIN,
+# which maps local (lx, ly) to board (ORIGIN.x - ly, ORIGIN.y + lx).  That
+# lands it in x 106..178, y 2..34 with the barrel jack opening upward at the
+# board edge, without re-laying out twenty-five parts.
+ORIGIN = (214.0, -1.0)
+ROT = 270
+LABEL_XY = (118.0, 37.0)
+
+
+def place(lx, ly):
+    return (ORIGIN[0] - ly, ORIGIN[1] + lx)
+
 PARTS = {
     # ---- 15 V heater input --------------------------------------------
     "J2003": (17.0, 30.0, 0),        # barrel jack, body reaches x = 3
     "F2002": (22.5, 30.0, 0),        # 500 mA PPTC
     "D2004": (23.0, 39.0, 0),        # SS34 reverse-polarity, cathode left
     "D2005": (12.0, 45.0, 0),        # SMAJ18A, cathode (pad 1) on the RAIL
-    "Q2001": (12.0, 52.0, 0),        # DMN6068SE low-side switch
+    # Q2001 used to sit here.  All three pass FETs are hand-placed now (see
+    # build_pcb.hand_placed): each one goes to the centroid of the eight
+    # heaters it drives, because after round 18 the groups are GEOGRAPHIC and
+    # a FET beside its own heaters turns a board-spanning drain net into a
+    # local one.  Its 0.8 W is wanted out there anyway.
     # ---- 5 V input and the OR-ing diodes -------------------------------
     "J2001": (6.0, 64.0, 0),         # BENCH +5V post
     "J2002": (6.0, 72.0, 0),         # BENCH GND post
@@ -46,15 +63,18 @@ PARTS = {
     # physically between them, so each needs a lane beside the package that
     # taps both pins and steps over the ground pin in between; at rot 0 those
     # lanes would have had to cross the outputs.
+    # Round 21: the two 10 nF that used to hang off pin 4 as "NR/SS" are gone
+    # -- TI SBVS338H says pin 4 of the SOT-23-5 is N/C with no internal
+    # connection, and that the part needs no noise-bypass capacitor.  Deleting
+    # them renumbered everything after them in this block, which is why C2007
+    # and C2008 no longer exist: the four output capacitors moved up two.
     "U2001": (12.0, 88.0, 180),      # +3V3_A
-    "C2003": (6.5, 87.05, 180),      # NR/SS
-    "C2004": (8.0, 92.0, 180),
-    "C2005": (14.5, 92.0, 0),
+    "C2003": (8.0, 92.0, 180),       # 10u, +3V3_A output
+    "C2004": (14.5, 92.0, 0),        # 100n, +3V3_A output
     "TP2002": (10.8625, 95.5, 0),    # TP_3V3_A
     "U2002": (28.0, 88.0, 180),      # +3V3_D
-    "C2006": (23.0, 87.05, 180),     # NR/SS
-    "C2007": (23.5, 92.0, 180),
-    "C2008": (30.0, 92.0, 0),
+    "C2005": (23.5, 92.0, 180),      # 10u, +3V3_D output
+    "C2006": (30.0, 92.0, 0),        # 100n, +3V3_D output
     "TP2003": (26.8625, 95.5, 0),    # TP_3V3_D
 }
 
@@ -64,8 +84,6 @@ EXIT_3V3A = (10.8625, 95.5)
 EXIT_3V3D = (26.8625, 95.5)
 EXIT_5VH = (16.0, 72.0)
 EXIT_HTR = (21.0, 39.0)
-EXIT_DRAIN = (15.15, 52.0)
-EXIT_GATE = (8.85, 49.7)
 
 
 def routes():
