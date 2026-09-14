@@ -3,7 +3,7 @@ kigen -- a very small KiCAD 9 schematic writer.
 
 Targets the KiCAD 9 schematic s-expression format (version 20250114).  KiCAD 10
 opens these files without complaint; the reverse is not true, which is why 9 is
-the target.  See the Toolchain note at the top of GPSDO-DMTD-PCB.md.
+the target.  See the Toolchain note at the top of ../README.md.
 
 Everything is generated rather than drawn, so the header pin table in the design
 document, the constraint file and the netlist all come from one source of truth

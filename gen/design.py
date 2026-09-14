@@ -3,7 +3,7 @@ Single source of truth for the GPSDO-PYNQ-Z2 board.
 
 The header pin table here, the schematic, the Vivado constraint file and the BOM
 are all generated from this file, so they cannot drift apart.  It mirrors
-section 3 of GPSDO-comparison/GPSDO-DMTD-PCB.md; if you change one, change both.
+section 3 of ../README.md; if you change one, change both.
 """
 
 PROJECT = "GPSDO-PYNQ-Z2"

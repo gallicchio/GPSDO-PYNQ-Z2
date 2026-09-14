@@ -12,7 +12,10 @@ NA/
 # matters is already baked into mfg/release/annotated_bom.md.
 mfg/jlc_cache.json
 
-# Scratch copies kept while rewriting the placer in round 14.
+# Pre-rewrite snapshots of the placer sources.  The three that existed were
+# byte-identical to commit b40dae4, so they were deleted rather than tracked;
+# `git show b40dae4:GPSDO-PYNQ-Z2/pcb/<file>.py` is the recovery.  The rule
+# stays as insurance in case something makes more of them.
 *.r14
 
 # gateware/ has its own .gitignore for the Vivado project and build tree.

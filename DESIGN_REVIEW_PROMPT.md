@@ -307,9 +307,10 @@ kicad GPSDO-PYNQ-Z2.kicad_pro    # or just open the .kicad_sch / .kicad_pcb
 * `datasheets/` — every datasheet cited anywhere. Nothing was taken from a web
   search result that is not in this folder.
 * The full design history, including every decision and every mistake, is in
-  `GPSDO-DMTD-PCB.md` in the DroneSDR repository — 8 600 lines, twenty-four
-  rounds.  You are not expected to read it, but if you want to know why
-  something is the way it is, the answer is in there.
+  `README.md` beside this file — 9 700 lines, twenty-seven rounds.  You are not
+  expected to read it, but if you want to know why something is the way it is,
+  the answer is in there.  (It lived in the DroneSDR repository as
+  `GPSDO-comparison/GPSDO-DMTD-PCB.md` until 2026-09-13.)
 
 ## 11. What would be most useful back
 
