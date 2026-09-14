@@ -235,6 +235,28 @@ SOURCES = {
  13: ("cmos", 3.30, 1.65),   # NULL: Si5351 CLK1 at exactly 10.000000 MHz
 }
 
+# --- what may be applied to a 10 MHz SMA ------------------------------------
+# Round 29: the silkscreen and the handbook both print these, and before this
+# round they were typed into the silkscreen as "0.7 - 8.0" with no derivation.
+#
+# The WEAKEST thing this board is asked to square is the FE-5680A rubidium on
+# channel 12, 0.72 Vpp into 50 ohm.  It is not in SOURCES because SOURCES holds
+# the part that is normally on each channel and channel 12 normally carries the
+# HP 10811B; the FE-5680A is the alternative named in UNITS[11]'s note, and it
+# is the number that sets the low end of the printed range.
+#
+# The HOTTEST is the TM-4 on channel 1, 8.0 Vpp open circuit, and it is only
+# safe because that channel's 50R TERM jumper is fitted -- which is why the
+# silkscreen prints the jumper and the voltage in the same breath.  Without a
+# jumper the ceiling is a CMOS source's own rail: nothing in the inventory that
+# is meant to run unterminated exceeds 3.3 Vpp, and above that the coupling
+# capacitor rectifies through the gate's ESD diode and walks the input up.
+V_SMA_MIN = 0.72
+V_SMA_MAX = max(v for _s, v, _v50 in SOURCES.values())
+V_SMA_MAX_OPEN = max(SOURCES[n][1] for n, _b, _p, _s, term, _r, _r2, _nt in UNITS
+                     if term == "OUT")
+assert V_SMA_MAX == 8.0 and V_SMA_MAX_OPEN == 3.3, (V_SMA_MAX, V_SMA_MAX_OPEN)
+
 VTH = 1.65        # self-biased 74LVC1GU04 switching threshold on a 3.3 V rail
 F   = 10.0e6      # Hz
 

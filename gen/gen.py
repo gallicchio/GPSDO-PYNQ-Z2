@@ -119,10 +119,20 @@ def project_file(children):
     sheets = [[uuid_for(D.PROJECT, D.PROJECT + ".kicad_sch"), "Root"]]
     for sch, name, fn in children:
         sheets.append([uuid_for(D.PROJECT, "sheetbox", fn), name])
+    import jlc
     return json.dumps({
-        # Round 28: two vias were drilled into through-hole pads and the DRC
-        # only ever warned, so the build's --severity-error pass never saw it.
-        "board": {"design_settings": {"rule_severities": {"hole_to_hole": "error"}}},
+        # ROUND 29.  Everything numeric here comes from gen/jlc.py, one row
+        # per rule, each row asserting that our figure is at least as strict
+        # as JLCPCB's published capability.  Before this the project set four
+        # values -- clearance, track width, via size, via drill -- and left
+        # KiCad's defaults to cover the other eleven, including the whole
+        # silkscreen family; and it left every rule at its default SEVERITY,
+        # which is how round 28 could report "0 violations" from a
+        # --severity-error pass over a board with 639 warnings on it, 199 of
+        # them reference designators printed below the minimum legible height
+        # and 199 of them silkscreen landing on solder-mask openings.
+        "board": {"design_settings": {"rules": jlc.rules(),
+                                      "rule_severities": jlc.severities()}},
         "boards": [], "cvpcb": {"equivalence_files": []},
         "libraries": {"pinned_footprint_libs": [], "pinned_symbol_libs": []},
         "meta": {"filename": D.PROJECT + ".kicad_pro", "version": 3},

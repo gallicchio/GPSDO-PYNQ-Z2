@@ -138,6 +138,13 @@ for _k, _y in enumerate(ROWS_R):
 # nuts left 3.5 mm of spanner room between them.
 HELPER_SMA = {"HIN": (XC - 8.5, 12.0), "HO": (XC + 8.5, 12.0)}
 
+# The five 1-Wire screw terminals along the top edge.  Here, not in
+# build_pcb, because both the PLACEMENT and the hand-routed spurs that leave
+# each terminal are written from it -- round 29 moved the row 3 mm to clear
+# the top-left mounting hole and the spurs stayed behind, which dropped five
+# segments and was only visible as a line of build output.
+PROBE_X = [19.0 + i * 13.0 for i in range(5)]
+
 CHANNELS = 13
 TILE_H = 75.5            # a whole unit, 1 pps jack to the helper band
 
@@ -217,7 +224,58 @@ def _pz_hole(h):
     return B(h[0], PZ_H - h[1])
 
 
-MOUNT = [(_pz_hole(PZ_HOLE_TL), "M3 shared with PYNQ"),
-         (_pz_hole(PZ_HOLE_TR), "M3 shared with PYNQ"),
-         ((5.5, 5.5), "M3 standoff"), ((BW - 5.5, 5.5), "M3 standoff"),
-         ((5.5, BH - 5.5), "M3 standoff"), ((BW - 5.5, BH - 5.5), "M3 standoff")]
+def over_pynq(x, y):
+    """Is this point in our board's shadow of the PYNQ-Z2?
+
+    The PYNQ occupies board x 35..172 and board y 169..180 -- the 11 mm strip
+    along our bottom edge.  A standoff DOWN to the desk cannot go there; a
+    standoff that screws into the PYNQ's own mounting hole must.
+    """
+    return B(0.0, 0.0)[0] <= x <= B(PZ_W, 0.0)[0] and y >= B(0.0, PZ_H)[1]
+
+
+# ROUND 29.  This list used to be six entries with six notes and NOTHING ELSE:
+# build_pcb called put("H1".."H6"), put() looks a reference up in the netlist,
+# no sheet declares a mounting-hole symbol, and put() returns quietly when it
+# finds nothing.  So the board carried six comment-layer captions reading "M3
+# standoff" over six places with no hole in them -- which is exactly what the
+# 3D render showed, and it is what round 29 was asked about.  Each entry is
+# now (xy, kind, note), build_pcb places a real NPTH footprint for it, and
+# because that footprint's COURTYARD is the standoff keep-out rather than the
+# hole, the courtyard-overlap check that already runs asserts the clearance.
+#
+# Two of the old six are gone, and both reasons are worth keeping:
+#
+#   * the PYNQ's TOP-LEFT hole, board (39.3, 173.3), is under the 2x10 debug
+#     header -- its pin 1 pad edge is 1.6 mm from the hole's edge and well
+#     inside any M3 standoff's body.  The debug header is where round 18 put
+#     it after three rounds of failing to escape its signal row from anywhere
+#     else.  One shared standoff plus the 2x20 header itself already locate
+#     this board against the host in both axes; a second is not worth
+#     re-laying out a connector for.
+#   * the BOTTOM-LEFT CORNER, (5.5, 174.5), is where U5008's ferrite bead and
+#     two decoupling capacitors sit -- they run down the left margin from
+#     y = 161 to 176.  Not the PYNQ's fault: that corner is at board x = 5.5
+#     and the PYNQ starts at x = 35.  The support moves up the same edge to
+#     y = 157, the one gap between R2019's heater (ends 151.6) and U5008's
+#     bead (starts 162).
+MOUNT = [((5.5, 5.5), "hole", "M3 desk standoff, top-left corner"),
+         ((BW - 5.5, 5.5), "hole", "M3 desk standoff, top-right corner"),
+         ((BW - 11.0, BH - 5.5), "hole",
+          "M3 desk standoff, bottom right - 11 mm in, not 5.5, to stay off "
+          "the HTR_DRIVE spine that runs down x = BW - 6.2"),
+         ((11.0, 157.0), "hole",
+          "M3 desk standoff, lower left - the corner itself is under U5008's "
+          "decoupling stack, and x = 6.2 is the HTR_DRIVE spine"),
+         (_pz_hole(PZ_HOLE_TR), "slot",
+          "M3 SLOT onto the PYNQ-Z2's own top-right mounting hole: the one "
+          "standoff shared with the host.  A slot, not a hole, because the "
+          "registration between the two boards runs through a 2x20 header "
+          "and a set of photograph-derived dimensions good to about a "
+          "millimetre")]
+
+for _xy, _k, _n in MOUNT:
+    if _k == "hole":
+        assert not over_pynq(*_xy), \
+            "desk standoff %s is in the PYNQ's shadow" % (_xy,)
+assert over_pynq(*_pz_hole(PZ_HOLE_TR)), "the shared standoff must be over the PYNQ"

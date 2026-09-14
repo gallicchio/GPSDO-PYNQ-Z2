@@ -25,7 +25,7 @@ NETLIST = os.path.join(BUILD, "netlist.net")
 PRODUCTS = [
     "*.kicad_sch", NAME + ".kicad_pcb", NAME + ".kicad_pro",
     "sym-lib-table", "fp-lib-table", "library", "build",
-    "mfg/release", "mfg/_netlist.net", "fp-info-cache",
+    "mfg/release", "mfg/_netlist.net", "fp-info-cache", "HANDBOOK.md",
 ]
 # ...and this is what is NOT a product, listed so the distinction is explicit.
 SOURCES = ["gen/*.py", "pcb/*.py", "mfg/*.py (except release/)", "build.py",
@@ -93,18 +93,18 @@ def main():
         clean()
     os.makedirs(BUILD, exist_ok=True)
 
-    s = Step("1/6  schematic, project file and local footprints  <- gen/")
+    s = Step("1/7  schematic, project file and local footprints  <- gen/")
     out = run([sys.executable, "gen/gen.py"])
     s.done(out.strip().replace("\n", "; "))
 
-    s = Step("2/6  netlist and ERC  <- kicad-cli")
+    s = Step("2/7  netlist and ERC  <- kicad-cli")
     run(cli() + ["sch", "export", "netlist", "-o", NETLIST, NAME + ".kicad_sch"])
     erc = run(cli() + ["sch", "erc", "--severity-error", "--exit-code-violations",
                        "-o", os.path.join(BUILD, "erc.rpt"), NAME + ".kicad_sch"])
     s.done("netlist written; ERC %s"
            % [l for l in erc.splitlines() if "violation" in l.lower()][0].strip())
 
-    s = Step("3/6  schematic checks  <- gen/check*.py")
+    s = Step("3/7  schematic checks  <- gen/check*.py")
     msgs = []
     for script, args in (("gen/check.py", sorted(glob.glob(os.path.join(ROOT, "*.kicad_sch")))),
                          ("gen/check_netlist.py", [NETLIST]),
@@ -119,29 +119,58 @@ def main():
         print("\nstopping before the board (--no-pcb).  %.1fs" % (time.time() - t0))
         return 0
 
-    s = Step("4/6  board  <- pcb/build_pcb.py   (this is the long one)")
+    s = Step("4/7  board  <- pcb/build_pcb.py   (this is the long one)")
     env = dict(os.environ, NLDIR=BUILD)
     os.rename(NETLIST, os.path.join(BUILD, "nl.net"))       # build_pcb expects nl.net
     o = run([sys.executable, "pcb/build_pcb.py"], env=env)
     os.rename(os.path.join(BUILD, "nl.net"), NETLIST)
     keep = [l for l in o.splitlines()
             if any(k in l for k in ("placed", "routed", "multi-terminal:",
-                                    "courtyard", "bonded", "FAILED"))]
+                                    "courtyard", "bonded", "FAILED",
+                                    "silkscreen:", "two pieces"))]
     s.done("\n    ".join(l.strip() for l in keep))
 
     if not a.no_drc:
-        s = Step("5/6  DRC, unfilled and with the zones poured")
+        s = Step("5/7  DRC, and the zones poured INTO the board")
         pcb = os.path.join(ROOT, NAME + ".kicad_pcb")
+        pro = os.path.join(ROOT, NAME + ".kicad_pro")
+        # ROUND 29.  The pours used to be written into a COPY, build/filled,
+        # and the board this repository ships kept its zones unfilled -- so
+        # opening it showed a board with no ground plane and a ratsnest of
+        # several hundred ground connections, and the only thing that ever saw
+        # the poured version was this DRC.  Fill the real board; keep the
+        # unfilled one in build/ for the clearance-only pass, with a copy of
+        # the project file beside it so it is checked against OUR rules and
+        # not KiCad's defaults.
+        unf = os.path.join(BUILD, "unfilled.kicad_pcb")
+        shutil.copyfile(pcb, unf)
+        shutil.copyfile(pro, os.path.join(BUILD, "unfilled.kicad_pro"))
         d1 = run(cli() + ["pcb", "drc", "--severity-error", "--format", "json",
-                          "-o", os.path.join(BUILD, "drc.json"), pcb])
+                          "-o", os.path.join(BUILD, "drc.json"), unf])
         filled = os.path.join(BUILD, "filled.kicad_pcb")
         # fill_zones needs pcbnew, so it runs under KiCad's own interpreter
         k = cli()
         fill_cmd = (k[:-1] + ["python3.11"] if k[0].endswith("AppRun")
                     else [sys.executable])
         run(fill_cmd + [os.path.join(ROOT, "mfg", "fill_zones.py"), pcb, filled])
+        shutil.copyfile(filled, pcb)
         d2 = run(cli() + ["pcb", "drc", "--severity-error", "--format", "json",
-                          "-o", os.path.join(BUILD, "drcf.json"), filled])
+                          "-o", os.path.join(BUILD, "drcf.json"), pcb])
+        # ...and once more at FULL severity.  Round 28 reported "0 violations"
+        # from a --severity-error pass over a board carrying 639 warnings, 199
+        # of them reference designators below the minimum printable height and
+        # 199 of them silkscreen landing on solder-mask openings.  gen/jlc.py
+        # promotes the ones that matter to errors; this prints what is left,
+        # so that a warning has to be looked at rather than not asked about.
+        run(cli() + ["pcb", "drc", "--severity-all", "--format", "json",
+                     "-o", os.path.join(BUILD, "drc-all.json"), pcb])
+        import json as _json
+        allv = _json.load(open(os.path.join(BUILD, "drc-all.json")))["violations"]
+        byt = {}
+        for v in allv:
+            byt[(v["severity"], v["type"])] = byt.get((v["severity"], v["type"]), 0) + 1
+        rest = ", ".join("%s %s x%d" % (k[0], k[1], n)
+                         for k, n in sorted(byt.items(), key=lambda kv: -kv[1]))
 
         def verdict(txt):
             return "; ".join(l.strip() for l in txt.splitlines()
@@ -151,17 +180,20 @@ def main():
         # plane through a pour, and unfilled there is no pour, so ~436 of them
         # report as unconnected.  The number that matters is the filled one.
         s.done("unfilled (clearances):     %s\n"
-               "    filled (what counts):      %s\n"
-               "    the unfilled unconnected count is expected: without the\n"
-               "    pours, every ground pad looks unconnected."
-               % (verdict(d1), verdict(d2)))
+               "    the board, poured:         %s\n"
+               "    everything, all severities: %s\n"
+               "    (KiCad reports at most 199 of any one type)"
+               % (verdict(d1), verdict(d2), rest or "nothing at all"))
 
     if not a.no_release:
-        s = Step("6/6  manufacturing release  <- mfg/")
+        s = Step("6/7  manufacturing release  <- mfg/")
         o = run([sys.executable, "mfg/build_release.py", str(a.boards)])
         keep = [l for l in o.splitlines()
                 if any(k in l for k in ("parts $", "agree", "FAIL", "components:"))]
         s.done("\n    ".join(l.strip() for l in keep))
+
+    s = Step("7/7  HANDBOOK.md  <- gen/handbook.py")
+    s.done(run([sys.executable, "gen/handbook.py"]).strip())
 
     print("\nBUILT in %.1f s" % (time.time() - t0))
     return 0

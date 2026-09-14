@@ -31,7 +31,7 @@ deliberately shared, so +3V3_A and +3V3_D are poured on L1 in the space between
 tiles.  Trading a power plane for a second ground reference is the right way
 round for a board whose product is timing, not current.
 """
-import os, sys, math, hashlib
+import os, sys, math, re, hashlib
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "gen"))
@@ -42,7 +42,9 @@ import helper as H
 import power as PW
 import maze as MZ
 import netmap
+import labels as LB         # every word the board prints on itself
 import design as D          # REV and DATE for the silkscreen
+import jlc as J             # the design rules, and JLCPCB's own minimums
 from sexp import parse, kids, kid, val, head
 
 ROOT = os.path.dirname(HERE)
@@ -109,8 +111,41 @@ def S(s):
     return ("str", s)
 
 
+SILK_GFX = ("fp_line", "fp_rect", "fp_circle", "fp_arc", "fp_poly")
+
+
+def _fatten_silk(node):
+    """Raise every silkscreen stroke in a footprint to JLCPCB's minimum.
+
+    Round 29.  KiCad's stock footprints draw their outlines at 0.12 mm.
+    JLCPCB's published minimum silkscreen width is 6 mil = 0.1524, and no
+    KiCad DRC rule looks at a GRAPHIC line's width -- `min_text_thickness`
+    only covers text -- so 458 footprints' worth of under-width ink passed
+    every check this project runs and would have been either thinned or
+    dropped on the panel.  Fixing it here rather than in the library means it
+    applies to the stock footprints too, which are not ours to edit.
+    """
+    for c in node:
+        if not isinstance(c, list):
+            continue
+        if head(c) in SILK_GFX:
+            lyr = kid(c, "layer")
+            if lyr and val(lyr).endswith(".SilkS"):
+                for st in kids(c, "stroke"):
+                    for w in kids(st, "width"):
+                        if float(val(w, 1)) < J.SILK_LINE_MIN:
+                            w[1] = ("atom", "%g" % J.SILK_LINE_MIN)
+        _fatten_silk(c)
+
+
 _fpcache = {}
-def footprint(libdir, name, ref, value, x, y, rot, layer, pads, numof):
+def footprint(libdir, name, ref, value, x, y, rot, layer, pads, numof,
+              refat=None, refsize=None, reflayer=None):
+    """refat: (lx, ly) for the reference designator in the FOOTPRINT's own
+    frame -- KiCad rotates it with the footprint, which is exactly what makes
+    a tile's labels come out the same way round on both sides of the board.
+    reflayer: move the reference off the silkscreen entirely (to F.Fab) when
+    nothing on the board has room for it."""
     key = (libdir, name)
     if key not in _fpcache:
         _fpcache[key] = open(os.path.join(libdir, name + ".kicad_mod"),
@@ -123,15 +158,32 @@ def footprint(libdir, name, ref, value, x, y, rot, layer, pads, numof):
     node.insert(2, A("layer", S(layer)))
     node.insert(3, A("uuid", S(uid("fp", ref))))
     node.insert(4, A("at", x, y, rot) if rot else A("at", x, y))
+    _fatten_silk(node)
     for prop in kids(node, "property"):
         if val(prop) == "Reference":
             prop[2] = S(ref)
-            # 1 mm is wider than an 0805; shrink so the silkscreen reads at 1:1
+            # Round 28 shrank this to 0.6 mm so a five-character designator
+            # would fit across an 0805.  0.6 is below JLCPCB's 0.8 mm minimum
+            # printable height, and the DRC said so 199 times (its per-rule
+            # report limit -- the real count was every reference on the
+            # board).  0.8 it is, and the designators are placed rather than
+            # left wherever the library happened to put them; see refpos().
+            sz = refsize if refsize else 0.8
             for eff in kids(prop, "effects"):
                 for fnt in kids(eff, "font"):
-                    for sz in kids(fnt, "size"):
-                        sz[1] = ("atom", "0.6")
-                        sz[2] = ("atom", "0.6")
+                    for s in kids(fnt, "size"):
+                        s[1] = s[2] = ("atom", "%g" % sz)
+                    for th in kids(fnt, "thickness"):
+                        th[1] = ("atom", "0.16")
+            if refat is not None:
+                for a in kids(prop, "at"):
+                    a[1] = ("atom", "%g" % round(refat[0], 3))
+                    a[2] = ("atom", "%g" % round(refat[1], 3))
+                    if len(a) > 3:
+                        a[3] = ("atom", "0")
+            if reflayer:
+                for l in kids(prop, "layer"):
+                    l[1] = S(reflayer)
         elif val(prop) == "Value":
             prop[2] = S(value)
     for p in kids(node, "pad"):
@@ -216,7 +268,11 @@ def blocks(G):
         # right behind the five screw terminals it serves
         # Starts at y = 21 now: the five probe cells and their two buses
         # occupy y 8..19 and the auto-placer must not sit on them.
-        "probes": (12.0, 21.0, 78.0, 34.0, "1-WIRE"),
+        # y = 23, not 21: the 2 mm between the series resistors and the first
+        # packed part is where the 1-Wire heading goes, and at 21 the packer
+        # put D6001 in it.  Only three parts land here anyway -- the other
+        # nineteen 6xxx references are hand-placed.
+        "probes": (12.0, 23.0, 78.0, 34.0, "1-WIRE"),
         # Round 15 leaves only the bottom band for these two: the channel
         # array now fills everything between the top band and the fan-in.
         "house":  (40.0, 169.0, 104.0, 178.0, "HOUSEKEEPING"),
@@ -247,8 +303,10 @@ def hand_placed(G):
     # straight down its own pin with nothing in the way.  The two buses then
     # run on different layers at different heights and never meet: ONEWIRE
     # along the data pads on F.Cu, +3V3_D along the power pads on In2.
-    for i in range(5):
-        jx = 16.0 + i * 13.0
+    # G.PROBE_X, not a literal: the hand-routed spurs out of these five
+    # terminals are written from the same list.  Round 29 moved the row 3 mm
+    # right, to clear the top-left M3 hole it was the first round to drill.
+    for i, jx in enumerate(G.PROBE_X):
         d["J600%d" % (i + 1)] = (jx, 8.0, 180)
         # Clear of the terminal block, which is 12 x 10 mm and therefore
         # reaches down to y = 13 even though its pins are at 8.
@@ -411,6 +469,14 @@ def build():
     S_ = os.environ.get("NLDIR", "/tmp")
     fps, vals, nets, numof = netmap.load(os.path.join(S_, "nl.net"))
     out, placed, boxes = [], {}, {}
+    # Round 29: footprints are SERIALISED LAST.  A reference designator can
+    # only be positioned once everything else on the silkscreen exists --
+    # every other designator, every marker letter, every legend line -- and
+    # the designator lives inside the footprint's own s-expression.  So put()
+    # reserves a slot in `out` and records what goes in it, and the very end
+    # of build() fills all 458 of them in.
+    pending = []
+    fpof = {}          # placed ref -> (library dir, footprint name)
 
     def put(ref, x, y, rot=0, layer="F.Cu"):
         fp = fps.get(ref)
@@ -418,10 +484,23 @@ def build():
             return
         lib, name = fp.split(":", 1)
         d = LOCAL_FP if lib == "GPSDO-PYNQ-Z2" else os.path.join(KFP, lib + ".pretty")
-        out.append(footprint(d, name, ref, vals.get(ref, ""), round(x, 3), round(y, 3),
-                             rot, layer, nets.get(ref, {}), numof))
+        out.append(None)
+        pending.append((len(out) - 1, d, name, ref, vals.get(ref, ""),
+                        round(x, 3), round(y, 3), rot, layer,
+                        nets.get(ref, {})))
         placed[ref] = (x, y, rot)
         boxes[ref] = P.box_at(d, name, x, y, rot)
+        fpof[ref] = (d, name)
+
+    def put_raw(name, ref, x, y, rot=0):
+        """A footprint that is not a part: it has no netlist entry, no pads
+        with nets, no BOM line.  The mounting holes are the only users."""
+        out.append(None)
+        pending.append((len(out) - 1, LOCAL_FP, name, ref, "", round(x, 3),
+                        round(y, 3), rot, "F.Cu", {}))
+        placed[ref] = (x, y, rot)
+        boxes[ref] = P.box_at(LOCAL_FP, name, x, y, rot)
+        fpof[ref] = (LOCAL_FP, name)
 
     def free(ref, x, y, rot=0):
         """Would this land on something already placed?  Only the CANDIDATE is
@@ -448,35 +527,25 @@ def build():
                       A("stroke", A("width", 0.1), A("type", "solid")),
                       A("fill", "no"), A("layer", S("Dwgs.User")),
                       A("uuid", S(uid("hp", n)))))
-    for i, ((mx, my), note) in enumerate(G.MOUNT):
-        put("H%d" % (i + 1), mx, my)
-        out.append(text(mx + 4.0, my + 4.5, note, "Cmts.User", 1.0, 0.15))
+    # ---- REAL mounting holes ---------------------------------------------
+    # Round 29.  Six captions reading "M3 standoff" and not one hole: put()
+    # looked "H1".."H6" up in the netlist, no sheet declares a mounting-hole
+    # symbol, and put() returns quietly when it finds nothing.  These go down
+    # BEFORE any routing, so their keep-out is an obstacle to the router and
+    # to the ground-via search like any other pad, and their courtyard is the
+    # standoff's keep-out so the existing overlap check tests the clearance.
+    for i, ((mx, my), kind, note) in enumerate(G.MOUNT):
+        put_raw("MountingHole_M3_NPTH" if kind == "hole"
+                else "MountingSlot_M3_NPTH", "MH%d" % (i + 1), mx, my)
+        out.append(text(mx + 5.0, my + 5.5, note.split(" - ")[0].split(".")[0],
+                        "Cmts.User", 1.0, 0.15))
 
     # ---- the socket -------------------------------------------------------
     px, py = G.hdr_pin(1)
     put("J4001", px, py, 0, "B.Cu")
-    out.append(text(G.BW - 4.0, G.BH - 2.0, "RPi 2x20 SOCKET, UNDERSIDE",
-                    "F.SilkS", 1.4, 0.24, just="right"))
-    # Round 22.  This board needs NO modification to a PYNQ-Z2, but it does
-    # take the whole Raspberry Pi header, and the PYNQ-Z2 user manual says of
-    # that header: "28 Total FPGA I/O (8 pins are shared with Pmod A)".  We use
-    # all 28, so all 8 of Pmod A's I/O balls are ours: JA1P/N, JA2P/N, JA3P/N
-    # carry BEAT_01, BEAT_04, BEAT_02, PPS_02, BEAT_06, PPS_00, and JA4P/N are
-    # the I2C bus itself.  Pmod B and all three Arduino headers are untouched
-    # -- checked ball by ball against the manual's tables.
-    out.append(text(G.BW - 2.0, G.BH - 8.4, "PMOD A IS UNUSABLE WHILE THIS "
-                    "BOARD IS ON:", "F.SilkS", 1.0, 0.16, just="right"))
-    out.append(text(G.BW - 2.0, G.BH - 6.0, "ITS 8 I/O SHARE FPGA BALLS WITH "
-                    "THIS HEADER", "F.SilkS", 1.0, 0.16, just="right"))
-    # ~110 mA at 5 V is modest, but it lands on top of whatever the Zynq is
-    # already drawing, and the manual warns that the micro-USB port "should
-    # provide enough power for MOST designs".  Say which one to use.
-    out.append(text(78.0, G.BH - 2.0, "PYNQ: USE THE BARREL JACK, J9 = REG",
-                    "F.SilkS", 1.0, 0.16))
-    out.append(text(px + 2.5, py + 1.0, "1", "F.SilkS", 1.6, 0.3))
-    # Every header pin named on the silk.  Rotated 90 so a three-character name
-    # fits in the 2.54 mm pitch; odd row reads above the connector, even below.
-    import design as _D
+
+    # Every header pin is named on the silkscreen; see silkscreen() below for
+    # where.  The short name is the part that belongs with the header map.
     def _short(net):
         if net == "+3V3_HOST":
             # Round 21: pins 1 and 17 are the PYNQ's own 3V3 and this board
@@ -499,21 +568,6 @@ def build():
         if net.startswith("PPS_"):
             return "P" + net[4:]
         return net[:3]
-    for pinno in range(1, 41):
-        gx, gy = G.hdr_pin(pinno)
-        nm = _short(_D.HEADER[pinno][0])
-        # BOTH rows are named ABOVE the socket, reading up the board.  The
-        # even row used to be named below it, which on a 180 mm board puts a
-        # rotated label off the edge.  The two labels of a column sit 1.27 mm
-        # apart -- the far row's is the left one, matching the sidestep its
-        # track makes.
-        lx = gx if pinno % 2 else gx - 1.27
-        # Round 21: 169.3 put the tops of these rotated names at y = 166.3,
-        # straight through the test-point legend, and the plotted silk in that
-        # band was unreadable.  171.4 keeps the tops at 168.1, which is 0.7 mm
-        # clear of the legend's lowest line, and the bottoms 0.25 mm clear of
-        # the odd row's pad ring at 171.65.
-        out.append(text(lx, 171.4, nm, "F.SilkS", 0.9, 0.15, angle=90))
 
     # ---- the thirteen channel tiles ---------------------------------------
     # Round 15: each unit is a horizontal strip pointing at the helper on the
@@ -549,9 +603,6 @@ def build():
             x, y = f(dx, dy)
             put(ref, x, y, (prot + urot) % 360)
 
-    # every jack named on the silk, beside the unit it belongs to
-    for x, y, tag, desc in G.sma_rows():
-        out.append(text(x - 3.0, y - 6.4, tag, "F.SilkS", 2.4, 0.4))
     for tag, ref in (("HIN", "J3002"), ("HO", "J3001")):
         put(ref, *G.HELPER_SMA[tag])
 
@@ -668,10 +719,6 @@ def build():
                 p0, p1 = hf(*pts[i]), hf(*pts[i + 1])
                 if p0 != p1:
                     tracks.append(p0 + p1 + (lyr, nm, w))
-    # G.XC - 11.0 put this on U5007, the helper's own thermometer, which sits
-    # on the centre line at y = 25.  6.5 mm further left clears it.
-    out.append(text(G.XC - 17.5, 24.0, "HELPER", "F.SilkS", 2.0, 0.34))
-
     # No escape stubs here.  The fourteen branch vias sit in a neat column 2.4 mm
     # apart down the block's edge, already in the open lane; a stub sideways
     # only walked into the left-hand units' hand-off column 1.8 mm away.
@@ -719,203 +766,10 @@ def build():
         if nm:
             vp = PW.place(vx, vy)
             tile_vias.append((vp[0], vp[1], nm))
-    out.append(text(PW.LABEL_XY[0], PW.LABEL_XY[1], "POWER", "F.SilkS", 2.0, 0.34))
 
     # ---- hand-placed: edges and hot spots ---------------------------------
     for ref, xy in sorted(hand_placed(G).items()):
         put(ref, xy[0], xy[1], xy[2] if len(xy) > 2 else 0)
-    # ---- silkscreen that belongs to a connector goes BESIDE that connector --
-    jx, jy = PW.place(*PW.PARTS["J2003"][:2])          # the 15 V barrel jack
-    out.append(text(172.0, 16.5, "15 V DC, 1 A MIN", "F.SilkS", 1.4, 0.24,
-                    just="right"))
-    # Round 21: at jy-8.0 this printed across D2005's cathode pad, and the
-    # "15 V DC" line above it across J2001's post.  Both moved down into the
-    # clear strip under the jack: x 149..175, y 15..21, between D2001/D2005
-    # above and D2004/F2001 below.
-    out.append(text(172.0, 19.5, "HEATER ONLY, CENTRE +", "F.SilkS", 1.2, 0.2,
-                    just="right"))
-    p5 = PW.place(*PW.PARTS["J2001"][:2])              # bench +5V post
-    pg = PW.place(*PW.PARTS["J2002"][:2])              # bench GND post
-    # BESIDE the posts, not below them: below is where D2001 and D2002 are, and
-    # both labels were printing on a Schottky's pad.
-    out.append(text(p5[0] + 5.0, p5[1], "+5V", "F.SilkS", 1.5, 0.28))
-    out.append(text(pg[0] - 5.0, pg[1], "GND", "F.SilkS", 1.5, 0.28,
-                    just="right"))
-    # y = 2.2, not 1.1: at 1.1 the glyphs reached to 0.6 mm from the board
-    # edge and the DRC reported the line clipped by the outline.
-    out.append(text(pg[0] - 3.0, 2.2, "BENCH 5 V IN - OR LEAVE OPEN.  PYNQ MUST "
-                    "BE POWERED: ITS PINS ARE ABS-MAX 0.55 V OFF",
-                    "F.SilkS", 1.0, 0.16))
-    # Round 21.  The PYNQ-Z2 user manual, table 15: an UNPOWERED Zynq I/O pin
-    # has an absolute maximum of 0.55 V.  Bench-powering this board with the
-    # PYNQ off drives 3.3 V into twenty-six of them.  The PYNQ's own 200 R
-    # series resistors hold it to about 14 mA a pin, so it is not instantly
-    # fatal, but it is still an abs-max violation on every return line.
-    # (the warning is folded into the line above -- the strip above the posts
-    # is only 2.5 mm tall and holds exactly one line)
-    # the two helper jacks, decoded right underneath themselves
-    # The jacks keep their short HIN / HO markers; the LEVELS go in the
-    # bottom legend with the other SMA ranges, because the strip round the two
-    # jacks holds the markers, C2003 and the power block and nothing else.
-    # ---- silkscreen markers that dodge pads -------------------------------
-    # Round 21.  Every one of these single letters is the key to the test-point
-    # legend, and the fab CLIPS silkscreen where it would land on a pad -- so a
-    # letter placed on a neighbour's pad is not a manufacturing fault, it is
-    # simply gone, or half gone, which is worse because a clipped B reads as an
-    # E.  Before this pass 60-odd of them were printing on pads.  Rather than
-    # hand-tune 60 offsets that the next placement change would invalidate, try
-    # a ring of candidate positions and take the first that lands on bare
-    # board.  gr_text with justify left is anchored on the left edge and
-    # CENTRED vertically, which is what the box below assumes; the 0.82 advance
-    # is calibrated against KiCad's own bounding boxes (see check_overlap.py).
-    # The cache is keyed on how many parts are placed, because the block
-    # packer adds the probe and housekeeping parts LATER -- after the
-    # test-point letters are emitted but before the wire-colour markers are.
-    # A cache that did not notice would have let the colour markers dodge a
-    # list that did not yet contain the 1-Wire pull-ups they were landing on.
-    _padbox = {"n": -1, "boxes": []}
-    _placed_markers = []
-
-    def pad_boxes():
-        if _padbox["n"] == len(placed):
-            return _padbox["boxes"]
-        _padbox["n"], _padbox["boxes"] = len(placed), []
-        for ref, (bx, by, brot) in sorted(placed.items()):
-            lib, name = fps[ref].split(":", 1)
-            d = (LOCAL_FP if lib == "GPSDO-PYNQ-Z2"
-                 else os.path.join(KFP, lib + ".pretty"))
-            for pn, ax, ay, tht, hd, prect in P.pads(d, name, bx, by, brot):
-                hw, hh, pang = prect
-                if round(pang) % 180:
-                    hw, hh = hh, hw
-                # A through-hole pad's annular ring can be bigger than the
-                # copper rectangle the footprint declares, and the SMA jacks
-                # are all through-hole -- without this the dodge happily walked
-                # a marker onto J201's centre pin.
-                if hd:
-                    hw, hh = max(hw, hd / 2.0), max(hh, hd / 2.0)
-                _padbox["boxes"].append((ax - hw, ay - hh, ax + hw, ay + hh))
-        return _padbox["boxes"]
-
-    def ring(dx0, dy0, step=0.9, rmax=9.0):
-        """The preferred offset first, then a widening spiral around it.
-
-        A fixed shortlist of six or eight offsets was not enough: the heater
-        markers inside a tile and the TP_SQ letters beside a BAV99 exhausted it
-        and fell back to a position on a pad.  A spiral always finds bare board
-        if there is any within rmax.
-        """
-        import math as _mm
-        out = [(dx0, dy0)]
-        r = step
-        while r <= rmax + 1e-9:
-            for k in range(12):
-                a = 2.0 * _mm.pi * k / 12.0
-                out.append((dx0 + r * _mm.cos(a), dy0 + r * _mm.sin(a)))
-            r += step
-        return out
-
-    def marker(px, py, s, size, thick, offsets, angle=0):
-        """`s` at the first offset whose ink clears every pad; else offsets[0].
-
-        At angle 90 KiCad turns left-justified text to read UP the board, so
-        the ink runs from the anchor towards smaller y and the box turns with
-        it.  That is how the probe-terminal wire colours are drawn.
-        """
-        w = len(s) * size * 0.82
-        half = size / 2.0 + thick / 2.0
-        # ...and against markers already placed.  Two heater `H` almost landed
-        # on each other at (156.3, 58.1) when the spiral pushed them into the
-        # same gap from opposite sides: dodging pads is not enough if the thing
-        # you dodge into is another dodger.
-        near = [q for q in pad_boxes() + _placed_markers
-                if q[0] < px + 22.0 and q[2] > px - 22.0
-                and q[1] < py + 22.0 and q[3] > py - 22.0]
-        for dx, dy in offsets:
-            x, y = px + dx, py + dy
-            M = 0.5
-            if angle:
-                box = (x - half - M, y - w - M, x + half + M, y + M)
-            else:
-                box = (x - M, y - half - M, x + w + M, y + half + M)
-            if not any(box[0] < q[2] and q[0] < box[2] and
-                       box[1] < q[3] and q[1] < box[3] for q in near):
-                _placed_markers.append(box)
-                return text(x, y, s, "F.SilkS", size, thick, angle=angle)
-        dx, dy = offsets[0]
-        x, y = px + dx, py + dy
-        if angle:
-            _placed_markers.append((x - half, y - w, x + half, y))
-        else:
-            _placed_markers.append((x, y - half, x + w, y + half))
-        return text(x, y, s, "F.SilkS", size, thick, angle=angle)
-
-    # A ring: the preferred spot first, then further out on each side.  The
-    # first entry of each list is the pre-round-21 position, so a marker that
-    # was already clear does not move.
-    RING_T = ring(-0.8, 5.0)
-    RING_H = ring(-0.8, 4.6)
-
-    # T under every thermometer, H under every heater
-    for r, (px, py, _rot) in sorted(placed.items()):
-        if r.startswith("U50") and r not in ("U5009",):
-            out.append(marker(px, py, "T", 1.7, 0.3, RING_T))
-    for r, (px, py, prot) in sorted(placed.items()):
-        if r.startswith("R20"):
-            out.append(marker(px, py, "H", 1.5, 0.28, RING_H))
-    out.append(text(G.BW - 4.0, G.BH - 12.0, "DEBUG", "F.SilkS", 1.6, 0.28,
-                    just="right"))
-
-    # ---- a silkscreen box around each input circuit ------------------------
-    # One per 10 MHz chain and one per pps chain, so each unit reads as two
-    # separate modules.  These are also where the via fences go.
-    TPLETTER = {"TP_IN": "I", "TP_SQ": "S", "TP_BEAT": "B", "TP_PPS": "P",
-                "TP_5V": "5", "TP_3V3_A": "A", "TP_3V3_D": "D",
-                "TP_XA": "X", "TP_1W": "W"}
-    # Each box is a FIXED rectangle centred on its own SMA rather than the
-    # bounding box of its contents.  Sizing to contents is exactly what put the
-    # 1 pps jack off to one side of its own rectangle: the pps half has parts
-    # out to +5.5 mm and only -4.4 mm, so its box drifted right by half a
-    # millimetre per part.  A fixed rectangle also makes the two boxes of a
-    # unit read as a pair, and gives the gutter a constant width for the rail.
-    for u in sorted(byunit):
-        f, _ = xf(u)
-        boxes_u = [T.BOX_10M]
-        if byunit[u].get("U04"):
-            boxes_u.append(T.pps_box())
-        for bx0, by0, bx1, by1 in boxes_u:
-            cs = [f(bx0, by0), f(bx1, by0), f(bx1, by1), f(bx0, by1)]
-            out.append(rect(min(c[0] for c in cs), min(c[1] for c in cs),
-                            max(c[0] for c in cs), max(c[1] for c in cs),
-                            "F.SilkS", 0.15))
-
-    # ---- test point letters, next to the pad ------------------------------
-    for r, xy in placed.items():
-        if not r.startswith("TP"):
-            continue
-        L = TPLETTER.get(vals.get(r, ""))
-        if L:
-            out.append(marker(xy[0], xy[1], L, 1.5, 0.3, ring(1.5, -1.4)))
-
-    # ---- debug header, a name against every pin ---------------------------
-    if "J5001" in placed:
-        hx, hy, hrot = placed["J5001"]
-        # Names come from the netlist, not a list typed here that goes stale --
-        # this one still claimed BEAT_00 and HELPER_CLK, which round 13 removed
-        # from the debug header on purpose.  And at rot 90 the labels have to
-        # turn with the connector.
-        jn = nets.get("J5001", {})
-        # At rot 270 pin 1 is at +x and the numbering runs back towards -x, and
-        # the names read above the connector, on the side the signal row faces.
-        step = -2.54 if hrot == 270 else 2.54
-        dy = -4.2 if hrot == 270 else 4.2
-        for i in range(10):
-            s = jn.get(str(2 * i + 1), "")
-            if not s or s.startswith("unconnected-"):
-                continue
-            out.append(text(hx + i * step, hy + dy, s, "F.SilkS", 1.0, 0.16,
-                            angle=90))
-
     # ---- everything else, in blocks ---------------------------------------
     byblock = {}
     for ref in fps:
@@ -923,6 +777,7 @@ def build():
         if b and ref not in placed:
             byblock.setdefault(b, []).append(ref)
     overflow = []
+    blockrefs = {}                 # block -> the refs that actually landed
     BL = blocks(G)
     for b, refs in sorted(byblock.items()):
         if b not in BL:                  # the block places itself now
@@ -953,45 +808,19 @@ def build():
                 overflow.append((b, r))
                 continue
             put(r, cx + w / 2.0, cy + h / 2.0)
+            blockrefs.setdefault(b, []).append(r)
             cx += w + 1.6
             rowh = max(rowh, h)
-        # Right-hand end, not the left: at the left the "1-WIRE" label sat on
-        # FB6001 and R6003, and "HOUSEKEEPING" ran into the author line.
-        out.append(text(bx1 + 4.0, by - 2.0, label, "F.SilkS", 2.0, 0.3,
-                        just="right"))
-        out.append(rect(bx - 1.5, by - 4.5, bx1 + 1.5, by1 + 1.5, "Cmts.User", 0.12))
+        # The label and the box round this region are drawn by silkscreen(),
+        # from the parts that actually landed here rather than from the
+        # packer's nominal rectangle -- which is 4 mm bigger than its contents
+        # in every direction and used to be drawn on Cmts.User, where nobody
+        # holding the board can see it.
     if overflow:
         out.append(text(4.0, 99.0, "OVERFLOW: %d parts did not fit their block"
                         % len(overflow), "Cmts.User", 2.0, 0.3))
         import sys as _s
         print("OVERFLOW:", overflow, file=_s.stderr)
-
-    # ---- probe terminal legend, on the board where the wires get screwed in
-    # A wire colour against every screw, which is what you need with five
-    # identical three-way blocks and fifteen wires in your hand.  Rotated 90 so
-    # a three-letter word fits the 3.5 mm screw pitch, and reading up the board
-    # out of the free strip between the terminals and the 1-Wire block.
-    for i in range(5):
-        pr = "J600%d" % (i + 1)
-        if pr not in placed:
-            continue
-        lib, nm = fps[pr].split(":", 1)
-        dd = LOCAL_FP if lib == "GPSDO-PYNQ-Z2" else os.path.join(KFP, lib + ".pretty")
-        pd = sorted(P.pads(dd, nm, *placed[pr]), key=lambda q: q[0])
-        for pn, ax, ay, _t, _h, _rc in pd:
-            lab = {"1": "yel", "2": "red", "3": "blk"}.get(pn)
-            if lab:
-                # y = 16.2 ran these three-letter words straight up through the
-                # 1-Wire pull-ups at y 12.3..16.9.  Same dodge as the test-point
-                # letters: keep the original spot when it is clear, step down
-                # into the gap above the terminals otherwise.
-                out.append(marker(ax, 16.2, lab, 1.0, 0.16,
-                                  ring(0.45, 0.0, step=0.9, rmax=7.0),
-                                  angle=90))
-        out.append(text(placed[pr][0], 2.6, "P%d" % (i + 1), "F.SilkS", 1.5, 0.26))
-    out.append(text(14.0, 35.2, "1-WIRE PROBES   yel = DATA   red = VCC   "
-                    "blk = GND   -   standard speed, no 4k7 pullup needed",
-                    "F.SilkS", 1.1, 0.18))
 
     # ---- every SMD GND pad gets a stub and a via down to the plane ---------
     # This is what makes the ratsnest readable: with ground already connected,
@@ -1000,8 +829,7 @@ def build():
     import math as _m
     allpads = []
     for ref, (px, py, prot) in sorted(placed.items()):
-        lib, name = fps[ref].split(":", 1)
-        d = LOCAL_FP if lib == "GPSDO-PYNQ-Z2" else os.path.join(KFP, lib + ".pretty")
+        d, name = fpof[ref]
         _n0 = len(allpads)
         for pn, ax, ay, tht, hd, prect in P.pads(d, name, px, py, prot):
             allpads.append((ref, pn, ax, ay, tht, nets.get(ref, {}).get(pn), hd,
@@ -1015,7 +843,7 @@ def build():
         # pad reader has grown two more optional fields since.
         assert len(allpads) > _n0, (
             "%s (%s) yielded NO pads -- place.pads() failed to parse %s"
-            % (ref, fps[ref], os.path.join(d, name + ".kicad_mod")))
+            % (ref, name, os.path.join(d, name + ".kicad_mod")))
 
     gnd_no = numof["GND"]
 
@@ -1472,13 +1300,13 @@ def build():
     # Pad geometry follows from the placement: an 0805 at rot 90 puts pad 1
     # 0.91 mm above centre, a 1206 puts it 1.46 mm above.
     ONE_Y, PWR_Y = 18.91, 17.0
-    spine("ONEWIRE", [(16.0, ONE_Y), (68.0, ONE_Y)], w=T.W_SIG, lyr="F.Cu")
-    spine("+3V3_D", [(LANE_X["+3V3_D"], PWR_Y), (64.5, PWR_Y)])
+    spine("ONEWIRE", [(G.PROBE_X[0], ONE_Y), (G.PROBE_X[-1], ONE_Y)],
+          w=T.W_SIG, lyr="F.Cu")
+    spine("+3V3_D", [(LANE_X["+3V3_D"], PWR_Y), (G.PROBE_X[-1] - 3.5, PWR_Y)])
     # ...and up the margin to meet the lane, which starts at its own link.
     spine("+3V3_D", [(LANE_X["+3V3_D"], PWR_Y),
                      (LANE_X["+3V3_D"], LANE_Y["+3V3_D"])])
-    for i in range(5):
-        jx = 16.0 + i * 13.0
+    for i, jx in enumerate(G.PROBE_X):
         n = i + 1
         spine("Net-(J600%d-Pin_1)" % n, [(jx, 17.09), (jx, 8.0)],
               w=T.W_SIG, lyr="F.Cu")
@@ -2018,7 +1846,12 @@ def build():
     base_t, base_v = list(tracks), list(tile_vias)
     order = list(jobs)
     best = None
-    for attempt in range(int(os.environ.get("RTPASSES", "6"))):
+    # NOROUTE=1 skips every routing pass.  The board it produces is useless --
+    # no board-level copper at all -- but it is produced in fifteen seconds
+    # rather than twenty-five minutes, which is what makes it possible to
+    # iterate on 600 pieces of silkscreen.  Never used by build.py.
+    _NOROUTE = bool(os.environ.get("NOROUTE"))
+    for attempt in range(0 if _NOROUTE else int(os.environ.get("RTPASSES", "6"))):
         nt, nv, nfail = one_pass(order, base_t, base_v)
         if best is None or len(nfail) < len(best[2]):
             best = (nt, nv, nfail)
@@ -2030,7 +1863,7 @@ def build():
         rest = [j for j in order if j[0] not in bad]
         rest = rest[attempt + 1:] + rest[:attempt + 1]
         order = [j for j in order if j[0] in bad] + rest
-    nt, nv, nfail = best
+    nt, nv, nfail = best if best else ([], [], [])
     tracks.extend(nt)
     tile_vias.extend(nv)
 
@@ -2365,7 +2198,7 @@ def build():
         return out, placed, fps, boxes
     base_t2, base_v2 = list(tracks), list(tile_vias)
     best_pwr, order_m = None, list(MULTI)
-    for attempt in range(3):
+    for attempt in range(0 if _NOROUTE else 3):
         _fast.clear()           # `tracks` is about to be restored; rebuild it
         if os.environ.get("RTPROG"):
             import sys as _pg
@@ -2380,6 +2213,8 @@ def build():
         bad = set(pwr_fail)
         order_m = ([j for j in order_m if j[0] in bad] +
                    [j for j in order_m if j[0] not in bad])
+    if best_pwr is None:
+        best_pwr = (list(tracks), list(tile_vias), [])
     tracks[:], tile_vias[:] = best_pwr[0], best_pwr[1]
     pwr_fail = best_pwr[2]
     import sys as _sy
@@ -2391,8 +2226,76 @@ def build():
     print("routed %d of %d off-block nets" % (len(jobs) - len(nfail), len(jobs)),
           file=_s.stderr)
     if nfail:
-        print("  FAILED:", nfail, file=_s.stderr)
-        out.append(text(4.0, 103.0, "UNROUTED: %s" % ", ".join(nfail),
+        print("  two-point pass left:", nfail, file=_s.stderr)
+
+    # ---- what is ACTUALLY still in two pieces -----------------------------
+    # Round 29.  The board printed "UNROUTED: PPS_05, PPS_03" on Cmts.User and
+    # had done for several rounds, while KiCad's own filled DRC reported zero
+    # unconnected items -- and KiCad was right.  `nfail` is what the TWO-POINT
+    # pass gave up on, and the multi-terminal pass that runs after it takes
+    # every net with more than one pad, so it had already finished both of
+    # them.  Nothing ever went back and asked.
+    #
+    # So ask, once, at the end, with the same union-find the multi-terminal
+    # pass uses to decide whether a net is whole: pads joined by segments they
+    # actually touch, segments joined by real distance rather than endpoint to
+    # endpoint, and the two layers joined only where this net has a via.  GND
+    # is excluded because it is poured, not routed.
+    def net_pieces(nm):
+        pds = [(ax, ay, _rc, None if _t else FCU)
+               for _r, _p, ax, ay, _t, net, _h, _rc in allpads if net == nm]
+        if len(pds) < 2:
+            return 1
+        sgs = [(a0, b0, c0, d0, IN2 if l == "In2.Cu" else FCU)
+               for a0, b0, c0, d0, l, n2, _w in tracks if n2 == nm]
+        vis = [(vx, vy) for vx, vy, n2 in tile_vias if n2 == nm]
+        NP, NS, NV = len(pds), len(sgs), len(vis)
+        par = list(range(NP + NS + NV))
+
+        def find(i):
+            while par[i] != i:
+                par[i] = par[par[i]]
+                i = par[i]
+            return i
+
+        def uni(i, j):
+            a1, b1 = find(i), find(j)
+            if a1 != b1:
+                par[a1] = b1
+
+        for i, (px_, py_, prc, pl) in enumerate(pds):
+            for j, s in enumerate(sgs):
+                if pl is not None and s[4] != pl:
+                    continue
+                if _near(px_, py_, s[:4], 0.5, prc):
+                    uni(i, NP + j)
+        for k, (vx, vy) in enumerate(vis):
+            for i, (px_, py_, _rc2, _pl) in enumerate(pds):
+                if (px_ - vx) ** 2 + (py_ - vy) ** 2 < 0.36:
+                    uni(i, NP + NS + k)
+            for j, s in enumerate(sgs):
+                if _pdist(vx, vy, s[0], s[1], s[2], s[3]) < 0.3:
+                    uni(NP + j, NP + NS + k)
+        for j in range(NS):
+            for k in range(j + 1, NS):
+                if sgs[j][4] != sgs[k][4]:
+                    continue
+                if _segdist(sgs[j][0], sgs[j][1], sgs[j][2], sgs[j][3],
+                            sgs[k][0], sgs[k][1], sgs[k][2], sgs[k][3]) < 0.2:
+                    uni(NP + j, NP + k)
+        comps = set()
+        for i in range(NP):
+            comps.add(find(i))
+        return len(comps)
+
+    split = [] if _NOROUTE else sorted(
+        nm for nm in numof
+        if nm and nm != "GND" and not nm.startswith("unconnected-")
+        and net_pieces(nm) > 1)
+    print("still in two pieces after every pass: %d %s"
+          % (len(split), split), file=_s.stderr)
+    if split:
+        out.append(text(4.0, 103.0, "UNROUTED: %s" % ", ".join(split),
                         "Cmts.User", 2.0, 0.3))
     for x0, y0, x1, y1, lyr, nm, w in tracks[_ntracks0:]:
         out.append(track(x0, y0, x1, y1, lyr, numof[nm], "rt", w))
@@ -2414,48 +2317,641 @@ def build():
     # spokes could not reach 15 of the crowded SOT-23-5 ground pads anyway.
     out.append(zone(numof["GND"], "GND", "F.Cu", poly, "GND-F.Cu", solid=True))
 
-    # ---- silkscreen -------------------------------------------------------
-    # Round 28: the revision letter comes from design.py, the one place it is
-    # defined.  This said "rev B" by hand while every title block said Rev A.
-    out.append(text(4.0, G.BH - 22.0, "GPSDO DDMTD FRONT END   rev %s" % D.REV,
-                    "F.SilkS", 1.8, 0.32))
-    out.append(text(4.0, G.BH - 19.4, "Jason Gallicchio   jason@hmc.edu   %s" % D.DATE,
-                    "F.SilkS", 1.2, 0.2))
-    # Round 21.  The title, the author line, the SMA key and the whole
-    # test-point legend used to live in the bottom-LEFT corner and at x = 108.
-    # Plotted, that band was unreadable: the legend's three rows crossed the
-    # forty rotated header pin names, the title ran through the debug header's
-    # seven rotated pin names and through the HOUSEKEEPING block label, and the
-    # SMA key sat on the pads of C5015, C5018 and U5009.  The one rectangle in
-    # this band with nothing in it is x 141..205, y 155..170 -- Q2002 occupies
-    # 129.7..138.5 and the channel array stops at y = 158 -- so the legend goes
-    # there, as four rows in two columns, with the header names now dropped to
-    # y = 171.4 so their tops clear it.
-    LX1, LX2 = 141.0, 176.0
-    out.append(text(LX1, 152.2, "TEST POINTS - the letter beside each pad",
-                    "F.SilkS", 1.15, 0.19))
-    COLS = ((LX1, ["I  at the SMA  0.7-8.0 Vpp",
-                   "S  squarer  0.6-3.3 Vpp",
-                   "B  beat  0/3.3 V, 1.1-1.4 kHz",
-                   "5  +5 V  4.6-5.3 V"]),
-            (LX2, ["P  pps  0/3.3 V, 1 Hz",
-                   "X  Si5351 XA  0.5-1.0 Vpp",
-                   "W  1-Wire bus",
-                   "A/D  +3V3  3.25-3.35 V"]))
-    for lx, col in COLS:
-        for i, s in enumerate(col):
-            out.append(text(lx, 154.6 + i * 2.4, s, "F.SilkS", 1.05, 0.17))
-    # What may be applied to an SMA, which the board never said before.  0.7 Vpp
-    # is the FE-5680A into 50 ohm, the weakest source in the inventory; 8.0 Vpp
-    # is the TM-4 open circuit, the hottest.  Both come from design.SOURCES.
-    # The old legend said "1.0 - 8.0", which matched neither the terminated
-    # range (1.2 to 2.6) nor the open-circuit one (2.8 to 8.0).
-    out.append(text(LX1, 164.2, "n = 10 MHz IN 0.7-8.0 Vpp AC    "
-                    "Pn = 1 pps IN 0-5.5 V DC    13 = NULL",
-                    "F.SilkS", 1.0, 0.16))
-    out.append(text(LX1, 166.6, "HIN 0.7-3.3 Vpp AC in    "
-                    "HO 0/3.3 V CMOS, 1.6 Vpp into 50R",
-                    "F.SilkS", 1.0, 0.16))
+    # =======================================================================
+    # THE SILKSCREEN
+    # =======================================================================
+    # Round 29 rewrote this, and the rewrite is mostly one idea: a label's
+    # position is expressed in the frame of the THING IT LABELS, and it is
+    # emitted once, at the end, when every other thing on the board is known.
+    #
+    # What that fixes, in the order round 29 was asked about it:
+    #
+    #  * A tile is stamped out thirteen times, at rot 90 down the left of the
+    #    board and rot 270 down the right.  Every marker offset used to be in
+    #    BOARD coordinates, so "1.5 mm to the right of the pad" meant "towards
+    #    the helper" on one side and "away from it" on the other.  That is why
+    #    the input test point's letter was beside its pad on the odd channels
+    #    and underneath the SMA's ground post on the even ones, and why the
+    #    heaters' H and the thermometers' T were scattered: the spiral that
+    #    dodges pads found a different gap each time.  In the part's own frame
+    #    the two sides are mirror images by construction, and a marker cannot
+    #    drift away from the part it names, because it is placed FROM it.
+    #  * The dodge radius is now 3 mm, not 9.  A letter 9 mm from its pad does
+    #    not label that pad; it labels whatever it happens to have landed on.
+    #  * Reference designators are placed by the same machinery, LAST, so the
+    #    designator is what yields when it and a test-point letter want the
+    #    same square millimetre.  Before this they sat wherever the stock
+    #    footprint put them, which is how an `S` came to be buried under
+    #    `R1204`, and how thirteen 560R heaters ended up with their names
+    #    outside the box that contains them.
+    #  * Obstacles live in a 5 mm bucket grid.  A linear scan was fine for
+    #    sixty markers and is not for those plus 460 designators.
+    ADV = 0.82                 # glyph advance / height, measured in round 21
+    _OB = 5.0
+    _obst = {}
+    _nlost = []
+
+    def obstruct(b, kind="ink"):
+        for cx in range(int(_m.floor(b[0] / _OB)), int(_m.floor(b[2] / _OB)) + 1):
+            for cy in range(int(_m.floor(b[1] / _OB)), int(_m.floor(b[3] / _OB)) + 1):
+                _obst.setdefault((cx, cy), []).append((b[0], b[1], b[2], b[3], kind))
+
+    # Two different margins, because they mean two different things.  0.18 mm
+    # from a PAD is JLCPCB's 0.15 silkscreen-to-mask-opening rule with a
+    # little to spare, and breaking it means the letter is scraped off.
+    # 0.04 mm from other INK is only legibility: two labels that touch are
+    # ugly, and KiCad calls that `silk_overlap`, which is a warning here.
+    M_PAD, M_INK = 0.18, 0.12
+
+    def hit(b, M=None, kinds=("pad", "ink")):
+        """The first obstacle this box runs into, or None."""
+        q0, q1, q2, q3 = b[0] - M_PAD, b[1] - M_PAD, b[2] + M_PAD, b[3] + M_PAD
+        for cx in range(int(_m.floor(q0 / _OB)), int(_m.floor(q2 / _OB)) + 1):
+            for cy in range(int(_m.floor(q1 / _OB)), int(_m.floor(q3 / _OB)) + 1):
+                for o in _obst.get((cx, cy), ()):
+                    if o[4] not in kinds:
+                        continue
+                    e = (M_PAD if o[4] == "pad" else M_INK) if M is None else M
+                    if (b[0] - e < o[2] and o[0] < b[2] + e
+                            and b[1] - e < o[3] and o[1] < b[3] + e):
+                        return o
+        return None
+
+    def blocked(b, M=None, kinds=("pad", "ink")):
+        return hit(b, M, kinds) is not None
+
+    def adv(s, size):
+        """How wide this string's ink really is, per character.
+
+        0.82 is the AVERAGE advance measured in round 21 against KiCad's own
+        bounding boxes, over prose.  A short all-capitals string is dominated
+        by its widest glyphs instead, and using the average for one of those
+        is how round 29's first pass put an `H` 0.07 mm inside the DS2482's
+        pin 1 and still believed it was clear.
+        """
+        return size * (1.0 if len(s) <= 5 else 0.9)
+
+    def ink(x, y, s, size, thick, just="left", angle=0):
+        """Where a gr_text's ink actually lands.
+
+        KiCad anchors left-justified text on the left edge and CENTRES it
+        vertically; at angle 90 it reads UP the board, so the run goes from
+        the anchor towards smaller y and the box turns with it."""
+        w = len(s) * adv(s, size) + thick
+        h = size + thick
+        if angle:
+            return (x - h / 2.0, y - w, x + h / 2.0, y)
+        x0 = x - w if just == "right" else (x - w / 2.0 if just in (None, "center")
+                                            else x)
+        return (x0, y - h / 2.0, x0 + w, y + h / 2.0)
+
+    def silk(x, y, s, size, thick, just="left", angle=0, layer="F.SilkS"):
+        obstruct(ink(x, y, s, size, thick, just, angle))
+        out.append(text(x, y, s, layer, size, thick, just=just, angle=angle))
+
+    def spiral(step=0.5, rmax=3.0):
+        pts = [(0.0, 0.0)]
+        r = step
+        while r <= rmax + 1e-9:
+            n = max(8, int(2.0 * _m.pi * r / step))
+            for k in range(n):
+                a = 2.0 * _m.pi * k / n
+                pts.append((r * _m.cos(a), r * _m.sin(a)))
+            r += step
+        return pts
+
+    def to_board(rot, lx, ly):
+        a = _m.radians(-rot)
+        ca, sa = _m.cos(a), _m.sin(a)
+        return (lx * ca - ly * sa, lx * sa + ly * ca)
+
+    def to_local(rot, bx, by):
+        a = _m.radians(rot)
+        ca, sa = _m.cos(a), _m.sin(a)
+        return (bx * ca - by * sa, bx * sa + by * ca)
+
+    def place_text(cx, cy, s, size, thick, tries=None, angle=0, force=True):
+        """`s` CENTRED on (cx, cy), nudged by the first offset that is clear.
+
+        Returns the anchor used, or None when nothing was clear and force is
+        off -- which is how a reference designator decides to give up and move
+        itself to the fabrication layer instead of printing on a pad."""
+        w = len(s) * adv(s, size) + thick
+        for dx, dy in (tries or spiral()):
+            x = cx + dx - (0.0 if angle else w / 2.0)
+            y = cy + dy + (w / 2.0 if angle else 0.0)
+            if not blocked(ink(x, y, s, size, thick, "left", angle)):
+                silk(x, y, s, size, thick, angle=angle)
+                return (x, y)
+        if not force:
+            return None
+        x = cx - (0.0 if angle else w / 2.0)
+        y = cy + (w / 2.0 if angle else 0.0)
+        silk(x, y, s, size, thick, angle=angle)
+        return (x, y)
+
+    def place_in(x0, y0, x1, y1, s, size, thick, step=0.5, xpref=None):
+        """Put this line ANYWHERE inside the rectangle that is clear.
+
+        Round 29's "you'll need to sprinkle text between components".  A
+        spiral round a guessed point is the wrong tool for a line of prose:
+        it either finds the gap immediately or walks somewhere misleading.
+        Naming the region it may live in and scanning that is both more
+        honest about what is being asked and easier to get right."""
+        w, h = len(s) * adv(s, size) + thick, size + thick
+        y, last = y0 + h / 2.0, None
+        while y <= y1 - h / 2.0 + 1e-9:
+            # A line under another line starts at the same x if it can: a
+            # stack of ragged left edges reads as three unrelated labels,
+            # which is what "HELPER / Clock / Distribution" looked like when
+            # each line found its own first clear column.
+            if xpref is not None and x0 <= xpref <= x1 - w:
+                if hit((xpref, y - h / 2.0, xpref + w, y + h / 2.0)) is None:
+                    silk(xpref, y, s, size, thick)
+                    return (xpref, y)
+            x = x0
+            while x <= x1 - w + 1e-9:
+                q = hit((x, y - h / 2.0, x + w, y + h / 2.0))
+                if q is None:
+                    silk(x, y, s, size, thick)
+                    return (x, y)
+                last = q
+                x += max(step, q[2] - x)      # step past what we just hit
+            y += step
+        place_in.why = ("needs %.1f x %.1f; last hit %s (%.1f,%.1f)-(%.1f,%.1f)"
+                        % ((w, h) + (last[4],) + last[:4]) if last else
+                        "region smaller than the text")
+        return None
+
+    def stack_in(x0, y0, x1, y1, lines, gap=0.7):
+        """A run of lines down a region, each below and left-aligned with the
+        one above it where the board allows."""
+        top, xp = y0, None
+        for s, size, thick in lines:
+            got = place_in(x0, top, x1, y1, s, size, thick, xpref=xp)
+            if got is not None and xp is None:
+                xp = got[0]
+            if got is None:
+                import sys as _si
+                print("SILK: no room for %r in (%g,%g)-(%g,%g): %s"
+                      % (s, x0, y0, x1, y1,
+                         getattr(place_in, "why", "?")), file=_si.stderr)
+                continue
+            top = got[1] + (size + thick) / 2.0 + gap
+
+    def part_text(ref, ldx, ldy, s, size, thick, rmax=3.0, angle=0, alts=()):
+        """A label at a fixed offset in the PART's own frame.
+
+        The preferred offset, then the alternates (also in the part's frame,
+        so they mirror with it), each with a small spiral round it.  Only if
+        every one of them is on copper does it print at the preferred spot
+        anyway -- a clipped letter beside the right part still points at the
+        right part, and moving it further away would not."""
+        if ref not in placed:
+            return
+        px, py, prot = placed[ref]
+        for ax, ay in ((ldx, ldy),) + tuple(alts) + ((-ldx, -ldy),):
+            bx, by = to_board(prot, ax, ay)
+            if place_text(px + bx, py + by, s, size, thick,
+                          spiral(0.45, rmax), angle=angle, force=False):
+                return
+        bx, by = to_board(prot, ldx, ldy)
+        place_text(px + bx, py + by, s, size, thick, [(0.0, 0.0)], angle=angle)
+
+    # ---- every pad on the board is an obstacle ----------------------------
+    for _r, _pn, _ax, _ay, _tht, _net, _hd, _rc in allpads:
+        hw, hh, pang = _rc
+        if round(pang) % 180:
+            hw, hh = hh, hw
+        if _hd:
+            hw, hh = max(hw, _hd / 2.0), max(hh, _hd / 2.0)
+        obstruct((_ax - hw, _ay - hh, _ax + hw, _ay + hh), "pad")
+    # ...and so is every via.  These are tented on the order form, so ink over
+    # one is arguably harmless -- but KiCad counts a via as exposed copper and
+    # the DRC is the thing we are trying to get to zero, and a designator
+    # sitting on a via reads badly on a photograph either way.
+    for _vx, _vy in vias:
+        obstruct((_vx - 0.35, _vy - 0.35, _vx + 0.35, _vy + 0.35), "pad")
+    for _vx, _vy, _n in tile_vias:
+        obstruct((_vx - 0.35, _vy - 0.35, _vx + 0.35, _vy + 0.35), "pad")
+    # ...and so is the board edge, so nothing prints off it
+    for _e in ((-2.0, -2.0, G.BW + 2.0, 0.3), (-2.0, G.BH - 0.3, G.BW + 2.0, G.BH + 2.0),
+               (-2.0, -2.0, 0.3, G.BH + 2.0), (G.BW - 0.3, -2.0, G.BW + 2.0, G.BH + 2.0)):
+        obstruct(_e, "pad")
+
+    def silk_edge(x0, y0, x1, y1, w=0.15):
+        """One side of a silkscreen box, BROKEN wherever it would cross a pad.
+
+        A region box is only worth drawing if it can be drawn without ink on
+        a solder-mask opening, and around 460 parts there is always somewhere
+        it cannot.  Breaking it there costs nothing to read and is what the
+        fab would have done anyway, except that the fab breaks it wherever it
+        likes and does not tell you."""
+        n = max(2, int(_m.hypot(x1 - x0, y1 - y0) / 0.4) + 1)
+        run, runs = None, []
+        for k in range(n + 1):
+            px, py = x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n
+            if blocked((px, py, px, py), 0.3):
+                if run:
+                    runs.append(run)
+                run = None
+            else:
+                run = (run[0], run[1], px, py) if run else (px, py, px, py)
+        if run:
+            runs.append(run)
+        for a0, b0, a1, b1 in runs:
+            if _m.hypot(a1 - a0, b1 - b0) < 1.0:
+                continue
+            out.append(line(a0, b0, a1, b1, "F.SilkS", w))
+            obstruct((min(a0, a1) - w, min(b0, b1) - w,
+                      max(a0, a1) + w, max(b0, b1) + w))
+
+    def silk_box(x0, y0, x1, y1, w=0.15):
+        silk_edge(x0, y0, x1, y0, w)
+        silk_edge(x1, y0, x1, y1, w)
+        silk_edge(x1, y1, x0, y1, w)
+        silk_edge(x0, y1, x0, y0, w)
+
+    # ---- one box round each input circuit ---------------------------------
+    # A FIXED rectangle centred on its own SMA, not the bounding box of its
+    # contents: sizing to contents is what put the 1 pps jack off to one side
+    # of its own rectangle, because that half has parts out to +5.5 mm and
+    # only -4.4.  A fixed rectangle also makes a unit's two boxes read as a
+    # pair and gives the gutter a constant width for the rail.
+    colbox = {}
+    for u in sorted(byunit):
+        f, _ = xf(u)
+        todo = [("10m", T.BOX_10M)]
+        if byunit[u].get("U04"):
+            todo.append(("pps", T.pps_box()))
+        for kind, (bx0, by0, bx1, by1) in todo:
+            cs = [f(bx0, by0), f(bx1, by0), f(bx1, by1), f(bx0, by1)]
+            r = (min(c[0] for c in cs), min(c[1] for c in cs),
+                 max(c[0] for c in cs), max(c[1] for c in cs))
+            silk_box(*r)
+            k = (kind, "L" if r[0] < G.XC else "R")
+            e = colbox.get(k)
+            colbox[k] = ((min(e[0], r[0]), min(e[1], r[1]),
+                          max(e[2], r[2]), max(e[3], r[3])) if e else r)
+
+    # ---- a box round each named region ------------------------------------
+    # Round 29.  "HELPER", "POWER", "HOUSEKEEPING" and "1-WIRE" were four
+    # words floating near four groups of parts, and the only boxes were on
+    # Cmts.User, which is not printed and which nobody holding the board can
+    # see.  Each box is now the extent of the parts that ARE in that region --
+    # read from `placed`, so it cannot describe a group that has moved.
+    def region(refs, pad=1.3):
+        bs = [boxes[r] for r in refs if r in boxes]
+        if not bs:
+            return None
+        return (min(b[0] for b in bs) - pad, min(b[1] for b in bs) - pad,
+                max(b[2] for b in bs) + pad, max(b[3] for b in bs) + pad)
+
+    REGIONS = {
+        "helper": sorted(H.PARTS) + ["J3001", "J3002"],
+        "power": sorted(PW.PARTS),
+        "house": sorted(blockrefs.get("house", [])) + ["U5009", "FB5009",
+                                                       "C5017", "C5018"],
+        # the five screw terminals and their series resistors belong with the
+        # 1-Wire bridge; they are hand-placed and the packer never sees them
+        "probes": (sorted(blockrefs.get("probes", []))
+                   + ["J600%d" % (i + 1) for i in range(5)]
+                   + ["R60%02d" % n for n in range(2, 12)]
+                   + ["U6001", "FB6001", "C6001", "C6002"]),
+    }
+    rboxes = {}
+    for _name, _refs in sorted(REGIONS.items()):
+        r = region(_refs)
+        if not r:
+            continue
+        rboxes[_name] = (max(r[0], 1.0), max(r[1], 1.0),
+                         min(r[2], G.BW - 1.0), min(r[3], G.BH - 1.0))
+    # The BOXES themselves are drawn at the end of this function, after every
+    # label -- a region border breaks round anything already printed, which is
+    # how the region's own name comes to sit in a gap in its own border
+    # instead of being pushed out of the region it names.
+
+    # ---- the big labels ---------------------------------------------------
+    def region_label(name, x0, y0, x1, y1, size=1.9, thick=0.32):
+        stack_in(x0, y0, x1, y1,
+                 [(s, size, thick) for s in LB.REGION[name]], gap=0.2)
+
+    hb = rboxes.get("helper")
+    if hb:
+        # In the free column between the two helper SMAs and the block below
+        # them -- U5007, the helper's OWN thermometer, sits on the centre line
+        # at y = 25 with a bead and two capacitors under it, so the label goes
+        # to the left of that column, inside the band.
+        region_label("helper", hb[0] + 0.8, 15.3, hb[2] - 0.8, 30.0, 1.3, 0.22)
+    pb = rboxes.get("power")
+    if pb:
+        # "Up and to the left" (round 29): it was BELOW the block and read as
+        # a caption for the bench posts rather than a name for the region.
+        region_label("power", pb[0] + 1.0, pb[1] + 0.5, pb[0] + 30.0,
+                     pb[1] + 12.0, 2.0, 0.34)
+    kb = rboxes.get("house")
+    if kb:
+        # Above the block as well as inside it: the housekeeping region is
+        # only 14 mm wide (two resistors, the DAC and its decoupling) and its
+        # name is 12.8 of them, so the row it needs is usually the clear band
+        # just above.  The border is drawn afterwards and breaks round it.
+        region_label("house", kb[0] - 1.0, kb[1] - 7.0, kb[0] + 28.0,
+                     kb[1] + 10.0, 1.3, 0.22)
+
+    # ---- the 1-Wire screw terminals ---------------------------------------
+    # W1..W5, not P1..P5: the 1 pps jacks are P1..P12, and two connectors
+    # thirteen rows apart carrying the same five names is a real trap when
+    # someone is reading a wiring note off the board.
+    probe_pads = []
+    for i in range(5):
+        pr = "J600%d" % (i + 1)
+        if pr not in placed:
+            continue
+        silk(placed[pr][0] - 1.7, 2.6, LB.PROBE_TAG(i + 1), 1.6, 0.28)
+        dd, nm = fpof[pr]
+        probe_pads.append(sorted(P.pads(dd, nm, *placed[pr]), key=lambda q: q[0]))
+    # A wire colour against every screw: five identical three-way blocks and
+    # fifteen wires in your hand is exactly when you want it on the board.
+    for pd in probe_pads:
+        for pn, ax, ay, _t, _h, _rc in pd:
+            lab = {"1": "yel", "2": "red", "3": "blk"}.get(pn)
+            if lab:
+                place_text(ax, 16.6, lab, 1.0, 0.16,
+                           spiral(0.5, 3.5), angle=90)
+    # One line under the middle terminal, so it reads as belonging to all
+    # five, in the strip between the series resistors and the DS2482.
+    if not place_in(11.0, 19.4, G.PROBE_X[-1] + 6.0, 22.4,
+                    LB.PROBE_HEADING, 1.1, 0.18):
+        place_in(4.0, 19.0, G.BW - 4.0, 34.0, LB.PROBE_HEADING, 1.1, 0.18)
+
+    # ---- every jack named, beside the unit it belongs to -------------------
+    for x, y, tag, _desc in G.sma_rows():
+        if tag in G.HELPER_SMA:
+            continue          # named by the loop below, with their own offset
+        if tag.startswith("P"):
+            # ABOVE its box, in the 6 mm gutter between pps boxes.  At y - 6.4
+            # the label straddled the box's own top edge, because a pps box is
+            # only 11.8 mm tall against the 10 MHz box's 16.8.
+            silk(x - 3.0, y - 7.6, tag, 2.4, 0.4)
+        else:
+            silk(x - 3.0, y - 6.4, tag, 2.4, 0.4)
+    for tag, ref in (("HIN", "J3002"), ("HO", "J3001")):
+        if ref in placed:
+            silk(placed[ref][0] - 3.5, placed[ref][1] - 6.4, tag, 2.0, 0.34)
+
+
+    # ---- what may be applied to each COLUMN of jacks -----------------------
+    # Round 29.  The board said what each test point should show and never
+    # said what you are allowed to plug in.  Two lines above each column, the
+    # first one deliberately bigger than the 2.4 mm jack numbers, because it
+    # is the line that stops someone putting 8 Vpp into an unterminated
+    # ZED-F9T channel.
+    for (kind, _side), r in sorted(colbox.items()):
+        head, sub = (LB.col_head_pps() if kind == "pps" else LB.col_head_10m())
+        # The strip above the column's topmost box, which already holds that
+        # jack's own number: stack_in finds the rows that are left.
+        stack_in(r[0], r[1] - 10.0, r[2], r[1] - 0.6,
+                 [(head, 3.0, 0.44), (sub, 1.25, 0.22)], gap=1.1)
+
+    # ---- test-point letters ------------------------------------------------
+    # In the TILE's frame, which for a part at rot 0 in tile.py IS the part's
+    # own frame, so one offset serves both sides of the board.
+    TP_OFF = {"TP_IN": (2.7, 0.0), "TP_SQ": (2.5, 0.0),
+              "TP_BEAT": (1.7, 1.9), "TP_PPS": (1.9, 1.5)}
+    for r in sorted(placed):
+        if not r.startswith("TP"):
+            continue
+        v = vals.get(r, "")
+        L = LB.TP_LETTER.get(v)
+        if not L:
+            continue
+        sz = 1.3 if len(L) > 1 else 1.5
+        dx, dy = TP_OFF.get(v, (2.2, 0.0))
+        part_text(r, dx, dy, L, sz, 0.26, rmax=2.2,
+                  alts=((dy, -dx), (-dy, dx)))
+
+    # ---- H on every heater, T on every thermometer -------------------------
+    # Both derived from the placement, in the part's own frame, so an `H`
+    # cannot end up beside a different heater -- or, as round 28's board had
+    # it, under a DMN6068 six millimetres away.
+    #
+    # A 2010 heater is 6.5 x 3.2: -5.5 in its own x is 2.3 mm off its end.
+    # In a tile that is along the channel, into the empty strip between the
+    # heater and the flip-flops; in a margin it is inboard, away from the
+    # board edge.  The two come out the same because the heaters are placed
+    # as mirror images in the first place.
+    # FOUR digits, not "starts with R20".  Round 28 tested `r.startswith("R20")`
+    # and `r.startswith("U50")`, and this board numbers a channel's own parts
+    # `R201`..`R208` for unit 2 and `U501`..`U504` for unit 5 -- so unit 2's
+    # eight resistors each got an `H` and unit 5's four gates each got a `T`.
+    # Twelve markers naming parts that are not heaters or thermometers, in the
+    # middle of two channel tiles.  That is round 29's "random H's scattered
+    # around" and "the T labels are not always next to their thermometers":
+    # they were never near a heater or a thermometer at all.
+    for r in sorted(placed):
+        if re.match(r"^R20\d\d$", r):
+            part_text(r, -5.5, 0.0, "H", 1.5, 0.26, rmax=2.2,
+                      alts=((0.0, 3.2), (0.0, -3.2)))
+        elif re.match(r"^U500[1-8]$", r):
+            part_text(r, 4.2, 0.0, "T", 1.7, 0.3, rmax=2.4,
+                      alts=((0.0, 4.6), (0.0, -4.6)))
+
+    # ---- title, author and the key -----------------------------------------
+    # Round 21 moved this whole band out of the bottom-left, where the legend
+    # crossed forty rotated header names and the title ran through the debug
+    # header's seven.  Round 29 moves the title and author to join it, because
+    # the bottom-left corner now has a mounting hole in it.
+    # x 141..196, y 151..169 is the one rectangle in the bottom band with
+    # nothing in it: unit 12's 10 MHz box stops at y = 151.2, the right margin
+    # heater R2019 starts at x = 197, and the socket's rotated pin names start
+    # at y = 169.2.  Round 21 found it for the legend; round 29 moves the
+    # title and the author line here too, because the bottom-left corner they
+    # used to sit in now has a mounting hole 3 mm from the first glyph.
+    LX1, LX2, LY0 = 141.0, 176.0, 151.0
+    stack_in(LX1, LY0, 196.0, LY0 + 6.6,
+             [("GPSDO DDMTD FRONT END   rev %s" % D.REV, 1.5, 0.26),
+              ("Jason Gallicchio   jason@hmc.edu   %s" % D.DATE, 1.05, 0.18),
+              ("TEST POINTS - the letter beside each pad", 1.1, 0.18)], gap=0.35)
+    ca, cb = LB.legend_columns()
+    for lx, col in ((LX1, ca), (LX2, cb)):
+        stack_in(lx, LY0 + 6.6, lx + 33.0, LY0 + 13.4,
+                 [(s, 1.0, 0.17) for s in col], gap=0.35)
+    stack_in(LX1, LY0 + 13.4, 196.0, LY0 + 18.4,
+             [(s, 0.95, 0.17) for s in LB.jack_key() + LB.helper_key()],
+             gap=0.3)
+
+    # ---- the 2x20 socket ---------------------------------------------------
+    px, py = G.hdr_pin(1)
+    silk(px + 2.6, py + 1.3, "1", 1.6, 0.3)
+    # Round 29: HALF the names above and half below, each beside its own row.
+    # Both rows used to be named above the socket, 1.27 mm apart, which is a
+    # forty-name thicket over the odd row and nothing at all over the even one
+    # -- and the reader still has to count to find out which of two adjacent
+    # names belongs to the pin under their probe.
+    for pinno in range(1, 41):
+        gx, gy = G.hdr_pin(pinno)
+        nm = _short(D.HEADER[pinno][0])
+        silk(gx, 171.5 if pinno % 2 else 179.3, nm, 0.9, 0.16, angle=90)
+    # The strip below the even row of pin names, right of the socket.
+    place_in(163.0, G.BH - 3.4, G.BW - 1.0, G.BH - 0.6,
+             "RPi 2x20 SOCKET, UNDERSIDE", 1.3, 0.22)
+    # Round 22.  This board needs NO modification to a PYNQ-Z2, but it takes
+    # the whole Raspberry Pi header, and the manual says of that header: "28
+    # Total FPGA I/O (8 pins are shared with Pmod A)".  We use all 28, so all
+    # 8 of Pmod A's I/O balls are ours -- checked ball by ball.
+    stack_in(G.BW - 46.0, G.BH - 11.0, G.BW - 1.0, G.BH - 3.4,
+             [("PMOD A IS UNUSABLE WITH THIS BOARD ON:", 1.0, 0.16),
+              ("ITS 8 I/O ARE THIS HEADER'S", 1.0, 0.16)], gap=0.35)
+
+    # ---- the debug header --------------------------------------------------
+    if "J5001" in placed:
+        hx, hy, hrot = placed["J5001"]
+        jn = nets.get("J5001", {})
+        # Names come from the netlist, not from a list typed here that goes
+        # stale.  At rot 270 pin 1 is at +x, the numbering runs back towards
+        # -x, the SIGNAL row is the upper one and the ground row faces the
+        # board edge.
+        step = -2.54 if hrot == 270 else 2.54
+        dy = -4.2 if hrot == 270 else 4.2
+        for i in range(10):
+            s = jn.get(str(2 * i + 1), "")
+            # Round 29: an unconnected pin is labelled NC rather than left
+            # blank.  A blank pin on a debug header reads as "the silkscreen
+            # ran out", and the three of them are the first place someone
+            # will clip a probe.
+            if not s or s.startswith("unconnected-"):
+                s = "NC"
+            silk(hx + i * step, hy + dy, s, 0.9, 0.16, angle=90)
+        # ...and the whole even row is ground, which nothing said at all.
+        place_in(hx + 2.2, hy + 1.2, hx + 22.0, hy + 4.0, "GND x10", 1.1, 0.18)
+        # The clear band between unit 13's 1 pps box and the tops of this
+        # connector's own rotated pin names.
+        stack_in(hx - 24.0, hy - 16.0, hx + 5.0, hy - 11.6,
+                 [("DEBUG 2x10", 1.4, 0.24)])
+
+    # ---- the connectors in the power block ---------------------------------
+    jx, jy = PW.place(*PW.PARTS["J2003"][:2])          # the 15 V barrel jack
+    # BESIDE AND BELOW THE BARREL JACK.  Round 28 printed these at x = 172,
+    # which is 12 mm from the bench 5 V posts and 12 mm from the jack, so they
+    # read as a warning about the 5 V input -- the one place on this board
+    # where 15 V must never go.  The region is the corner the jack is in.
+    stack_in(jx - 22.0, jy + 5.0, G.BW - 1.0, jy + 20.0,
+             [(s, 1.2, 0.2) for s in LB.BARREL_LINES])
+    p5 = PW.place(*PW.PARTS["J2001"][:2])              # bench +5V post
+    pg = PW.place(*PW.PARTS["J2002"][:2])              # bench GND post
+    place_text(p5[0] + 4.5, p5[1], "+5V", 1.5, 0.26, spiral(0.5, 2.5))
+    place_text(pg[0] - 4.5, pg[1], "GND", 1.5, 0.26, spiral(0.5, 2.5))
+    # Round 29: three short lines that fit between the posts and the board
+    # edge, instead of one 88-character line that ran off it (the DRC said so,
+    # once, as a warning nobody was reading).  It says what the board normally
+    # does before it says what not to do, because "OR LEAVE OPEN" was the only
+    # hint that these posts are not the normal supply.
+    # Round 29: three short lines instead of one 88-character line that ran
+    # off the edge of the board (silk_edge_clearance, reported once, as a
+    # warning nobody was reading).  They say what the board normally does
+    # before they say what not to do, because "OR LEAVE OPEN" was the only
+    # hint these posts are not the normal supply.  The strip they live in runs
+    # left from the posts along the top edge, which is the nearest clear board
+    # -- immediately above the posts there are 2.5 mm and two Schottkys.
+    stack_in(pb[0] + 9.0, 0.7, G.BW - 13.0, 4.6,
+             [(s, 0.9, 0.16) for s in LB.BENCH_LINES], gap=0.35)
+    # ~110 mA at 5 V is modest, but it lands on top of whatever the Zynq is
+    # already drawing and the manual warns that micro-USB "should provide
+    # enough power for MOST designs".
+    place_in(40.0, G.BH - 3.6, 112.0, G.BH - 0.6, LB.PYNQ_POWER_LINE,
+             1.05, 0.18)
+
+    # ---- reference designators, last ---------------------------------------
+    # They go down after everything else precisely so that they are the thing
+    # that moves.  A designator is the least important text on the board: it
+    # names a part you can also find on the assembly drawing, whereas a test
+    # point's letter is the only thing that says what you are probing.
+    def default_ref(d, name):
+        k = (d, name)
+        if k not in _refdef:
+            txt = _fpcache.get(k) or open(os.path.join(d, name + ".kicad_mod"),
+                                          encoding="utf-8").read()
+            mm = re.search(r'\(property "Reference".*?\(at\s+([-\d.]+)\s+([-\d.]+)',
+                           txt, re.S)
+            _refdef[k] = ((float(mm.group(1)), float(mm.group(2))) if mm
+                          else (0.0, -1.6))
+        return _refdef[k]
+
+    _refdef = {}
+    # Where a designator would rather be than where the stock footprint puts
+    # it.  All in the PART's own frame, so the thirteen copies of a tile agree.
+    #   the SMA jacks: 6.35 mm along the tile's own -x is directly BELOW the
+    #   jack on the board, on both sides, and INSIDE the 10 MHz box -- the
+    #   library position is 0.35 mm outside it.
+    #   the heaters: +5.5 in their own x is the other end from the `H`, and
+    #   for the thirteen in-tile ones it is inside the box their part is in.
+    REFPREF = {}
+    for u in sorted(byunit):
+        for slot, r in byunit[u].items():
+            if slot == "J01":
+                REFPREF[r] = (-6.35, 0.0)
+            elif slot == "J02":
+                REFPREF[r] = (-4.8, 0.0)       # the pps box is 11.8 mm wide
+    for r in sorted(placed):
+        if r.startswith("R20"):
+            REFPREF[r] = (5.5, 0.0)
+
+    refat, reflayer = {}, {}
+    for r in sorted(placed):
+        if r not in fpof:
+            continue
+        d, name = fpof[r]
+        if r.startswith("MH"):
+            reflayer[r] = "F.Fab"              # a hole has no designator
+            continue
+        if r == "J4001":
+            continue                           # underside, mirrored, leave it
+        rx, ry, rrot = placed[r]
+        w = len(r) * adv(r, 0.8) + 0.16
+        found = None
+        # Preferred position first, then the library's own, then the four
+        # sides of the part's courtyard -- and a spiral round each.  The four
+        # sides matter: a spiral from a position that is deep inside a dense
+        # row walks outward through every neighbour before it reaches clear
+        # board, and the clear board is usually straight above or below.
+        b0, b1, b2, b3 = boxes[r]
+        cw, ch = (b2 - b0) / 2.0 + 0.7, (b3 - b1) / 2.0 + 0.7
+        seeds = [p for p in (REFPREF.get(r), default_ref(d, name)) if p]
+        seeds = [to_board(rrot, p[0], p[1]) for p in seeds]
+        seeds += [(0.0, -ch), (0.0, ch), (-cw - w / 2.0, 0.0),
+                  (cw + w / 2.0, 0.0)]
+        for bx, by in seeds:
+            for dx, dy in spiral(0.45, 3.6):
+                cx, cy = rx + bx + dx, ry + by + dy
+                bb = (cx - w / 2.0, cy - 0.48, cx + w / 2.0, cy + 0.48)
+                if not blocked(bb):
+                    found = (cx, cy, bb)
+                    break
+            if found:
+                break
+        if found:
+            obstruct(found[2])
+            refat[r] = to_local(rrot, found[0] - rx, found[1] - ry)
+        else:
+            # Nowhere on 373 cm2 that this name can be printed without
+            # landing on a solder-mask opening or on something that matters
+            # more.  Move it to F.Fab: it stays on the assembly drawing and
+            # in the placement file, and the silkscreen stays legible.
+            reflayer[r] = "F.Fab"
+            _nlost.append(r)
+
+    # ---- the region borders, now that every label is down -----------------
+    for _name in sorted(rboxes):
+        silk_box(*rboxes[_name], w=0.2)
+
+    # ---- and now every footprint, with its designator where it belongs -----
+    for idx, d, name, ref, value, fx, fy, frot, flayer, fnets in pending:
+        out[idx] = footprint(d, name, ref, value, fx, fy, frot, flayer,
+                             fnets, numof, refat=refat.get(ref),
+                             reflayer=reflayer.get(ref))
+    import sys as _sl
+    print("silkscreen: %d designators placed, %d moved to F.Fab %s"
+          % (len(refat), len(_nlost), sorted(_nlost)[:40]), file=_sl.stderr)
 
     return out, placed, fps, boxes
 
