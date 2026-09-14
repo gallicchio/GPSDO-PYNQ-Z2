@@ -46,9 +46,9 @@ Nothing is spare.  `*` marks the five pins section 2 needs.
             |[USB]                                                     |  |
             +----------------------------------------------------------+  v
 
-    PIN 1 IS AT THE RIGHT-HAND END, on the row NEAREST the board's top edge
-    (round 9: the PYNQ-Z2's own silkscreen prints "1  2" at the right end and
-    "40 39" at the left).  Odd pins are the OUTER row, even pins the inner.
+    PIN 1 IS AT THE RIGHT-HAND END, on the row NEAREST the PYNQ-Z2's top edge
+    (The PYNQ-Z2's own silkscreen prints "1  2" at the right end and 
+    "40 39" at the left).  Odd pins are the PYNQ's OUTER row, even pins the inner.
 
     Our board carries the mating socket on its UNDERSIDE, so on OUR board the
     same pins run mirrored: looking down at our silkscreen, pin 1 is at the
@@ -164,6 +164,22 @@ revision's fallback would go.
     cd ~/gpsdo-dmtd
     ./pynq-run bringup.py --scan          # who answers on the bus
     ./pynq-run bringup.py --no-heater     # program the Si5351, check lock
+
+Add `--clk2 helper` and the Si5351's third output carries a second copy of the
+helper, so a scope or an ADALM2000 on CLK1 and CLK2 sees 1234.4 Hz of beat --
+the number this whole instrument is built on -- with no board in the system.
+It is off by default because the front-end board routes nothing to CLK2.
+
+    ./pynq-run bringup.py --no-heater --clk2 helper   # on the PYNQ
+    python3 gateware/board/m2k_beat.py                # on the laptop
+
+`m2k_beat.py` drives an ADALM2000 over libiio (no Scopy, no libm2k) and
+measures the beat from the PHASE RAMP between the two channels rather than by
+subtracting two 10 MHz frequencies: both channels share one ADC clock, so the
+ramp cancels it.  Round 30 measured 1234.417 Hz against 1234.400 by design.
+Leave `gateware/board/console_log.py` running during a long session -- it logs
+the PYNQ's serial console across resets, and distinguishes "Linux crashed"
+from "the board lost power".
 
 Expect the scan to show **0x60** and nothing else; with no front-end board the
 thermometers, the DS2482 and the DAC are all absent, and `bringup.py` says so

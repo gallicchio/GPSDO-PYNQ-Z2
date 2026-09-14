@@ -43,3 +43,25 @@ name as the IP, and `_IPMap.__getattr__` checks hierarchies before IP, so the
 attribute returns an empty `DocumentedHierarchy`. `attach()` goes through
 `ip_dict` instead. See the docstring in `driver/dmtd.py` for what was ruled
 out.
+
+## Bench tools (round 30) -- these run on the LAPTOP, not the board
+
+```sh
+python3 m2k_beat.py                 # measure the Si5351's beat with an ADALM2000
+python3 console_log.py              # log the PYNQ's serial console across resets
+```
+
+`m2k_beat.py` talks to the M2k over libiio directly -- neither Scopy nor
+libm2k is needed. Run `./pynq-run bringup.py --no-heater --clk2 helper` on the
+board first, so CLK2 carries a copy of the helper; then CLK1 and CLK2 are
+10.000000 and 10.0012344 MHz and the tool measures the 1234.4 Hz between them
+from their phase ramp. Two things it knows that cost an afternoon to find:
+the M2k leaves its analog front end powered down until something wakes it, and
+subtracting two separately-fitted 10 MHz frequencies throws away the precision
+that sampling both channels on one clock buys you.
+
+`console_log.py` reconnects when the port comes back, and says in the log
+whether the port going away means Linux crashed (it does not -- the FT2232 is
+USB-powered and stays enumerated) or the board lost power (it does).
+Which port: `/dev/ttyUSB1` here is the UART, `/dev/ttyUSB0` the JTAG of the
+same FT2232, and `/dev/ttyACM0` is the ADALM2000, not the PYNQ.
