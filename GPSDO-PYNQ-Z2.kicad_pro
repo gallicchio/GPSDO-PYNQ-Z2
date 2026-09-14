@@ -1,8 +1,46 @@
 {
   "board": {
     "design_settings": {
+      "rules": {
+        "min_clearance": 0.15,
+        "min_track_width": 0.2,
+        "min_via_diameter": 0.6,
+        "min_via_annular_width": 0.15,
+        "min_through_hole_diameter": 0.3,
+        "min_hole_clearance": 0.254,
+        "min_hole_to_hole": 0.5,
+        "min_copper_edge_clearance": 0.3,
+        "min_silk_clearance": 0.15,
+        "min_text_height": 0.8,
+        "min_text_thickness": 0.155,
+        "solder_mask_min_width": 0.1
+      },
       "rule_severities": {
-        "hole_to_hole": "error"
+        "clearance": "error",
+        "copper_edge_clearance": "error",
+        "hole_clearance": "error",
+        "hole_to_hole": "error",
+        "annular_width": "error",
+        "drill_out_of_range": "error",
+        "track_width": "error",
+        "shorting_items": "error",
+        "tracks_crossing": "error",
+        "solder_mask_bridge": "error",
+        "unconnected_items": "error",
+        "silk_over_copper": "error",
+        "text_height": "error",
+        "text_thickness": "error",
+        "silk_edge_clearance": "error",
+        "courtyards_overlap": "error",
+        "malformed_courtyard": "error",
+        "footprint_type_mismatch": "error",
+        "silk_overlap": "warning",
+        "track_dangling": "warning",
+        "via_dangling": "warning",
+        "isolated_copper": "warning",
+        "starved_thermal": "warning",
+        "lib_footprint_mismatch": "ignore",
+        "lib_footprint_issues": "ignore"
       }
     }
   },

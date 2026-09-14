@@ -20,8 +20,16 @@ MINIMUMS ACTUALLY USED  (all well inside JLCPCB's 4-layer capability)
   Track widths used .. 0.25, 0.30, 0.35, 0.50
   Via pad/drill ...... 0.60/0.30 mm      (595 vias)
   Minimum via drill .. 0.3 mm
-  Pad drill sizes .... 1.00, 1.20, 1.50, 1.70
+  Pad drill sizes .... 1.00, 1.20, 1.50, 1.70, 3.20
   Minimum pad drill .. 1.0 mm
+  Closest SMT pad to the board edge .. 1.19 mm  (FB5009)
+      An ASSEMBLY number, not a fabrication one, and no KiCad rule checks it:
+      `copper_edge_clearance` is about copper, not about whether a nozzle and
+      a clamp can both reach.  If it is inside your rail allowance the panel
+      needs a break-away rail -- PLEASE SAY SO RATHER THAN SHIFTING THE PART.
+      Everything nearer the edge than this is through hole (the SMA jacks, the
+      screw terminals, the barrel jack, the two bench posts and the 2x20
+      socket) and is hand soldered afterwards.
 
 IMPEDANCE
   No controlled-impedance service is required.  The helper traces on In2.Cu

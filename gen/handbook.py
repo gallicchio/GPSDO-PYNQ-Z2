@@ -45,6 +45,17 @@ def _i2c_devices():
         return [(None, "driver/i2c_devices.py not importable: %s" % e)]
 
 
+def _edge():
+    """How close any SMT pad gets to the board edge, measured on the board."""
+    try:
+        sys.path.insert(0, os.path.join(ROOT, "mfg"))
+        import make_fab
+        m = make_fab.measure()
+        return m["smt_to_edge_mm"], m["smt_to_edge_ref"]
+    except Exception:                                      # no board built yet
+        return None, ""
+
+
 def _gateware():
     try:
         from driver import dmtd_constants as C
@@ -66,8 +77,8 @@ def _pin_role(net):
     if net.startswith("I2C_"):
         return "I2C (2k2 pull-up already on the PYNQ-Z2)"
     if net == "HELPER_CLK":
-        return "helper clock -> FPGA.  MRCC ball: the one real clock input here"
-    return D.HEADER_USE.get(net, "")
+        return "helper clock -> FPGA.  MRCC ball, and the one the gateware uses"
+    return ""
 
 
 def header_art():
@@ -78,7 +89,7 @@ def header_art():
         rn, rz = D.HEADER[odd + 1][0], D.HEADER[odd + 1][1]
         rows.append("   %14s %-4s %2d | %s   %s | %-2d %-4s %s"
                     % (ln, lz or "", odd,
-                       _dot(ln), _dot(rn), odd + 1, rz or "", rn))
+                       _dot(odd), _dot(odd + 1), odd + 1, rz or "", rn))
     body = "\n".join(rows)
     return (
         "                                     +---------------+\n"
@@ -86,10 +97,14 @@ def header_art():
         "                                     +---------------+" % body)
 
 
-def _dot(net):
-    """A pin you need for the bare-module experiment is marked."""
-    return "*" if net in ("+3V3_HOST", "GND", "I2C_SDA", "I2C_SCL",
-                          "HELPER_CLK") else "o"
+# The five pins section 2 actually asks you to put a wire on.  By NUMBER, not
+# by net: there are eight grounds and two 3.3 V pins, and marking all of them
+# turns the drawing into a starfield.
+SI_PINS = (1, 3, 5, 6, 18)
+
+
+def _dot(pin):
+    return "*" if pin in SI_PINS else "o"
 
 
 def orientation_art():
@@ -127,26 +142,24 @@ def orientation_art():
 def board_art():
     """A plan view of our own board, plotted from pcb/geom.py.
 
-    2 mm per column, 4 mm per row.  Everything drawn here is read from the
+    2 mm per column, 4 mm per row.  Every coordinate here is read from the
     same tables the board is built from, so if a jack moves, this moves.
     """
     SX, SY = 2.0, 4.0
-    nx, ny = int(G.BW / SX) + 1, int(G.BH / SY) + 1
+    nx, ny = int(G.BW / SX) + 2, int(G.BH / SY) + 2
     cv = [[" "] * nx for _ in range(ny)]
 
-    def put(x, y, s, clip=True):
-        cx, cy = int(round(x / SX)), int(round(y / SY))
-        if not (0 <= cy < ny):
+    def put(x, y, s):
+        cx, cy = int(x / SX + 0.5), int(y / SY + 0.5)
+        if not 0 <= cy < ny:
             return
         for i, ch in enumerate(s):
             if 0 <= cx + i < nx:
-                if clip and cv[cy][cx + i] != " ":
-                    continue
                 cv[cy][cx + i] = ch
 
     def box(x0, y0, x1, y1):
-        c0, r0 = int(round(x0 / SX)), int(round(y0 / SY))
-        c1, r1 = int(round(x1 / SX)), int(round(y1 / SY))
+        c0, r0 = int(x0 / SX + 0.5), int(y0 / SY + 0.5)
+        c1, r1 = int(x1 / SX + 0.5), int(y1 / SY + 0.5)
         for c in range(max(0, c0), min(nx, c1 + 1)):
             for r in (r0, r1):
                 if 0 <= r < ny and cv[r][c] == " ":
@@ -159,42 +172,48 @@ def board_art():
             if 0 <= r < ny and 0 <= c < nx:
                 cv[r][c] = "+"
 
-    box(0, 0, G.BW, G.BH - SY)
-    # the two big functional blocks
-    box(G.XC - G.HELPER_HW, 6.0, G.XC + G.HELPER_HW, 152.0)
-    put(G.XC - 12.0, 80.0, "HELPER")
-    put(G.XC - 12.0, 84.0, "CLOCK")
-    put(G.XC - 12.0, 88.0, "DISTRIB")
-    box(106.0, 1.0, 180.0, 34.0)
-    put(150.0, 28.0, "POWER")
-    box(10.0, 16.0, 80.0, 34.0)
-    put(30.0, 30.0, "1-WIRE")
-    box(38.0, 164.0, 106.0, 176.0)
-    put(60.0, 172.0, "HOUSEKEEPING")
-
-    # every SMA, with the label the silkscreen actually prints
+    # ---- boxes first, then anything with words in it ----------------------
+    box(0, 0, G.BW, G.BH)
+    box(G.XC - G.HELPER_HW, 6.0, G.XC + G.HELPER_HW, 152.0)   # the helper band
+    box(112.0, 1.0, 190.0, 32.0)                              # power
+    box(4.0, 3.0, 76.0, 31.0)                                 # 1-Wire
+    box(38.0, 164.0, 106.0, 178.0)                            # housekeeping
+    for lab, (bx, by) in ((["HELPER", "CLOCK", "FAN-OUT"], (G.XC - 14.0, 60.0)),
+                          (L.REGION["power"], (150.0, 24.0)),
+                          (L.REGION["house"], (52.0, 172.0)),
+                          (["1-WIRE THERMOMETERS"], (16.0, 27.0))):
+        for i, s in enumerate(lab):
+            put(bx, by + i * SY, s)
+    # every SMA, with the label its silkscreen actually prints
     for x, y, tag, _desc in G.sma_rows():
-        put(x - 1.0, y, "(%s)" % tag, clip=False)
+        put(x - 1.0 * len(tag), y, "(%s)" % tag)
     # the cabled connectors
-    for i in range(5):
-        put(16.0 + i * 13.0 - 1.0, 8.0, "[%s]" % L.PROBE_TAG(i + 1), clip=False)
-    put(184.0 - 3.0, 16.0, "[15V JACK]", clip=False)
-    put(150.0 - 2.0, 5.0, "[+5V]", clip=False)
-    put(142.0 - 2.0, 5.0, "[GND]", clip=False)
-    put(36.86 - 4.0, 174.0, "[DEBUG 2x10]", clip=False)
-    put(136.0 - 12.0, 174.0, "[ RPi 2x20 SOCKET, ON THE UNDERSIDE ]", clip=False)
+    for i, jx in enumerate(G.PROBE_X):
+        put(jx - 2.0, 8.0, "[%s]" % L.PROBE_TAG(i + 1))
+    put(178.0, 16.0, "[15 V JACK]")
+    put(146.0, 5.0, "[+5V]")
+    put(136.0, 5.0, "[GND]")
+    put(26.0, 174.0, "[DEBUG 2x10]")
+    put(116.0, 174.0, "[ RPi 2x20 SOCKET, UNDERSIDE ]")
     for (mx, my), kind, _note in G.MOUNT:
-        put(mx - 1.0, my, "(O)" if kind == "hole" else "[=]", clip=False)
+        put(mx - 2.0, my, "(O)" if kind == "hole" else "[=]")
 
-    top = "".join("%-10s" % ("%d" % (c * 10)) for c in range(0, int(G.BW / 10) + 1))
-    out = ["    " + top[:nx]]
+    ruler = [" "] * nx
+    for mm in range(0, int(G.BW) + 1, 20):
+        s = "%d" % mm
+        for i, ch in enumerate(s):
+            if int(mm / SX) + i < nx:
+                ruler[int(mm / SX) + i] = ch
+    out = ["    " + "".join(ruler).rstrip()]
     for r, row in enumerate(cv):
-        out.append("%3d %s" % (int(r * SY), "".join(row).rstrip()))
-    out.append("")
-    out.append("    (O) = M3 mounting hole   [=] = M3 slot to the PYNQ's own hole")
-    out.append("    (n) = 10 MHz SMA for unit n   (Pn) = that unit's 1 pps SMA")
-    out.append("    (HIN)/(HO) = helper in / helper out, beside the Si5351")
-    out.append("    numbers down the left and across the top are millimetres")
+        s = "".join(row).rstrip()
+        if s:
+            out.append("%3d %s" % (int(r * SY), s))
+    out += ["",
+            "    (n)  10 MHz SMA for unit n        (Pn)  that unit's 1 pps SMA",
+            "    (HIN)/(HO)  external helper in / CLK1 out, beside the Si5351",
+            "    [Wn] 1-Wire screw terminal        (O) M3 hole   [=] M3 slot",
+            "    numbers down the left and across the top are millimetres"]
     return "\n".join(out)
 
 
@@ -278,12 +297,9 @@ def i2c_table():
 # ===========================================================================
 def text():
     C = _gateware()
-    si_pins = [(p, D.HEADER[p][0]) for p in range(1, 41)
-               if D.HEADER[p][0] in ("+3V3_HOST", "I2C_SDA", "I2C_SCL",
-                                     "HELPER_CLK")
-               or (D.HEADER[p][0] == "GND" and p == 6)]
+    si_pins = [(p, D.HEADER[p][0]) for p in SI_PINS]
     si = "\n".join("    pin %-2d  %-12s -> %s" % (p, n, L.SI5351_WIRING[n])
-                   for p, n in si_pins)
+                   for p, n in si_pins if p in SI_PINS or p == 17)
     npads = sum(1 for _ in D.UNITS)
     return """\
 # GPSDO DDMTD front end -- handbook
@@ -292,7 +308,7 @@ def text():
 Run `python3 build.py` (or `python3 gen/handbook.py`) to rebuild it.
 
 Thirteen 10 MHz DDMTD channels and twelve 1 pps inputs on one board that plugs
-onto the Raspberry Pi header of a PYNQ-Z2.  A %(fh).4f MHz helper samples every
+onto the Raspberry Pi header of a PYNQ-Z2.  A %(fh).6f MHz helper samples every
 10 MHz reference, which stretches time by %(gain).0f: one helper cycle of beat
 displacement is **%(tres).2f ps** of input phase, and the FPGA measures the beat
 edges with an ordinary counter.
@@ -352,9 +368,11 @@ using them now does not teach you a habit you have to unlearn.  Do not feed
 the module 5 V: the Si5351 is a 3.3 V part.
 
 CLK0 is the helper output.  Wiring it to **pin 18** puts it on `%(hclk_ball)s`,
-which is the only pin of this header that is a clock-capable (MRCC) ball, and
-is exactly where the finished board sends it.  The gateware's helper counter
-then reads a real frequency instead of zero.
+a clock-capable (MRCC) ball and the one the gateware's constraint file is
+built for, so the helper counter reads a real frequency instead of zero.  Pin
+31 (`U18`) is the header's other MRCC ball; this board carries a beat on it
+and fits nothing for a second helper input, but that is where a future
+revision's fallback would go.
 
     ssh xilinx@<pynq>
     cd ~/gpsdo-dmtd
@@ -364,7 +382,7 @@ then reads a real frequency instead of zero.
 Expect the scan to show **0x60** and nothing else; with no front-end board the
 thermometers, the DS2482 and the DAC are all absent, and `bringup.py` says so
 rather than failing.  After programming, the core's helper counter should read
-%(fh).4f MHz +/- a few ppm (a Si5351 breakout's crystal is not a TCXO; the
+%(fh).6f MHz +/- a few ppm (a Si5351 breakout's crystal is not a TCXO; the
 real board's is).
 
 ---
@@ -404,8 +422,8 @@ Every connector is on an edge, and every edge is one kind of thing:
 %(chan)s
 
 Unit %(nch)d is the **null channel**: no 1 pps, and its 10 MHz input is meant to be
-cabled from `HO` -- the Si5351's CLK1 at exactly 10.000000 MHz -- into `%(nulltag)s`
-with a short SMA jumper.  Subtracting it removes everything common to the
+cabled from `HO` -- the Si5351's CLK1 at exactly 10.000000 MHz -- into the
+jack marked `%(nch)d` (`%(nulltag)s`) with a short SMA jumper.  Subtracting it removes everything common to the
 board and leaves the difference between the GPSDOs, which is the measurement.
 
 ### The 50 ohm jumper is the one thing you can break the board with
@@ -420,7 +438,10 @@ board and leaves the difference between the GPSDOs, which is the measurement.
 
 ## 6  Test points and what the silkscreen means
 
-Every test point is a 1.5 mm pad with a single letter printed beside it.
+Every test point is a 1.5 mm pad with its key printed beside it.  The keys are
+one character each except the 10 MHz input's, which is `In`: at 1.5 mm in
+KiCad's stroke font a capital `I` and a `1` are the same three strokes, and
+this board has jacks called `1`.
 
 %(tp)s
 
@@ -477,8 +498,9 @@ Order of operations, every time:
    both PLLs locked, eight thermometers read, the 1-Wire probes enumerated,
    and the core's selftest.
 4. **The helper.** Test point `X` (Si5351 XA) about 0.5-1.0 Vpp.  `HO` on a
-   counter: 10.000000 MHz.  The core's helper counter: %(fh).4f MHz.
-5. **The null channel first.** Cable `HO` to `%(nulltag)s`.  Its beat should be
+   counter: 10.000000 MHz.  The core's helper counter: %(fh).6f MHz.
+5. **The null channel first.** Cable `HO` to the jack marked `%(nch)d`
+   (`%(nulltag)s`).  Its beat should be
    %(fb).1f Hz and its phase reading should be flat -- that is the instrument
    floor, and everything else is measured against it.
 6. **One source into two channels** through a splitter: the two readings
@@ -495,8 +517,8 @@ core = attach(overlay)
 snap = core.snapshot()          # every channel, one coherent instant
 ```
 
-* `%(nbeat)d` beat channels, slots 0..%(nbeat_1)d; `%(npps)d` pps returns, slots
-  %(pps0)d..%(pps_last)d.  Slot `%(null)d` is the null channel.
+* %(nbeat)d beat channels in slots 0..%(nbeat_1)d, %(npps)d pps returns in slots
+  %(pps0)d..%(pps_last)d; slot %(null)d is the null channel.
 * One helper cycle of beat displacement is %(tres).4f ps of input phase, and the
   measurement wraps at %(wrap).0f ps -- one whole 10 MHz cycle.
 * The beat frequency is %(fb).1f Hz by design; in service it is re-centred in
@@ -513,9 +535,14 @@ PYNQ's top edge, so everything tall on the PYNQ stays in open air.
 
 %(mount)s
 
-The four desk standoffs must clear the PYNQ-Z2's own outline, which is why
-none of them is in the bottom-left corner: that corner is over the PYNQ's
-USB-A stack.  A standoff there would land on a connector.
+A desk standoff must be clear of the PYNQ-Z2's own outline, which on this
+board means clear of x 35..172 in the bottom 11 mm; the shared one is the
+opposite, and screws into the host's own hole.  The PYNQ's OTHER mounting
+hole, at board (39.3, 173.3), is underneath the 2x10 debug header and cannot
+be drilled; the 2x20 header plus the one slot locate this board against the
+host in both axes anyway.  Hardware per board: four M3 standoffs to the desk
+or the base plate, one M3 screw through the slot into the PYNQ's own
+standoff.
 
 ---
 
@@ -537,6 +564,15 @@ Two things KiCad does not check and this project therefore does itself:
 * **what the silkscreen SAYS.**  Every label on this board is emitted from the
   same table that places the part it refers to, so a heater's `H` cannot end
   up beside a different heater and a jack's name cannot outlive the jack.
+
+### Assembly, and the one number to look at before ordering
+
+%(edge)s
+
+Everything nearer the edge than that is through hole -- the SMA jacks, the
+five screw terminals, the barrel jack, the two bench posts and the 2x20
+socket -- and is hand soldered after assembly, not placed.  Bottom side: the
+socket, and nothing else.
 """ % dict(
         rev=D.REV, date=D.DATE,
         fh=D.F_HELPER / 1e6, gain=D.N_GAIN, tres=D.T_RES_PS,
@@ -554,9 +590,26 @@ Two things KiCad does not check and this project therefore does itself:
         null=(C.NULL_CHANNEL if C else 12),
         wrap=(C.WRAP_PS if C else 100000.0),
         bw=G.BW, bh=G.BH, ride=G.HDR_PIN_H, overlap=G.PZ_H - G.PZ_BOTTOM,
-        mount=mount_table(), silkmin=jlc.SILK_LINE_MIN,
+        mount=mount_table(), silkmin=jlc.SILK_LINE_MIN, edge=_edge_text(),
         npads=npads,
     )
+
+
+def _edge_text():
+    d, ref = _edge()
+    if d is None:
+        return ("The closest-SMT-pad-to-board-edge measurement needs a built "
+                "board; run `python3 build.py`.")
+    return ("The closest SMT pad to the board edge is **%.2f mm**, on `%s`.  "
+            "No KiCad rule checks this -- `copper_edge_clearance` is about "
+            "copper, not about whether a placement nozzle and an edge clamp "
+            "can both reach -- and it is the one figure in this project that "
+            "is NOT comfortably inside a published capability.  JLCPCB's SMT "
+            "line holds the panel by its edges; if %.2f mm is inside their "
+            "rail allowance the board needs a break-away rail, which is a "
+            "different panel and a different price.  Ask them rather than "
+            "moving the part: `%s` is where it is because of what it "
+            "decouples." % (d, ref, d, ref))
 
 
 def mount_table():

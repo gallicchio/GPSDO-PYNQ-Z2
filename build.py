@@ -127,7 +127,8 @@ def main():
     keep = [l for l in o.splitlines()
             if any(k in l for k in ("placed", "routed", "multi-terminal:",
                                     "courtyard", "bonded", "FAILED",
-                                    "silkscreen:", "two pieces"))]
+                                    "silkscreen:", "look split", "SILK:",
+                                    "two-point pass left", "dropped"))]
     s.done("\n    ".join(l.strip() for l in keep))
 
     if not a.no_drc:
@@ -179,6 +180,22 @@ def main():
         # meaningless and large -- every ground pad on this board reaches the
         # plane through a pour, and unfilled there is no pour, so ~436 of them
         # report as unconnected.  The number that matters is the filled one.
+        # A board with an unconnected net has no business producing a
+        # manufacturing release.  Round 28's build could not tell: the DRC
+        # step printed its verdict and carried on regardless, because
+        # kicad-cli only sets an exit code when asked.  Round 29's second
+        # build shipped one unconnected I2C_SDA past this point and the only
+        # sign was a line of text in the middle of the log.
+        drcf = _json.load(open(os.path.join(BUILD, "drcf.json")))
+        nbad = len(drcf["violations"]) + len(drcf.get("unconnected_items", []))
+        if nbad:
+            for v in (drcf["violations"] + drcf.get("unconnected_items", []))[:10]:
+                print("    DRC  %s: %s" % (v["type"], v["description"]))
+                for it in v.get("items", [])[:2]:
+                    print("         %s @ (%.2f, %.2f)"
+                          % (it["description"], it["pos"]["x"], it["pos"]["y"]))
+            raise SystemExit("FAILED: the poured board has %d DRC error(s); "
+                             "no release was built" % nbad)
         s.done("unfilled (clearances):     %s\n"
                "    the board, poured:         %s\n"
                "    everything, all severities: %s\n"

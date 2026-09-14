@@ -140,10 +140,15 @@ HELPER_SMA = {"HIN": (XC - 8.5, 12.0), "HO": (XC + 8.5, 12.0)}
 
 # The five 1-Wire screw terminals along the top edge.  Here, not in
 # build_pcb, because both the PLACEMENT and the hand-routed spurs that leave
-# each terminal are written from it -- round 29 moved the row 3 mm to clear
-# the top-left mounting hole and the spurs stayed behind, which dropped five
-# segments and was only visible as a line of build output.
-PROBE_X = [19.0 + i * 13.0 for i in range(5)]
+# each terminal are written from it -- round 29 moved the row 3 mm and the
+# spurs stayed behind, which dropped five segments and showed up as one line
+# of build output.
+#
+# 16, and NOT the 19 round 29 first tried.  Moving the row right by 3 mm to
+# make corner room for a mounting hole also moves ten resistors and five
+# hand-routed spur pairs through the band the I2C bus crosses, and the board
+# that came out had I2C_SDA in two pieces.  The hole moved instead; see MOUNT.
+PROBE_X = [16.0 + i * 13.0 for i in range(5)]
 
 CHANNELS = 13
 TILE_H = 75.5            # a whole unit, 1 pps jack to the helper band
@@ -257,16 +262,23 @@ def over_pynq(x, y):
 #     two decoupling capacitors sit -- they run down the left margin from
 #     y = 161 to 176.  Not the PYNQ's fault: that corner is at board x = 5.5
 #     and the PYNQ starts at x = 35.  The support moves up the same edge to
-#     y = 157, the one gap between R2019's heater (ends 151.6) and U5008's
-#     bead (starts 162).
-MOUNT = [((5.5, 5.5), "hole", "M3 desk standoff, top-left corner"),
+#     y = 157, the one gap between R2017's heater (ends 151.6) and U5008's
+#     bead (starts 162) -- and 13 mm in from the edge, not 5.5 or 11, because
+#     the six board-level margin lanes run down x = 1.4 .. 9.4 and the
+#     +15V_HTR one of them ENDS at (9.4, 155).  At x = 11 the hole's keep-out
+#     reached 8.9 and swallowed that lane's last millimetre, which is what
+#     cost round 29's second build its one unconnected net.
+MOUNT = [((4.0, 16.0), "hole",
+          "M3 desk standoff, upper left - NOT the corner: J6001's terminal "
+          "block reaches to x = 3.75 there, and moving the terminal row "
+          "instead cost a routed I2C bus (round 29)"),
          ((BW - 5.5, 5.5), "hole", "M3 desk standoff, top-right corner"),
          ((BW - 11.0, BH - 5.5), "hole",
           "M3 desk standoff, bottom right - 11 mm in, not 5.5, to stay off "
           "the HTR_DRIVE spine that runs down x = BW - 6.2"),
-         ((11.0, 157.0), "hole",
+         ((13.0, 157.0), "hole",
           "M3 desk standoff, lower left - the corner itself is under U5008's "
-          "decoupling stack, and x = 6.2 is the HTR_DRIVE spine"),
+          "decoupling stack, and the six margin lanes occupy x = 1.4 to 9.4"),
          (_pz_hole(PZ_HOLE_TR), "slot",
           "M3 SLOT onto the PYNQ-Z2's own top-right mounting hole: the one "
           "standoff shared with the host.  A slot, not a hole, because the "

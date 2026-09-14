@@ -3,9 +3,14 @@
 A 13-channel Digital DMTD front end that plugs onto a PYNQ-Z2's Raspberry Pi
 40-pin header and compares thirteen GPSDOs' 10 MHz and 1 pps outputs at about
 12 ps single-shot resolution. This file is the design log and the tutorial:
-twenty-eight rounds of prompts and answers, in order, including the mistakes
+twenty-nine rounds of prompts and answers, in order, including the mistakes
 and what they cost. The board, the generator that draws it, the manufacturing
 release and the FPGA gateware are all in this directory.
+
+> **If you want to use the board rather than read how it was made, start with
+> [`HANDBOOK.md`](HANDBOOK.md)** -- the header pinout, the thirteen channels,
+> the test points, the bring-up order and the design rules, all generated from
+> the same sources the board is, so none of it can drift from the hardware.
 
 > **Where this came from.** This document was written in the
 > [DroneSDR](https://github.com/QuantumQuasars/DroneSDR) repository as
@@ -10002,3 +10007,669 @@ Five was the number before a beat had ever been seen.
 | I2C devices with drivers | 0 of 4 | 4 of 4, untested on silicon |
 | 3.3 V rails with the host off | present (abs-max violation) | **absent** (interlock) |
 | board builds this round | | 3 (one discarded), 1188 + 2037 + 1496 s |
+
+
+## Prompt 29
+
+I have a Si5351 module that I can wire onto the Raspberry Pi connector of the PYNQ-Z2 that will be plugged at the next prompt. Is there easilly-readable documentation on which pin of the Raspberry Pi connector gets mapped to which signal on this board? Ideally, it would be auto-generated from the source of truth rahter than live in a way that can drift. Have build.py also generate a document that contains this in ASCII art form, along with anything else that would help in the preliminary work now, the bring-up work once we have boards in hand, and the eventual end-user use.
+
+In addition:
+* Label the actual Raspberry Pi connector on your silkscreen in a better way. Now every label is on the top, which is almost useless. Labels should be next to their pins, such that half should be on top and half on the bottom.
+* There's also a comment that says "UNROUTED: PPS_05, PPS_03". I thought everything was routed now. There are also comments for "M3 sandoff" but the 3D render has no such standoffs.
+* If labels like "HELPER, "POWER", "HOUSEKEEPING" and "1-WIRE" apply to regions, draw a silkscreen box around that region.
+* There seems to be no groun pours or other pours when I look at the board. There are still rats nest wires. I don't understand how this passed DRC.
+* The "BENCH 5 V IN - OR LEAVE OPEN.  PYNQ MUST BE POWERED: ITS PINS ARE ABS-MAX 0.55 V OFF" warning goes off the board. Have it say, "Do *not* power the board here unless PYNQ is either disconnected or on!" If the board normally gets its 5V from the PYNQ's heeader, say this. You'll need to sprinkle text between components
+* "PYNQ: USE THE BARREL JACK, J9 = REG" should read "Power the PYNQ with its barrel jack, J9. Not (only) through USB."
+* The "15 V DC, 1 A MIN" and "HEATER ONLY, CENTRE +" notes should be under the barrel jack, not under the 5 V IN.
+* The test point label "I  at the SMA  0.7-8.0 Vpp" has the I look like a 1. Change it to some other letter. Or to "In". And say "In  10 MHz at the SMA  0.7-8.0 Vpp"
+* There is a "H" label for something that is not next to it. There are random "H"'s scattered around. Similarly for the "T"s. Why aren't their locations derived from the same source of truth as the placement of the heaters themselves?
+* Sometimes the "H" siilkscreen label is under the DMN6068.
+* The "S" labels are obscured by component references and it's not clear which textpoint it goes with. It looks like there is silkscreen room below these test points. Similarly, the "P" testpoints are overlapping the box, which they should not.
+* The 10 MHz box seems to have 3 testpoints, but I only see two labels: B, and an S obscured by reference designators. What's the 3rd test point and why does it not have a silkscreen? Maybe "I", but that's only clear for the odd-numbered ones. For the even-numbered ones, the I is below the SMA GND, not below the testpoint.
+* I am confused what "n = 10 MHz IN 0.7-8.0 Vpp AC    Pn = 1 pps IN 0-5.5 V DC    13 = NULL" is for. I don't see any "n" or "Pn" labels.
+* The "T" labels are not always next to their thermometers.
+* There seem to be many 560R resistors in the 10 MHz boxes that aren't labeled "H". If these are drawn by the same function that draws the 10 MHz boxes, I don't understand why they are not labeled properly. Their reference designator is outside of the box when it should be inside (even if these will not be drawn by the 10 MHz function.)
+* The 10 MHz SMAs have reference designators outside of their 10 MHz box. These can move below the SMAs
+* The 2x10 test points need more labels. GND on the bottom row and NC for the top 3 pins that are not connected.
+* "HELPER" silkscreen should be replaced with "HELPER Clock Distribution". Again, maybe split into 3 lines.
+* "1-WIRE" silkscreen should be "1-WIRE external THERMOMETERS". Maybe this should go below the screw terminal labeled P3 so that it applies to al of them.
+* Move the "POWER" silkscreen up and to the left.
+Move the "1-WIRE PROBES   yel = DATA   red = VCC   blk = GND   -   standard speed, no 4k7 pullup needed" silkscreen up to put it closer to the screws and also make room for the next thing:
+* Above each column of PPS silkscreen boxes, there should be a "1PPS, 0 - 5.5 V DC" silkscreen in a font larger than each P1, P2, etc. There should also be a "10 MHz, 50Ω w/ Jumper, AC coupled, ??? Vpp max into SMA" (where you fill in ???). You might need more than one line for each to make it read nicely.
+* Make sure that our DRCs are at least as strict as the JLCPCB ones for board manufacture and assembly.
+
+*(added part way through the round)* If you find that you need to increase the size of the board by a few percent, say up to 10 percent, just do it.
+
+## Round 29
+
+You asked for a document and for a list of things to fix on the silkscreen.
+Three of the items on that list turned out not to be silkscreen problems at
+all, and you found all three from a render and two stray comments:
+
+* **the board had no mounting holes.**  Six captions reading `M3 standoff` and
+  `M3 shared with PYNQ`, over six places with nothing in them.  "The 3D render
+  has no such standoffs" -- the render was right, and `grep -c MountingHole`
+  on the committed board was 0.  §29.8.
+* **the pours were never poured into the board this repository ships.**  They
+  were poured into a copy in `build/`, which is the only thing the DRC ever
+  saw.  That is the whole answer to "I don't understand how this passed DRC".
+  §29.9.
+* **`UNROUTED: PPS_05, PPS_03` was a stale caption, not a real break.**  Both
+  nets are routed and have been for rounds; the note was printed from an
+  earlier routing pass's leftovers and nothing ever went back and asked.
+  §29.10.
+
+Three more that were not on the list, and that the list led me to: twelve `H`
+and `T` markers naming resistors and logic gates instead of heaters and
+thermometers (§29.4), `HIN` and `HO` each printed twice on top of themselves
+(§29.6), and a 1.19 mm gap between an SMT pad and the board edge that no rule
+in this project or in KiCad checks (§29.12).
+
+The tree at the end of this round, in commit order:
+
+| commit | what it holds |
+|---|---|
+| `fe07e29` | way-point 1: the silkscreen rewritten, real mounting holes, the DRC from `gen/jlc.py`.  Sources only; no board yet |
+| (this one) | the board rebuilt, `HANDBOOK.md`, the release, and this round |
+
+### 29.1 HANDBOOK.md
+
+`build.py` has a seventh step now, `gen/handbook.py`, and it writes
+[`HANDBOOK.md`](HANDBOOK.md): eleven sections, everything in them derived.
+The header map and the channel table come from `gen/design.py`, the plan of
+the board is plotted from `pcb/geom.py` at 2 mm a column, the test-point key
+and the SMA ranges come from the same `pcb/labels.py` the silkscreen is drawn
+from, the I2C bus map comes from the driver that talks to it, and the design
+rules come from `gen/jlc.py`.  None of it is typed twice, so none of it can
+drift from the board -- which is what you asked for and is the only reason it
+is worth having.
+
+Section 2 is the one you need this week.
+
+### 29.2 A Si5351 module on the bare PYNQ-Z2, this week
+
+Five wires, and the answer to "which pin of the Raspberry Pi connector gets
+mapped to which signal" is that on the *bare* PYNQ every pin is still free,
+and the five you want are the five this board either leaves open or shares:
+
+| header pin | net on the finished board | Si5351 module |
+|---:|:---|:---|
+| 1 (or 17) | `+3V3_HOST` -- **left open by this board** | VIN / VDD.  3.3 V, not 5 V |
+| 3 | `I2C_SDA` | SDA |
+| 5 | `I2C_SCL` | SCL |
+| 6 | `GND` | GND |
+| 18 | `HELPER_CLK` | CLK0 |
+
+Two of those are worth a sentence.
+
+**Pins 1 and 17 are the two the finished board deliberately does not use.**
+It makes its own 3.3 V from the 5 V pins and never loads the host regulator,
+which is why the silkscreen calls them `nc`.  Borrowing them now is therefore
+free and does not teach you a habit you have to unlearn.
+
+**Pin 18 is the clock-capable ball the gateware is built for.**  `Y7`,
+`IO_L13P_T2_MRCC_13` -- and `L1`/`PCLKT6_1` on an Icepi Zero, which is why
+round 13 fixed the helper there and why nothing may reassign it (there is an
+assertion in `gen/design.py` that says so).  Pin 31, `U18`, is the header's
+only other MRCC ball; this board puts a beat on it and fits nothing for a
+second helper input.  Wire CLK0 to it and the
+measurement core's helper counter reads a real frequency instead of zero, so
+`./pynq-run bringup.py` exercises the whole path: overlay, I2C, the Si5351
+register image, both PLLs' lock bits, and the counter.
+
+The bus scan will show `0x60` and nothing else.  The thermometers, the 1-Wire
+bridge and the heater DAC are on the board that does not exist yet, and
+`bringup.py` reports each of them absent rather than failing.
+
+One caution the handbook repeats: a breakout's 25 MHz crystal is not a TCXO,
+so the helper will read 10.001234 MHz to a few parts per million rather than
+to a few parts in 10^8.  That is fine for testing the software path and it is
+not a measurement.
+
+### 29.3 The silkscreen: one idea, and what it fixed
+
+Almost everything on your list is the same bug seen from a different angle.
+
+A channel tile is stamped out thirteen times: at rot 90 down the left of the
+board and rot 270 down the right.  Every marker offset was written in BOARD
+coordinates -- `ring(1.5, -1.4)`, "a millimetre and a half to the right and a
+bit up" -- so the same offset meant *towards the helper* on one side and
+*away from it* on the other.  Then a spiral search moved the letter off
+whatever pad it had landed on, and the spiral ran out to 9 mm.
+
+That is why:
+
+* the input test point's key was beside its pad on the odd channels and
+  underneath the SMA's ground post on the even ones ("for the even-numbered
+  ones, the I is below the SMA GND");
+* the `P` keys sat on their box outline;
+* the `S` keys were wherever the spiral had put them, which was often under a
+  reference designator.
+
+Round 29 gives every label its offset **in the frame of the thing it labels**.
+A part's own frame rotates with the part, so the thirteen copies of a tile are
+mirror images of each other by construction and one number serves both sides
+of the board.  The dodge is still there, but its radius is 2.2 mm, not 9: a
+letter 9 mm from its pad does not label that pad, it labels whatever it landed
+next to.
+
+The whole silkscreen is now emitted once, at the end of `build()`, when every
+part is placed and every track is laid, against a 5 mm bucket grid of
+obstacles -- pads, vias, the board edge, and ink already printed (vias only
+for the short labels; §29.13 has why).  Before, it
+was emitted in six places scattered through the function, and the marker code
+had a cache keyed on *how many parts had been placed so far* because the block
+packer added parts after some of the markers had already been drawn.
+
+### 29.4 The random H's, and the T's that were not on thermometers
+
+This one is worth writing down because it is so cheap and it has been on the
+board since round 21 put the markers there.
+
+```python
+    for r, (px, py, _rot) in sorted(placed.items()):
+        if r.startswith("U50") and r not in ("U5009",):
+            out.append(marker(px, py, "T", 1.7, 0.3, RING_T))
+    for r, (px, py, prot) in sorted(placed.items()):
+        if r.startswith("R20"):
+            out.append(marker(px, py, "H", 1.5, 0.28, RING_H))
+```
+
+The heaters are `R2001`..`R2024` and the thermometers `U5001`..`U5008`.  But
+this board numbers a channel's own parts `R<unit><slot>`: unit 2's terminator
+is `R201`, its 0R link is `R202`, and so on to `R208`.  Unit 5's four gates
+are `U501`..`U504`.
+
+`"R201".startswith("R20")` is `True`.
+
+So unit 2's eight resistors each carried an `H`, and unit 5's four logic gates
+each carried a `T` -- twelve markers naming parts that are neither heaters nor
+thermometers, sitting in the middle of two channel tiles with the spiral
+having scattered them up to 9 mm from the part they came from.  That is your
+"there are random H's scattered around", and your "the T labels are not always
+next to their thermometers": they were never near a thermometer at all.
+
+The test is now `re.match(r"^R20\d\d$", r)` and `re.match(r"^U500[1-8]$", r)`,
+which is the same four-digit rule `block_of()` has always used and which I
+should have reused.
+
+The 560R heaters that *are* inside a 10 MHz box now get their `H` at
+`(-5.5, 0)` in the heater's own frame -- 2.3 mm off the end of a 2010, along
+the channel, into the empty strip between the heater and the flip-flops -- and
+their reference designator at `(+5.5, 0)`, the other end, which is inside the
+box.  It was at the stock 2010's own designator position, 2.31 mm above the
+part -- and "above the part", on a tile lying on its side against the box's
+outer edge, is 0.6 mm past that edge.
+
+### 29.5 Reference designators are placed now, and they are what yields
+
+Two things were wrong with them.
+
+**They were 0.6 mm tall.**  They had been shrunk from the library's 1.0 mm so
+that a five-character designator would fit across an 0805 -- "shrink so the
+silkscreen reads at 1:1", says the comment.  JLCPCB's minimum
+printable silkscreen height is 0.8 mm and KiCad's DRC says so -- 199 times,
+which is KiCad's per-rule report limit, so the real count was every designator
+on the board.  They are 0.8 mm now.
+
+**They were wherever the library happened to put them.**  That is how an `S`
+came to be buried under `R1204`.  They are now placed by the same machinery as
+the markers, LAST, after every other piece of silkscreen exists, so the
+designator is the thing that moves when a designator and a test-point key want
+the same square millimetre.  A designator names a part you can also find on
+the assembly drawing; a test point's key is the only thing that says what you
+are probing.
+
+The search is: a preferred position where there is one (the SMAs go below
+their own jack and inside the box; the heaters go opposite their `H`), then
+the library's own, then the four sides of the part's courtyard, with a 3.6 mm
+spiral round each.  588 of 591 find clear board.  The three that do not are
+test points, whose own letter is already printed, and their designators move
+to `F.Fab` -- still on the assembly drawing and in the placement file, off the
+silkscreen.
+
+### 29.6 Your list, item by item
+
+| what you said | what it now does |
+|---|---|
+| "every label is on the top, which is almost useless" | odd-row names above the odd row at y = 171.5, even-row names below the even row at y = 179.3, each on its own pin's x.  Both rows used to be at 171.4, 1.27 mm apart, so forty names crowded one row and none was over the other |
+| `UNROUTED: PPS_05, PPS_03` | the note was false; §29.10 |
+| "comments for M3 standoff but the 3D render has no such standoffs" | there were no holes; §29.8 |
+| "if labels apply to regions, draw a silkscreen box around that region" | four boxes, drawn from the extent of the parts that are actually in each region, on F.SilkS.  The only boxes before were on `Cmts.User`, which is not printed |
+| "there seems to be no ground pours... I don't understand how this passed DRC" | §29.9 |
+| the `BENCH 5 V IN` warning runs off the board | three lines became two, in the strip directly above the posts, and they now say what the board normally does before they say what not to do.  Your sentence is printed verbatim |
+| `PYNQ: USE THE BARREL JACK, J9 = REG` | "Power the PYNQ with its barrel jack, J9.  Not (only) through USB." |
+| `15 V DC, 1 A MIN` / `HEATER ONLY, CENTRE +` are under the 5 V in | both are now under the barrel jack.  They were at x = 172, which is 12 mm from the jack and 12 mm from the bench posts, and they read as a warning about the 5 V input -- the one place on this board where 15 V must never go |
+| the `I` looks like a `1` | the key is `In` and the legend line is `In  10 MHz at the SMA  0.7-8.0 Vpp`.  `I`, `l` and `1` are nearly the same three strokes in KiCad's font, and this board has jacks called `1` |
+| stray `H` and `T` | §29.4 |
+| an `H` under the DMN6068 | cannot happen now: a marker is placed from its part, within 2.2 mm, or not at all |
+| the `S` is obscured by reference designators | designators go last and move; §29.5 |
+| the `P` overlaps the box | its offset is `(+1.9, +1.5)` in the test point's own frame, which is inside the 1 pps box on both sides of the board |
+| the 10 MHz box has three test points and two labels | the third is `TP_IN`; its key is now `In` and it is 2.7 mm along the tile from the pad, inside the box, on all thirteen |
+| "I am confused what `n = 10 MHz IN ... Pn = 1 pps IN` is for" | so was I, reading it back.  It is now `1-13 = 10 MHz IN   P1-P12 = 1 pps IN   13 = NULL (cable HO in)`, which names the things the board actually prints |
+| 560R resistors in the boxes not labelled `H`; designator outside the box | both fixed, from the placement; §29.4 |
+| the 10 MHz SMAs' designators are outside their box | `(-6.35, 0)` in the jack's own frame, which is directly below the jack and inside the box on both sides.  The library position is 0.35 mm outside it |
+| the 2x10 needs GND and NC | `GND x10` against the even row, `NC` on pins 15, 17 and 19 (they were left blank, which reads as the silkscreen having run out), and the connector is now named `DEBUG 2x10` beside itself instead of `DEBUG` 170 mm away in the other corner |
+| `HELPER` -> `HELPER Clock Distribution` | two lines.  Three would not fit: the helper band has 28 mm of clear width in the only rows it has, between the SMAs' pads and U5007's decoupling stack, and `Distribution` alone is 13 of them |
+| `1-WIRE` -> `1-WIRE external THERMOMETERS`, under the middle terminal | done, centred under `W3`, with the wire colours on the same line |
+| move `POWER` up and to the left | from (118, 37) -- below its own block -- to (117, 2.7), inside it |
+| move the `1-WIRE PROBES` line up closer to the screws | from y = 35.2 to y = 20.5, in the 2 mm strip between the series resistors and the DS2482.  "standard speed, no 4k7 pullup needed" moved to the handbook: it is a fact you read once |
+| column headings above each column of jacks | `1 pps IN` / `0 to 5.5 V DC` and `10 MHz IN` / `AC coupled  50R w/ jumper  8 Vpp max`, at 3.0 mm -- bigger than the 2.4 mm jack numbers, as you asked |
+| make the DRC at least as strict as JLCPCB's | §29.11 |
+
+Two things I changed that you did not ask for, both because the list made me
+look:
+
+* **the 1-Wire screw terminals are `W1`..`W5`, not `P1`..`P5`.**  The 1 pps
+  jacks are `P1`..`P12`.  Two connectors at opposite ends of the board
+  carrying the same five names is a trap, and you walked into the edge of it
+  in the prompt -- "the screw terminal labeled P3" -- while `P3` is also unit
+  3's 1 pps jack.  `W` is the key this board already prints on the 1-Wire test
+  point.
+* **`HIN` and `HO` were each printed twice**, 0.5 mm apart, which at 2 mm
+  glyph height reads as a bold smear.  `geom.sma_rows()` lists the two helper
+  jacks along with the twenty-five channel jacks, and `build_pcb` had a loop
+  over `sma_rows()` *and* a second loop for the helper pair.  Both drew.  You
+  can see it in the round 28 render if you know to look.
+
+### 29.7 "You'll need to sprinkle text between components"
+
+That turned into a primitive rather than a set of coordinates.  `place_in(x0,
+y0, x1, y1, text, ...)` scans a named rectangle for the first clear row that
+the line fits in; `stack_in` runs several lines down one rectangle, keeping
+them left-aligned where the board allows.  So the code says *where a warning
+is allowed to live* -- "the strip above the bench posts", "the corner the
+barrel jack is in", "the band between unit 13's 1 pps box and the tops of the
+debug header's own pin names" -- and the packing is worked out at build time
+against the actual pads.
+
+A spiral round a guessed point is the wrong tool for a line of prose: it
+either finds the gap immediately or it walks the sentence somewhere
+misleading.  Naming the region is both more honest about what is being asked
+and much easier to get right.
+
+### 29.8 The board had no mounting holes
+
+`pcb/geom.py` has had this since round 15:
+
+```python
+MOUNT = [(_pz_hole(PZ_HOLE_TL), "M3 shared with PYNQ"),
+         (_pz_hole(PZ_HOLE_TR), "M3 shared with PYNQ"),
+         ((5.5, 5.5), "M3 standoff"), ((BW - 5.5, 5.5), "M3 standoff"),
+         ((5.5, BH - 5.5), "M3 standoff"), ((BW - 5.5, BH - 5.5), "M3 standoff")]
+```
+
+and `build_pcb` called `put("H1")` .. `put("H6")` for them.  `put()` looks a
+reference up in the netlist, no schematic sheet has ever had a mounting-hole
+symbol on it, and `put()` returns quietly when it finds nothing.  Six
+captions, zero holes, `grep -c MountingHole GPSDO-PYNQ-Z2.kicad_pcb` = 0.  The
+3D render was telling the truth.
+
+There are five holes now, placed directly rather than through the netlist,
+because a mounting hole is not a part: it has no pads, no net, no BOM line and
+nothing for an assembler to fit.  The footprints are written by `gen/libs.py`
+alongside the SMA and the socket, and their **courtyard is the standoff's
+keep-out, not the hole** -- 3.3 mm radius, an M3 washer plus a little -- so
+the courtyard-overlap check that already runs every build tests the clearance
+for free.  It found one immediately: the top-left hole overlapped `J6001` by
+2 mm, because a Phoenix PT-1,5-3-3.5 reaches 2.25 mm to the left of its own
+pin 1 and that terminal sits at x = 16.  I first moved the five terminals 3 mm
+right; §29.13 is what that cost.  The hole is at (4, 16) now -- 12 mm down the
+left edge rather than in the corner -- and nothing else moved.
+
+Two of the original six are gone, a third is not in the corner it was drawn
+in, and every reason is written beside the entry in `geom.MOUNT`:
+
+* **the PYNQ's top-left hole**, board (39.3, 173.3), is underneath the 2x10
+  debug header -- its pin 1 pad is 1.6 mm from the hole's edge and well inside
+  any standoff body.  That connector is where round 18 put it after three
+  rounds of failing to escape its signal row from anywhere else, and one
+  shared standoff plus the 2x20 header already locate this board against the
+  host in both axes.
+* **the bottom-left corner**, (5.5, 174.5), is where two of U5008's
+  decoupling capacitors sit, at y = 172.2 and 175.0; that thermometer's stack
+  runs down the left margin from y = 161 to 176.  The support moved to
+  (11, 157), the one gap between R2017's heater (which ends at 151.6) and
+  U5008's own bead (which starts at 162) -- and 11 mm in rather than 5.5,
+  because `HTR_DRIVE`'s spine runs down
+  x = 6.2 and the first attempt put a hole straight through it.  The build
+  said so: `spines: 2 segment(s) dropped ... F.Cu at (6.2,155.2) hits pad
+  MH4`.  Same on the right, so the bottom-right hole is at x = BW - 11.
+
+The one that screws into the PYNQ is a **7 x 3.2 mm slot**, not a hole.  Round
+11's mock-up had already worked that out and said so in its legend; nothing
+ever built it.  The registration between the two boards runs through a 2x20
+header and a set of dimensions measured off ruled photographs to about a
+millimetre, and a 3.2 mm hole has no millimetre to give.
+
+Hardware per board, which the handbook now lists: four M3 standoffs down to
+the desk or a base plate, one M3 screw through the slot into the PYNQ's own
+standoff.
+
+### 29.9 "There seems to be no ground pours... I don't understand how this passed DRC"
+
+You are right, and the answer is that the DRC never saw the board you were
+looking at.
+
+`build.py` step 5 poured the zones into a **copy**:
+
+```python
+filled = os.path.join(BUILD, "filled.kicad_pcb")
+run(fill_cmd + [".../fill_zones.py", pcb, filled])
+d2 = run(cli() + ["pcb", "drc", ..., filled])
+```
+
+So `build/filled.kicad_pcb` had three ground pours and reported 0 violations
+and 0 unconnected, and `GPSDO-PYNQ-Z2.kicad_pcb` -- the file in the repository,
+the one you open -- had three zone *outlines* with no fill in them.  KiCad
+draws an unfilled zone as an outline and shows every pad that would have been
+connected by it as ratsnest: 436 of them.  `grep -c filled_polygon` on the
+committed board was 0.
+
+It fills the real board now, and keeps an unfilled copy in `build/` for the
+clearance-only pass, with a copy of the project file beside it so that pass is
+checked against our rules rather than KiCad's defaults.  The board in the
+repository is 6 MB instead of 1.8 and opens with its planes poured.
+
+### 29.10 `UNROUTED: PPS_05, PPS_03` was stale
+
+Both nets are routed.  KiCad's own filled DRC has said "0 unconnected items"
+for several rounds while that caption sat on `Cmts.User` at (4, 103), and
+KiCad was right.
+
+`nfail` is what the **two-point** pass gave up on.  The multi-terminal pass
+that runs after it takes *every* net with more than one pad -- it was widened
+from a hand-written list of eleven rails to "everything" precisely so that
+nothing would be left untried -- so it had already finished both of them, and
+nothing ever went back and asked.  The caption was printed from
+the earlier pass's leftovers.
+
+It now asks, once, at the end, with the same union-find the multi-terminal
+pass uses to decide whether a net is whole: pads joined to the segments they
+actually touch (by pad rectangle, not by endpoint), segments joined by real
+distance, and the two layers joined only where that net has a via.
+
+And then I nearly made the same mistake with it, which is the part worth
+reading.
+
+My check is **stricter than KiCad's connectivity**.  Build 4 routed clean --
+KiCad: zero violations, zero unconnected -- and my check said three nets were
+in two pieces, so the board came out of the generator carrying
+
+```
+UNROUTED: +15V_HTR, +3V3_D, I2C_SCL
+```
+
+which is false, on the same layer, in the same corner, for the same reason as
+the caption I had just removed: a pass that does not know the whole story
+writing its opinion onto the board.  A deliberately generous re-check against
+the finished board file -- different code, reading the copper rather than the
+generator's own list -- finds `+15V_HTR`, `I2C_SCL` and `I2C_SDA` whole, and
+agrees with KiCad.
+
+So the check stays, and the caption goes.  It prints to stderr, labelled as
+approximate and as not being what gates the build, and its tolerances are
+loosened a little so the number is worth reading.  **A board must not carry a
+claim that a better check contradicts.**  The verdict is KiCad's, and
+`build.py` step 5 refuses to produce a release when KiCad finds anything.
+
+Two smaller things came out of the same corner.  The `--severity-error` DRC
+that gates the build is not the whole DRC; step 5 now runs a third pass at
+`--severity-all` and prints the count of everything left, by type.  And the
+two-point pass's leftovers are still printed, because they are a real signal
+about how hard the board is to route -- just not about whether it *is* routed.
+
+### 29.11 The DRC, against JLCPCB's own capability
+
+Before this round the project set four numbers -- clearance, track width, via
+diameter, via drill -- in `gen/gen.py`, and KiCad's defaults covered the other
+eleven, including the whole silkscreen family.  And every rule kept its
+default *severity*, which is why round 28 could print "Found 0 violations"
+from a `--severity-error` pass over a board that, asked at full severity,
+answered 639 -- and 836 on the unfilled pass, and three of its types were
+pinned at KiCad's 199-per-type report limit, so the true count is higher than
+either.  Checked against round 29's severities, that same board reports
+**598 errors**.
+
+`gen/jlc.py` is now the one place the numbers live.  One row per rule:
+
+```python
+ ("min_silk_clearance", "silkscreen to exposed copper", 0.15, 0.15,
+  "JLC's own DFM check: ink over a solder-mask opening is SCRAPED OFF, so a "
+  "clipped letter is not a warning, it is a missing letter"),
+```
+
+and the file will not import if any of our figures is looser than JLCPCB's:
+
+```python
+for _k, _n, _jlc, _ours, _w in RULES:
+    assert _ours >= _jlc, ...
+```
+
+which is the whole point of writing it down that way.  The table, with the
+margin on each rule, is section 11 of the handbook.
+
+The severity map promotes everything JLCPCB would either reject or silently
+alter: clearance, hole-to-hole, annular ring, edge clearance and the shorting
+family to errors, and with them `silk_over_copper`, `text_height`,
+`text_thickness` and `silk_edge_clearance`.  Those four are the ones this
+round was really about -- ink over a solder-mask opening is *scraped off* on
+the panel, so a clipped `B` reads as an `E` and a designator below 0.8 mm
+prints as a smudge.  `silk_overlap` stays a warning: a designator crossing its
+own part's outline is normal on a board with 458 placements and is not a
+manufacturing fault.
+
+One thing KiCad does not check at all: **a graphic line's width.**
+`min_text_thickness` covers text and nothing covers `fp_line`, and KiCad's
+stock footprints draw their silkscreen outlines at 0.12 mm, below JLCPCB's
+6 mil.  458 footprints' worth of under-width ink passed every check this
+project runs.  `footprint()` now walks each footprint as it is placed and
+raises every `*.SilkS` stroke below 0.16 mm, which fixes it for the stock
+library too -- not ours to edit.
+
+### 29.12 And one thing the DRC still cannot see: 1.19 mm
+
+Asking for "at least as strict as JLCPCB for board manufacture **and
+assembly**" sent me looking for what KiCad checks on the assembly side, and
+the answer is: courtyards, and nothing else.  There is no rule anywhere in
+KiCad for *how close a placed part may be to the board edge*, which is an
+assembly constraint and not a fabrication one -- `copper_edge_clearance` is
+about copper, not about whether a placement nozzle and an edge clamp can both
+reach the same 3 mm of board.
+
+So `mfg/make_fab.py` measures it now, from the board, and prints it in
+`FABRICATION_NOTES.txt` and in the handbook:
+
+```
+  Closest SMT pad to the board edge .. 1.19 mm  (FB5009)
+```
+
+1.19 mm is close.  `FB5009` is the ferrite bead on the heater DAC's supply,
+sitting at (44.9, 177.0) between U5009 and the bottom edge; `Q2003`, the ring
+heaters' FET, is second at 1.20 mm from the right edge.  Everything else is at
+2.7 mm or more, and everything *nearer* the edge than those two is through
+hole -- the jacks, the terminals, the posts, the socket -- and is hand
+soldered after assembly.
+
+I have not moved either part.  `FB5009` is 4 mm from the pin it decouples and
+that is the point of it; `Q2003` is out in the right margin because that is
+where its eight heaters are and because its 0.8 W is wanted there.  Moving
+either to satisfy a number I cannot check is the wrong trade.  **This is a
+question for JLCPCB before you order**, and it has a cheap answer -- a
+break-away rail -- which costs a different panel and not a redesign.  It is in
+the fabrication notes so that the conversation happens before the boards do.
+
+### 29.13 Five builds, and what the middle three cost
+
+| build | took | what came out |
+|---|---|---|
+| 1 | 1537 s | the round 28 board, rebuilt unchanged, as a baseline |
+| 2 | 1470 s | the new silkscreen -- **three labels missing** and **one unconnected net**, and a manufacturing release built from it anyway |
+| 3 | 1401 s | labels fixed; the same unconnected net, and this time the build **refused to produce a release** |
+| 4 | 1483 s | routes clean -- and prints a FALSE `UNROUTED` caption on the board |
+| 5 | 1454 s | **the board this round ships**: 0 violations, 0 unconnected |
+
+Four mistakes, and the last two are the ones worth the space.
+
+**I treated vias as hard obstacles, and the title fell off the board.**  The
+new placer avoids anything a label must not print on, and I put every via in
+that set on the reasoning that a via is exposed copper.  In the fifteen-second
+`NOROUTE=1` loop I was iterating in there is no routing, so it cost nothing.
+On the real board there is no 35 mm row anywhere in the bottom-right corner
+without a via in it, so `stack_in` could not place "GPSDO DDMTD FRONT END",
+the author line or "TEST POINTS - the letter beside each pad", and dropped all
+three.  The board came out with a test-point legend and no heading over it.
+
+The experiment that settles it takes thirty seconds: drop a `gr_text` on a
+via, run the DRC, get zero violations.  These vias are **tented** -- no tenting
+property is set so they take the board default, which covers them -- so there
+is no solder-mask opening and `silk_over_copper` never fires.  Vias are their
+own soft class now: a single letter or a designator still avoids them, because
+it can move a third of a millimetre and be clear, and a sentence does not,
+because it cannot.
+
+I also could not see that it had happened.  `build_pcb` printed three "no
+room" lines to stderr and `build.py`'s step 4 keeps only lines matching a
+fixed list of words, none of which was `SILK`.  The filter takes `SILK:` now,
+and a dropped line is reported once more in aggregate as
+`SILK: DROPPED n line(s) the board should carry`.
+
+**One unconnected net, and the build did not stop.**  `I2C_SDA` came out in
+two pieces and the release was built from it regardless, because
+`kicad-cli pcb drc` returns 0 unless you ask for `--exit-code-violations` and
+step 5 only printed its verdict.  Step 5 now reads its own JSON back and
+raises before the release step, naming the items.  Build 3 is what that looks
+like working:
+
+```
+=== 5/7  DRC, and the zones poured INTO the board
+    DRC  unconnected_items: Missing connection between items
+         Via [I2C_SDA] on F.Cu - B.Cu @ (97.90, 25.80)
+         Track [I2C_SDA] on F.Cu, length 0.9880 mm @ (101.80, 61.89)
+FAILED: the poured board has 1 DRC error(s); no release was built
+```
+
+**And the net itself: I moved two parts for silkscreen reasons and did not
+think of them as copper changes.**  They are.  To make room I had (a) shifted
+the five 1-Wire screw terminals 3 mm right, so a mounting hole would fit in
+the top-left corner, and (b) moved the 1-Wire block's three packed parts 2 mm
+down, to open a 2 mm strip for the "1-WIRE external THERMOMETERS" line.  (b)
+is the one that did it, and the diff between the two boards' `I2C_SDA` copper
+says so in one line:
+
+```
+   BUILD 1   18.50 27.00 -> 93.50 27.00  F.Cu          (one straight 75 mm run)
+   BUILD 3   18.50 27.00 -> 18.50 32.00  F.Cu
+             18.50 32.00 ->  3.00 32.00  F.Cu
+```
+
+In the working board the DS2482's `I2C_SDA` pin leaves **east**: one straight
+75 mm run at y = 27 that carries the helper's `I2C_SDA` with it and lands on
+the left margin lane.  It goes that way because the short way west is blocked.
+With `D6001`, `R6001` and `TP6001` two millimetres lower the short way opens
+up, U6001 takes it -- which is the right answer for U6001, considered alone --
+and the helper's own piece is left with no corridor and nothing to join.  The
+multi-terminal joiner routes each piece to the nearest point of what is
+already connected; it has no way to know that one piece's cheap route is
+another's only one.
+
+Both moves are reverted, with the reason written beside each of them, and the
+mounting hole went to (4, 16) instead of the corner.  The rule I should have
+been following: **a part moved for the silkscreen is a part moved.**
+
+**And then build 4 routed clean and printed a false `UNROUTED` caption**,
+which is §29.10's own mistake committed a second time, by me, in the code I
+wrote to fix it.  The caption is gone; the check prints instead.
+
+### 29.14 "If you need a few percent more board, take it"
+
+You offered, part way through, up to 10 % more board.  I did not take it, and
+the reason is worth writing down because it is not "there was enough room".
+
+**Width is a one-line knob and buys almost nothing here.**  `HWEXTRA` exists
+for exactly this -- round 20 turned it from 0 to 1 to get unit 1's beat
+routed -- and it widens the board and the helper band together, leaving both
+10 mm margins and the left-hand tile column exactly where they are.  Turning
+it to 5 would give a 215 mm board and a 44 mm helper band.  What that buys is
+wider return corridors, which I do not currently need (41 of 41 off-block
+nets route), and three lines for "HELPER Clock Distribution" instead of two.
+That is one cosmetic item in exchange for re-rolling every track on a board
+that routes clean -- and §29.13 is a fresh reminder of what re-rolling costs.
+
+**Height is what would actually help, and height is the dimension I cannot
+have cheaply.**  Everything I had to squeeze this round is in a band whose
+height is fixed:
+
+* the 1-Wire heading lives in 1.8 mm between the series resistors' pads and
+  the first packed part, which is why it is 1.0 mm text and not 1.1;
+* the top-left mounting hole had nowhere to be except 12 mm down the edge;
+* the bottom-right corner carries the title, the author line, the test-point
+  key, the jack key and the Pmod note in 18 mm of clear board;
+* three test points' designators went to `F.Fab` for want of 3 mm² each.
+
+The bottom edge is pinned: it sits 11 mm from the PYNQ-Z2's top edge because
+that is where the 2x20 header is, so growing `BH` grows the board UPWARD and
+does not widen the bottom band at all.  Widening the TOP band means moving the
+thirteen channel rows down, and the bottom band's contents -- the housekeeping
+block at y 169..178, `Q2001` at 165, the `HTR_DRIVE` trunk at 161, the heater
+columns' end stops at 160, 168 and 176, the legend at 151..169 -- are absolute
+numbers, not expressions in `BH`.  Making them relative is a real refactor of
+the one part of this layout that took rounds 18 and 19 to settle, and it is
+not something to do to a board that is one build from being ordered for a
+millimetre of silkscreen.
+
+So: noted, declined, and written down.  If a Rev B wants the room, the honest
+order of work is to express the bottom band against `BH` first, on a board
+nobody is waiting for, and then the height is a knob like the width already
+is.
+
+### 29.15 What I did not do, and what to check
+
+* **The JLCPCB figures in `gen/jlc.py` are from their published capability as
+  I have it, not from a page I fetched today.**  Every one of them is a
+  number our board clears with margin except the three marked `as JLC`
+  (hole-to-copper, hole-to-hole, silkscreen-to-copper), and those three are
+  the ones worth re-reading on their site before you order.  If any of them
+  has tightened, change the `jlc` column and the assertion will tell you
+  whether our figure still passes.
+* **`silk_overlap` is still at KiCad's per-rule report limit.**  It is a
+  warning and it is mostly a reference designator crossing its own part's
+  silkscreen outline, which is ordinary; I did not add footprint outlines to
+  the obstacle set because doing so pushes designators off the board faster
+  than it buys legibility.  Of the 199 reported, six involve a *marker* and
+  four of those six are the marker crossing its own part's outline.
+* **Three test points' designators are on `F.Fab`,** not the silkscreen:
+  `TP1101`, `TP1202`, `TP1301`.  Each already has its own key printed beside
+  the pad.
+* **`mechanical/make_mockup.py` still draws round 11's six-hole pattern.**
+  It is a 1:1 paper mock-up from before the round 15 floorplan and it is not
+  in the build; the holes that matter are in `pcb/geom.py` and on the board.
+* **The markers' offset is 5.5 mm from a heater's CENTRE**, which is 2.3 mm
+  off the end of a 2010 -- close, but a 2010 is a big part and on a plot the
+  `H` reads as being beside the resistor rather than on it.  That is the
+  intent; if any of the twenty-four looks detached to you on the assembly
+  drawing, the number to change is one constant.
+* Round 28's "before ordering" list has not changed: upload the corrected CPL,
+  check the five named parts in JLC's placement preview, and decide Rev A with
+  on/off heater drive versus holding for op-amp current sinks.
+
+### 29.16 Numbers at the end of the round
+
+| | round 28 | round 29 |
+|---|---|---|
+| ground pours in the shipped `.kicad_pcb` | **none** (3 empty outlines) | 3, poured |
+| ratsnest when you open it | 436 | 0 |
+| mounting holes on the board | **0** (6 captions) | 5 (4 M3 + 1 M3 slot) |
+| errors, checked against round 29's rules | **598** (three types at KiCad's 199 report cap) | **0** |
+| full-severity DRC, all types | 1035 | **238**, all warnings |
+| unconnected items on the poured board | 0 | 0 |
+| reference designator height | 0.6 mm (below JLCPCB's floor) | 0.8 mm |
+| designators printed on the silkscreen | 591, unplaced | 588 placed, 3 on F.Fab |
+| footprint silkscreen stroke width | 0.12 mm (below JLCPCB's 6 mil) | >= 0.16 mm |
+| numeric DRC rules this project sets | 4 | 12, each asserted against JLCPCB's own figure |
+| DRC rule severities this project sets | 1 | 25, of which 18 are errors |
+| markers naming the wrong part | 12 | 0 |
+| labels printed twice on top of themselves | 2 | 0 |
+| documents generated from the sources | schematic, board, release | + `HANDBOOK.md` |
+| does the build stop on an unconnected net? | no | yes |
+| closest SMT pad to the board edge | 1.19 mm, unmeasured | 1.19 mm, measured and in the fab notes |

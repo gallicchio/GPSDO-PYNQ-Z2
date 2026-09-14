@@ -268,11 +268,16 @@ def blocks(G):
         # right behind the five screw terminals it serves
         # Starts at y = 21 now: the five probe cells and their two buses
         # occupy y 8..19 and the auto-placer must not sit on them.
-        # y = 23, not 21: the 2 mm between the series resistors and the first
-        # packed part is where the 1-Wire heading goes, and at 21 the packer
-        # put D6001 in it.  Only three parts land here anyway -- the other
-        # nineteen 6xxx references are hand-placed.
-        "probes": (12.0, 23.0, 78.0, 34.0, "1-WIRE"),
+        # 21, and NOT the 23 round 29 first tried to make silkscreen room.
+        # Only three parts land here -- D6001, R6001 and TP6001, the other
+        # nineteen 6xxx references being hand-placed -- and moving those three
+        # down by 2 mm changed which way the router took U6001's I2C_SDA pin
+        # out.  In the working board it leaves EAST, one straight 75 mm run at
+        # y = 27 that also carries the helper's I2C_SDA to the left margin
+        # lane; with the parts 2 mm lower the short way west opened up, U6001
+        # took it, and the helper's own piece was left with no corridor and no
+        # connection.  Two millimetres of silkscreen is not worth that.
+        "probes": (12.0, 21.0, 78.0, 34.0, "1-WIRE"),
         # Round 15 leaves only the bottom band for these two: the channel
         # array now fills everything between the top band and the fan-in.
         "house":  (40.0, 169.0, 104.0, 178.0, "HOUSEKEEPING"),
@@ -2228,7 +2233,7 @@ def build():
     if nfail:
         print("  two-point pass left:", nfail, file=_s.stderr)
 
-    # ---- what is ACTUALLY still in two pieces -----------------------------
+    # ---- an APPROXIMATE look at what is still in two pieces ---------------
     # Round 29.  The board printed "UNROUTED: PPS_05, PPS_03" on Cmts.User and
     # had done for several rounds, while KiCad's own filled DRC reported zero
     # unconnected items -- and KiCad was right.  `nfail` is what the TWO-POINT
@@ -2237,10 +2242,19 @@ def build():
     # them.  Nothing ever went back and asked.
     #
     # So ask, once, at the end, with the same union-find the multi-terminal
-    # pass uses to decide whether a net is whole: pads joined by segments they
-    # actually touch, segments joined by real distance rather than endpoint to
-    # endpoint, and the two layers joined only where this net has a via.  GND
-    # is excluded because it is poured, not routed.
+    # pass uses: pads joined by segments they actually touch, segments joined
+    # by real distance rather than endpoint to endpoint, and the two layers
+    # joined only where this net has a via.  GND is excluded because it is
+    # poured, not routed.
+    #
+    # THIS IS A DIAGNOSTIC AND NOT A VERDICT, and round 29 nearly repeated the
+    # exact mistake it was fixing by treating it as one.  It is stricter than
+    # KiCad's connectivity -- on the build that ships it calls three nets split
+    # that KiCad, and a deliberately generous re-check against the finished
+    # board file, both call whole.  So it prints, and it does NOT write a
+    # caption onto the board: a board must not carry a claim that a better
+    # check contradicts.  The verdict is KiCad's, and build.py step 5 refuses
+    # to produce a release when it finds anything.
     def net_pieces(nm):
         pds = [(ax, ay, _rc, None if _t else FCU)
                for _r, _p, ax, ay, _t, net, _h, _rc in allpads if net == nm]
@@ -2267,21 +2281,21 @@ def build():
             for j, s in enumerate(sgs):
                 if pl is not None and s[4] != pl:
                     continue
-                if _near(px_, py_, s[:4], 0.5, prc):
+                if _near(px_, py_, s[:4], 0.7, prc):
                     uni(i, NP + j)
         for k, (vx, vy) in enumerate(vis):
             for i, (px_, py_, _rc2, _pl) in enumerate(pds):
-                if (px_ - vx) ** 2 + (py_ - vy) ** 2 < 0.36:
+                if (px_ - vx) ** 2 + (py_ - vy) ** 2 < 0.64:
                     uni(i, NP + NS + k)
             for j, s in enumerate(sgs):
-                if _pdist(vx, vy, s[0], s[1], s[2], s[3]) < 0.3:
+                if _pdist(vx, vy, s[0], s[1], s[2], s[3]) < 0.4:
                     uni(NP + j, NP + NS + k)
         for j in range(NS):
             for k in range(j + 1, NS):
                 if sgs[j][4] != sgs[k][4]:
                     continue
                 if _segdist(sgs[j][0], sgs[j][1], sgs[j][2], sgs[j][3],
-                            sgs[k][0], sgs[k][1], sgs[k][2], sgs[k][3]) < 0.2:
+                            sgs[k][0], sgs[k][1], sgs[k][2], sgs[k][3]) < 0.3:
                     uni(NP + j, NP + k)
         comps = set()
         for i in range(NP):
@@ -2292,11 +2306,9 @@ def build():
         nm for nm in numof
         if nm and nm != "GND" and not nm.startswith("unconnected-")
         and net_pieces(nm) > 1)
-    print("still in two pieces after every pass: %d %s"
+    print("approximate connectivity check (stricter than KiCad's, and NOT "
+          "what gates the build): %d net(s) look split %s"
           % (len(split), split), file=_s.stderr)
-    if split:
-        out.append(text(4.0, 103.0, "UNROUTED: %s" % ", ".join(split),
-                        "Cmts.User", 2.0, 0.3))
     for x0, y0, x1, y1, lyr, nm, w in tracks[_ntracks0:]:
         out.append(track(x0, y0, x1, y1, lyr, numof[nm], "rt", w))
     for vx, vy, nm in tile_vias[_nvias0:]:
@@ -2347,6 +2359,7 @@ def build():
     #  * Obstacles live in a 5 mm bucket grid.  A linear scan was fine for
     #    sixty markers and is not for those plus 460 designators.
     ADV = 0.82                 # glyph advance / height, measured in round 21
+    _dropped = []              # lines the board had no room for
     _OB = 5.0
     _obst = {}
     _nlost = []
@@ -2362,8 +2375,11 @@ def build():
     # 0.04 mm from other INK is only legibility: two labels that touch are
     # ugly, and KiCad calls that `silk_overlap`, which is a warning here.
     M_PAD, M_INK = 0.18, 0.12
+    # What a short label avoids, and what a line of prose avoids.  The
+    # difference is the vias; see where they are added, below.
+    ALL, PROSE = ("pad", "ink", "via"), ("pad", "ink")
 
-    def hit(b, M=None, kinds=("pad", "ink")):
+    def hit(b, M=None, kinds=ALL):
         """The first obstacle this box runs into, or None."""
         q0, q1, q2, q3 = b[0] - M_PAD, b[1] - M_PAD, b[2] + M_PAD, b[3] + M_PAD
         for cx in range(int(_m.floor(q0 / _OB)), int(_m.floor(q2 / _OB)) + 1):
@@ -2371,13 +2387,13 @@ def build():
                 for o in _obst.get((cx, cy), ()):
                     if o[4] not in kinds:
                         continue
-                    e = (M_PAD if o[4] == "pad" else M_INK) if M is None else M
+                    e = (M_INK if o[4] == "ink" else M_PAD) if M is None else M
                     if (b[0] - e < o[2] and o[0] < b[2] + e
                             and b[1] - e < o[3] and o[1] < b[3] + e):
                         return o
         return None
 
-    def blocked(b, M=None, kinds=("pad", "ink")):
+    def blocked(b, M=None, kinds=ALL):
         return hit(b, M, kinds) is not None
 
     def adv(s, size):
@@ -2466,12 +2482,13 @@ def build():
             # which is what "HELPER / Clock / Distribution" looked like when
             # each line found its own first clear column.
             if xpref is not None and x0 <= xpref <= x1 - w:
-                if hit((xpref, y - h / 2.0, xpref + w, y + h / 2.0)) is None:
+                if hit((xpref, y - h / 2.0, xpref + w, y + h / 2.0),
+                       kinds=PROSE) is None:
                     silk(xpref, y, s, size, thick)
                     return (xpref, y)
             x = x0
             while x <= x1 - w + 1e-9:
-                q = hit((x, y - h / 2.0, x + w, y + h / 2.0))
+                q = hit((x, y - h / 2.0, x + w, y + h / 2.0), kinds=PROSE)
                 if q is None:
                     silk(x, y, s, size, thick)
                     return (x, y)
@@ -2493,6 +2510,7 @@ def build():
                 xp = got[0]
             if got is None:
                 import sys as _si
+                _dropped.append(s)
                 print("SILK: no room for %r in (%g,%g)-(%g,%g): %s"
                       % (s, x0, y0, x1, y1,
                          getattr(place_in, "why", "?")), file=_si.stderr)
@@ -2526,14 +2544,21 @@ def build():
         if _hd:
             hw, hh = max(hw, _hd / 2.0), max(hh, _hd / 2.0)
         obstruct((_ax - hw, _ay - hh, _ax + hw, _ay + hh), "pad")
-    # ...and so is every via.  These are tented on the order form, so ink over
-    # one is arguably harmless -- but KiCad counts a via as exposed copper and
-    # the DRC is the thing we are trying to get to zero, and a designator
-    # sitting on a via reads badly on a photograph either way.
+    # ...and every via, but as its own SOFT class.  These vias are tented --
+    # no tenting property is set, so they take the board default, and the
+    # experiment that settles it is to drop a `gr_text` on one and run the
+    # DRC: zero violations.  So ink over a via is not a manufacturing fault
+    # and `silk_over_copper` does not fire on it.  It is still worth avoiding
+    # for a single letter or a designator, which can move a third of a
+    # millimetre and be clear; it is not worth avoiding for a 35 mm sentence,
+    # which cannot.  Round 29's second build treated them as hard obstacles
+    # and lost the title, the author line and the test-point legend heading
+    # off the board entirely, because after routing there is no 35 mm row in
+    # the bottom-right corner with no via in it.
     for _vx, _vy in vias:
-        obstruct((_vx - 0.35, _vy - 0.35, _vx + 0.35, _vy + 0.35), "pad")
+        obstruct((_vx - 0.35, _vy - 0.35, _vx + 0.35, _vy + 0.35), "via")
     for _vx, _vy, _n in tile_vias:
-        obstruct((_vx - 0.35, _vy - 0.35, _vx + 0.35, _vy + 0.35), "pad")
+        obstruct((_vx - 0.35, _vy - 0.35, _vx + 0.35, _vy + 0.35), "via")
     # ...and so is the board edge, so nothing prints off it
     for _e in ((-2.0, -2.0, G.BW + 2.0, 0.3), (-2.0, G.BH - 0.3, G.BW + 2.0, G.BH + 2.0),
                (-2.0, -2.0, 0.3, G.BH + 2.0), (G.BW - 0.3, -2.0, G.BW + 2.0, G.BH + 2.0)):
@@ -2551,7 +2576,7 @@ def build():
         run, runs = None, []
         for k in range(n + 1):
             px, py = x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n
-            if blocked((px, py, px, py), 0.3):
+            if blocked((px, py, px, py), 0.3, PROSE):
                 if run:
                     runs.append(run)
                 run = None
@@ -2680,9 +2705,12 @@ def build():
                            spiral(0.5, 3.5), angle=90)
     # One line under the middle terminal, so it reads as belonging to all
     # five, in the strip between the series resistors and the DS2482.
-    if not place_in(11.0, 19.4, G.PROBE_X[-1] + 6.0, 22.4,
-                    LB.PROBE_HEADING, 1.1, 0.18):
-        place_in(4.0, 19.0, G.BW - 4.0, 34.0, LB.PROBE_HEADING, 1.1, 0.18)
+    # The strip is 1.8 mm tall: the series resistors' pads end at y = 19.43
+    # and the first packed part starts at 21.2.  1.0 mm text fits with a
+    # quarter of a millimetre either side; 1.1 does not.  It starts east of
+    # FB6001, whose pads run from y = 18.9 to 21.7 at x = 12.8..14.2.
+    if not place_in(14.5, 19.55, 77.0, 21.1, LB.PROBE_HEADING, 1.0, 0.18):
+        place_in(4.0, 19.0, G.BW - 4.0, 34.0, LB.PROBE_HEADING, 1.0, 0.18)
 
     # ---- every jack named, beside the unit it belongs to -------------------
     for x, y, tag, _desc in G.sma_rows():
@@ -2952,6 +2980,13 @@ def build():
     import sys as _sl
     print("silkscreen: %d designators placed, %d moved to F.Fab %s"
           % (len(refat), len(_nlost), sorted(_nlost)[:40]), file=_sl.stderr)
+    # Every line that reaches stack_in is one the board is supposed to carry,
+    # so a dropped one is a fault and not a detail.  Round 29's second build
+    # lost the title, the author line and the test-point legend heading and
+    # the only trace was three lines of stderr that build.py filtered out.
+    if _dropped:
+        print("SILK: DROPPED %d line(s) the board should carry: %s"
+              % (len(_dropped), _dropped), file=_sl.stderr)
 
     return out, placed, fps, boxes
 

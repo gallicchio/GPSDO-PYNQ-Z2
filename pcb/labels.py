@@ -199,9 +199,11 @@ have it is the only way to damage a source from this board:
 # Keyed by the net the finished board puts on that pin, so if the header map
 # ever moves, the wiring list moves with it.
 SI5351_WIRING = {
-    "+3V3_HOST": "VIN / VDD on the module.  3.3 V, NOT 5 V",
+    "+3V3_HOST": "VIN / VDD on the module.  3.3 V, NOT 5 V "
+                 "(pins 1 and 17 are the same net; use either)",
     "GND":       "GND",
     "I2C_SDA":   "SDA   (the PYNQ already has the 2k2 pull-up)",
     "I2C_SCL":   "SCL   (the PYNQ already has the 2k2 pull-up)",
-    "HELPER_CLK": "CLK0  -- the helper output, and the only MRCC ball here",
+    "HELPER_CLK": "CLK0  -- the helper output.  MRCC ball, and the one the "
+                  "gateware is built for",
 }

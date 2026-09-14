@@ -57,6 +57,35 @@ def measure():
                       if isinstance(e, (list, tuple)) and len(e) > 1
                       and str(val(e[1])).endswith(".Cu"))
     box = bomdata.board_box()
+    # ---- how close any PLACED part gets to the board edge ----------------
+    # Round 29.  JLCPCB's assembly line holds the panel by its edges, and a
+    # part closer than their rail allowance means a break-away rail: a
+    # different panel, a different price, and a conversation.  No KiCad DRC
+    # rule looks at this -- `copper_edge_clearance` is about copper, not about
+    # whether a nozzle can reach -- so measure it here and put the number
+    # where the buyer will see it before they order.
+    import math as _mm
+    edge, edge_ref = None, ""
+    for f in kids(doc, "footprint"):
+        attrs = [val(a) for a in (kid(f, "attr") or [])[1:]]
+        if "smd" not in attrs:
+            continue                      # through hole is hand soldered
+        fref = ([val(pr[2]) for pr in kids(f, "property")
+                 if val(pr[1]) == "Reference"] or [""])[0]
+        at = kid(f, "at")
+        fx, fy = float(val(at[1])), float(val(at[2]))
+        fa = _mm.radians(-float(val(at[3]))) if len(at) > 3 else 0.0
+        ca, sa = _mm.cos(fa), _mm.sin(fa)
+        for pd in kids(f, "pad"):
+            pa, ps = kid(pd, "at"), kid(pd, "size")
+            if not pa or not ps:
+                continue
+            lx, ly = float(val(pa[1])), float(val(pa[2]))
+            r = 0.5 * _mm.hypot(float(val(ps[1])), float(val(ps[2])))
+            ax, ay = fx + lx * ca - ly * sa, fy + lx * sa + ly * ca
+            d = min(ax - box[0], ay - box[1], box[2] - ax, box[3] - ay) - r
+            if edge is None or d < edge:
+                edge, edge_ref = d, fref
     return dict(
         size_mm=(round(box[2] - box[0], 2), round(box[3] - box[1], 2)),
         copper_layers=nlayers,
@@ -66,7 +95,9 @@ def measure():
         min_via_drill_mm=round(min(d for _, d in vias), 3) if vias else None,
         pad_drills=sorted(set(round(d, 3) for d in drills)),
         min_pad_drill_mm=round(min(drills), 3) if drills else None,
-        segments=len(widths), vias=len(vias))
+        segments=len(widths), vias=len(vias),
+        smt_to_edge_mm=round(edge, 2) if edge is not None else None,
+        smt_to_edge_ref=edge_ref)
 
 
 def export(outdir):
@@ -134,6 +165,14 @@ MINIMUMS ACTUALLY USED  (all well inside JLCPCB's 4-layer capability)
   Minimum via drill .. %(mvd)s mm
   Pad drill sizes .... %(pd)s
   Minimum pad drill .. %(mpd)s mm
+  Closest SMT pad to the board edge .. %(edge)s mm  (%(edgeref)s)
+      An ASSEMBLY number, not a fabrication one, and no KiCad rule checks it:
+      `copper_edge_clearance` is about copper, not about whether a nozzle and
+      a clamp can both reach.  If it is inside your rail allowance the panel
+      needs a break-away rail -- PLEASE SAY SO RATHER THAN SHIFTING THE PART.
+      Everything nearer the edge than this is through hole (the SMA jacks, the
+      screw terminals, the barrel jack, the two bench posts and the 2x20
+      socket) and is hand soldered afterwards.
 
 IMPEDANCE
   No controlled-impedance service is required.  The helper traces on In2.Cu
@@ -202,7 +241,8 @@ FILES
            tw=", ".join("%.2f" % t for t in m["track_widths"]),
            vias=vias, nv=m["vias"], mvd=m["min_via_drill_mm"],
            pd=", ".join("%.2f" % d for d in m["pad_drills"]),
-           mpd=m["min_pad_drill_mm"], name=NAME, qty=boards))
+           mpd=m["min_pad_drill_mm"], edge=m["smt_to_edge_mm"],
+           edgeref=m["smt_to_edge_ref"], name=NAME, qty=boards))
     return p
 
 
