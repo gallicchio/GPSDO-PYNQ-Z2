@@ -9725,3 +9725,280 @@ Look at DESIGN_REVIEW_PROMPT.md and do this review yourself. Then dive a bit dee
 * Rank the responses of the other 3 LLMs in terms of insightfulness into this particular problem.
 
 Feel free to make the board wider if that would help address some of these issues without causing other issues. Feel free to use this computer all night for tests or optimizations. I won't be able to answer any questions for the next ~6 hours, so you'll have to use your judgment. Feel free to git commit any useful way-points. Regularly log what you've found and what you're doing in DESIGN_REVIEW_RESPONSE.md in case the process or the power gets killed. This is especially true if you run two or more tests or take two or more paths simultaneously – we'll need to be able to unwind things to a reasonable state.
+
+## Round 28
+
+The full response -- every finding from the three reviews and from my own
+pass, ranked, with what was checked and what was done about each -- is in
+[`DESIGN_REVIEW_RESPONSE.md`](DESIGN_REVIEW_RESPONSE.md).  It is the document
+to read first; this round is the log of how it came to say what it says.
+
+### 28.1 The verdict, and the state of the tree
+
+**Not before this round; yes after it, for one board.**  Nothing any of the
+four reviews found is a reason to start over.  What stood between the board
+and an order was: two vias drilled into through-hole pads (a fab would have
+queried them); no software for any of the four I2C parts, so a fabricated
+board would have made no beats; and a set of notes describing a different
+instrument from the one built.  All three are fixed.  Two things that could
+not be fixed on this board -- the heater pass FETs' inability to share
+current in linear mode, and the squarer's slew-dependent threshold error on
+the weak sine sources -- are answered by an operating procedure and by a
+measurement plan, and written down as Rev B items.
+
+The tree at the end of this round, in commit order:
+
+| commit | what it holds |
+|---|---|
+| `45cf75b` | way-point 0: `DESIGN_REVIEW_RESPONSE.md` with the plan and an empty log |
+| `dfe5616` | way-point 1: router no-via zone, every stale note fixed at the source, I2C drivers, bring-up script |
+| `9d24e83` | way-point 2: board build 1, gateware v1.1 |
+| `6d1391a` | way-point 3: board build 3 -- the drill fix that actually worked, and the host-power interlock |
+
+### 28.2 What the three reviews were worth
+
+Grok read the code it cited and re-derived the numbers; it found the ±2.5 ppm
+TCXO against the ±0.5 ppm note, the swapped via names in `helper.py`, the
+stale pin-31 comment, the 200 MHz pps promise and the In2 discipline -- none
+of which the others found -- and its two central judgements (12.3 ps is a
+counter quantum, not a floor; the pps as built cannot resolve the wrap) are
+right and correctly scoped.  GPT was the only one that filled the board and
+ran a full-severity DRC; it found the two drill clashes and the rev A/B
+mismatch, and it withdrew its own first "do not release" for the stated
+purpose, which is the honest sequence.  Gemini found the two most concrete
+circuit faults -- the FET current sharing and the DAC's mid-scale factory
+default, both confirmed from datasheets -- and then undermined itself: a CPL
+correction table with the wrong value for the package that matters most,
+"79 parts mounted backwards" asserted as fact, In2 crosstalk called
+catastrophic without asking *when* the aggressor edges happen, a source
+resistor fix that cannot work with a 3.3 V DAC, and a misread designator.
+Ranked: Grok, GPT, Gemini.  Details in the response, §3.
+
+Two things two reviews agreed on that are wrong, and one I got wrong myself:
+
+* **"Driving XA is an undocumented mode."**  Grok and GPT both said it, and so
+  did this project's own helper-sheet note since round 17.  Si5351 datasheet
+  §6.6, *Applying a Reference Clock at XTAL Input*, shows exactly this
+  circuit: 1 Vpp AC-coupled into XA, XB open.  We run 0.77 Vpp because XA's
+  absolute maximum is +1.3 V and its bias point is unpublished; 0.77 is the
+  largest swing that stays legal even if the bias is 0.9 V.  Note rewritten.
+* **"The Si5351A has one PLL."**  Grok, in arguing that CLK1 at 10.000000 MHz
+  would need the fractional MultiSynth.  The A has PLLA and PLLB (datasheet
+  block diagram; §4.1).  The argument's premise is wrong but its conclusion
+  is useful: CLK1 off PLLA *would* need MultiSynth 80.0099.  Gemini's driver
+  had the fix, PLLB in integer mode, and mine does the same.  The null
+  channel is therefore an *upper bound* on the floor (two PLLs' uncorrelated
+  noise is in it), not "noiseless" as three of this project's own notes said.
+* **My build 1 did not fix the drill clashes.**  I added a no-via zone round
+  every through-hole drill to the maze grid and rebuilt; the full DRC came
+  back with the same two vias at the same coordinates.  `build_g2()`, the
+  grid the multi-piece joiner uses, skips the routing net's *own* pads with a
+  `continue` -- and my new call sat after it.  Both clashes were exactly that
+  case: I2C_SCL's own header pad, +5V_HDR's own socket pad.  Hole-to-hole
+  does not care whose hole it is; the call now precedes the skip, and
+  `hole_to_hole` is a DRC *error* in the generated project so the build's own
+  check would catch a recurrence.
+
+### 28.3 What changed in the sources
+
+Everything below is in the generator, the router, the gateware or the
+manufacturing scripts; nothing was hand-edited downstream.
+
+| where | what |
+|---|---|
+| `pcb/maze.py` | `Grid.novia` and `block_via()`: a via's drill may not go within hole/2 + 0.15 + 0.35 mm of any through-hole drill, on any layer, for any net |
+| `pcb/build_pcb.py` | the zone applied in all four grid builds (the joiner's *before* its own-net skip); hole-to-hole in the analytic `vias_clear`; stackup docstring made true (In2 carries 53 nets, not 14); silkscreen revision and date from `design.py`; edge text moved in; the power block's In2 routes and vias consumed like the helper's |
+| `pcb/helper.py` | `VIA_CLK1`/`VIA_CLK0` renamed `VIA_HSRC`/`VIA_CLK1OUT`; the docstring had CLK0 and CLK1 swapped for eight rounds (pad numbers were always right) |
+| `pcb/power.py` | the interlock: R2025, R2026, LDO_EN on F.Cu and In2, three vias; the two EN taps and the two pin-4 stubs removed |
+| `gen/design.py` | `DATE`; pin-31 comment; unit-13 note (PLLB, upper bound) |
+| `gen/sheet_unit.py` | unit-13 note; the pps note no longer promises a 200 MHz domain |
+| `gen/sheets_rest.py` | TCXO ±2.5 ppm; XA note (documented, and why 0.77 Vpp); exact PLL fraction 32 + 1543/390625; CLK1 on PLLB; the shared-rail note now says what does and does not cancel; the pass-FET note (drive on/off); the DAC EEPROM note (confirmed mid-scale); the interlock circuit and its note |
+| `gen/gen.py` | `hole_to_hole: error` |
+| `gateware/rtl/dmtd_capture.v` | v1.1: PS-domain 64-bit counter, 10 ns timestamp + count per pps at 0x400, the (helper, PS) pair at 0x01C/0x020 |
+| `gateware/sim/tb_dmtd_capture.v` | 47 -> 57 checks |
+| `gateware/driver/` | `i2c_devices.py` (new), `test_i2c_devices.py` (new, 20 tests), `dmtd.py` (pair, PS reads, `pps_offsets_ns`, `absolute_phases_ps`, `resolve_cycles`), constants regenerated |
+| `gateware/board/bringup.py` | new: the first power-up, in the safe order |
+| `mfg/make_bom.py`, `make_fab.py` | a second, JLCPCB-corrected CPL; the ROTATION section of the fabrication notes |
+| `mfg/parts_map.py` | the R2026 DNP note |
+| `build.py` | one board is the default release quantity |
+
+### 28.4 The heater: why the FETs cannot share, and what to do instead
+
+Gemini's finding, checked against the DMN6068SE datasheet: Vth is 1.0 to
+3.0 V, the three FETs share one gate voltage, so at any intermediate DAC code
+which bank conducts is a lottery.  Worse, with a resistive load `P_FET =
+(15 − 70·I)·I` peaks at 0.8 W at 107 mA, and at that point the loop gain of
+the FET's own heating -- gm × Vth tempco × RθJA × dP/dI ≈ 1 S × 4 mV/°C ×
+70 °C/W × 7.5 V ≈ 2 -- exceeds one.  A bank asked for half current heats
+itself into full-on.  The Python loop, which sees only temperature, would
+end up driving three banks bang-bang with 3.2 W granularity.
+
+Gemini's remedy, 3.3 Ω source resistors, does not work: a worst-case Vth =
+3.0 V part needs Vgs ≈ 3.1 V to carry 107 mA before any source drop is
+added, and the DAC stops at 3.3 V.  Degeneration large enough to matter
+(≥ 22 Ω) needs 5–6 V of gate drive.  The correct circuit is an op-amp
+current sink per FET from the 15 V rail, and that is a Rev B change,
+written into the power sheet's note.
+
+For this board the remedy costs nothing: **drive the FETs fully on or off.**
+At Vgs = 3.3 V every DMN6068SE carries the 214 mA its 70 Ω bank allows,
+dissipates I²·Rds(on) ≈ 3 mW instead of 0.8 W, and all 24 heaters switch
+together.  A duty cycle of 30 s or more against a ~5 min board time
+constant gives a linear average with < 3 % thermal ripple and puts no edge
+within the measurement band.  `Heater` in the driver exposes exactly
+`on()`, `off()` and `duty_cycle()`, and refuses a period under 30 s.  The
+three 0.8 W hot spots the thermal design worried about no longer exist.
+
+### 28.5 The DAC's factory default, confirmed
+
+The housekeeping note had said "DATASHEET NEEDED to confirm the as-shipped
+EEPROM value".  MCP4725 datasheet Table 5-3: PD = 00, D11 = 1, everything
+else 0 -- **mid-scale**, 1.65 V on the gates from the first power-up.  So a
+virgin board with 15 V applied heats at whatever that gate voltage buys until
+software runs.  Not destructive (nothing exceeds a rating), but the first
+thing `bringup.py` does, before it touches anything else, is
+Write-DAC-and-EEPROM = 0 with PD = 01; after that the part powers up off
+forever.  The 15 V jack stays out until that has run once on a board.
+
+### 28.6 Gateware v1.1: the pps timestamped twice
+
+GPT and Grok both saw that the pps, timestamped in helper cycles, is
+quantised to the same 100 ns it is supposed to resolve, and that the unit
+sheet's "timed in the FPGA's 200.02 MHz domain to 5 ns" described a clock
+that was never built.  v1.1 stamps every pps a second time in the PS clock
+domain with a free-running 64-bit counter -- 10 ns, which picks a 100 ns
+cycle with margin -- and latches a (helper counter, PS counter) pair at each
+LIVE refresh so software can map either scale onto the other.  The pps
+PS-timestamps are plain PS-domain registers with no clock crossing, and read
+against each other they are a 10 ns time-interval counter across all twelve
+pps inputs, which the board did not have before.
+
+The testbench grew from 47 to 57 checks: two pps edges 200 helper cycles
+apart are seen 2000 ± 2 PS clocks apart; the pair's ratio is 9.9988 within
+1 %; a pps PS-timestamp predicts the same edge's helper-domain timestamp to
+within 3 cycles.  Vivado closed at WNS +0.971 ns (was +1.258), 2523 LUTs,
+9043 flip-flops.  The overlay is on the PYNQ and VERSION reads 1.1.
+
+The driver's `resolve_cycles()` combines the fine beat phase with the coarse
+pps offset and states its one assumption in its docstring: that each GPSDO's
+pps sits on a rising edge of its own 10 MHz to better than ±40 ns.  No
+datasheet promises that.  It is the first thing to measure per unit.
+
+### 28.7 The I2C drivers, and what "tested" means here
+
+`gateware/driver/i2c_devices.py`: a three-method `Bus` (PYNQ `AxiIIC`,
+`smbus2` for a dongle on the debug header, and a mock), and the four parts.
+The Si5351 register image is built from the AN619 equations and
+round-tripped through a decoder in the tests; the PLL ratio is computed
+exactly (32 + 1543/390625 -- the 32 + 4142/1048575 the schematic quoted was
+10 ppb high, which nobody would ever have noticed, but exact is free); CLK0
+is PLLA with an integer MultiSynth, CLK1 is PLLB all-integer; the
+programming order is AN619's figure 12.  `trim_fraction()` re-centres the
+beat from a measured helper frequency, which is what the ±2.5 ppm TCXO
+needs.  The MCP4725 frames, the TMP1075 decode and the DS18B20 CRC are
+checked against datasheet examples.
+
+`bringup.py` was run on the live PYNQ through the real `axi_iic` with no
+board attached: the bus scan is empty, every device reports absent, the
+core's selftest reports a dead helper.  That exercises every line of the
+software path and not one line of the devices.  No Si5351A has yet seen
+these bytes; the first fabricated board is where that happens, which is why
+every device has a readback that the script prints rather than trusts.
+
+### 28.8 The interlock
+
+Bench-powering the board with the PYNQ off put 3.3 V on 26 unpowered Zynq
+I/O whose absolute maximum is 0.55 V, and rounds 21–27 had only silkscreen
+against it.  Both LDO enables now come from `+5V_HDR` -- the *header* side
+of the OR-ing diode D2002 -- through R2025 (10k).  With the host off,
+LDO_EN is held low by each TPS7A20's own 500 kΩ pulldown and neither 3.3 V
+rail exists; the bench posts still work with the PYNQ also on.  R2026, a
+DNP 0R, ties LDO_EN back to the LDO input for a board that will never sit on
+a host.
+
+D2002's anode sits in a pocket of the hand-routed power block walled by the
+y = 74.5 feed to the clamp zener and the x = 22 riser from the fuse, so
+LDO_EN leaves it on In2: R2025 lives in the pocket, its pad 2 drops to In2,
+runs up, across and down to y = 86 where a second In2 run joins the two EN
+pins' vias, each 0.5 mm above its pad on the pad side of the input lane.
+Every clearance was worked out against the real pad rectangles before the
+build -- and the first layout was still wrong, in a way no clearance check
+would find: its In2 run at board x = 128 crossed the six board-wide In2
+links (I2C, the Q2003 drain, HTR_DRIVE, +3V3_D, +15V_HTR) that pass
+straight through the power block at y = 25..29.  The link-layer `spine()`
+tried to hop each one to F.Cu over my track, landed on U2002's pads, and
+dropped five links; build 2 spent 34 minutes failing to rejoin two of them
+and came out with I2C_SCL and I2C_SDA unconnected.  My scan of the block's
+In2 had tested segment *endpoints* against a window, and the links' endpoints
+are at the board edges.  The re-laid run stops at y = 23.5, each EN pin
+reaches it by a short F.Cu stub to its own via, and build 3 came out with
+ERC 0, DRC 0, 0 unconnected, 0 hole-to-hole.  The constraint is now written
+into `build_pcb.py` beside the hook that consumes the block's In2 copper.
+
+### 28.9 Manufacturing: rotation, and one board
+
+The CPL question had a wrong answer offered with confidence: Gemini's table
+rotates SOT-23 by +180°.  The table used by the two most widely used
+KiCad-to-JLCPCB tools (matthewlai/JLCKicadTools, imported by
+Bouni/kicad-jlcpcb-tools) rotates it by **−90°**, and its source applies
+that as `(kicad + correction) mod 360` for a top-side part.  They cannot
+both be right, and I have no way to test either without a machine.  So the
+release now carries **two** placement files, native and corrected, the
+notes say to upload the corrected one, and the "Confirm parts placement"
+step -- which was already "worth it" in round 23 -- is now marked not
+optional, with the five parts to check named.  That preview, not any table,
+is what guarantees a part goes down the right way round.
+
+The release is priced for one board: $37.00 in parts, $99.77 with assembly.
+Five was the number before a beat had ever been seen.
+
+### 28.10 What was deliberately not changed
+
+* **The squarer.**  Gemini and Grok are right that the common-mode argument
+  holds only between channels of equal slew, and the inventory spans 23 to
+  ~1600 mV/ns: 1 mV of rail shift is 44 ps on the FE-5680A and 0.6 ps on a
+  ZED-F9T.  That is the analog floor for the sine sources, it is why the
+  board is heated, and it is not fixable without a different front end.
+  The power-sheet note now says so, and the response tabulates the expected
+  floor per source.  A comparator-grade front end on one channel is the Rev
+  B experiment.
+* **In2 crosstalk.**  Real (53 nets share the layer with the helper) but not
+  catastrophic: the closest parallel runs are with DC nets, with beats whose
+  edges are *caused by* the helper edge and so land nanoseconds after it,
+  and with one pps.  A keep-out corridor for the helper branches is the
+  right Rev B router change.
+* **The TCXO grade.**  ±2.5 ppm is ±25 Hz of beat, enough to reach the
+  1260 Hz mains harmonic at +85 °C.  In service the board is thermostatted
+  and the beat is re-centred in software from the measured helper frequency
+  (the core reports it, and a pps measures it properly).  Rev B: the T
+  option, ±1.0 ppm, of the same part.
+* **The XA drive level**, for the reason in §28.2.
+
+### 28.11 Before ordering
+
+1. **Jason:** upload `GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv`, and in the
+   placement preview check U102 (SOT-23-5, pin 1), Q2001 (SOT-223, tab),
+   U5001 (SOIC-8, pin 1), U3001 (MSOP-10, pin 1 -- *not* corrected, no table
+   entry) and D2001 (SMA, band) against `GPSDO-PYNQ-Z2_assembly_top.pdf`.
+2. **Jason:** Rev A with on/off heater drive, or hold for op-amp current
+   sinks?  My recommendation is Rev A as-is.
+3. First power-up: PYNQ on, board on the header, `./pynq-run bringup.py`
+   (DAC EEPROM first, then the Si5351, thermometers, probes, selftest),
+   and only then the 15 V jack.
+4. First measurements, in this order: the null channel; a splitter off one
+   GPSDO into two channels; each unit's pps against its own 10 MHz edge.
+
+### 28.12 Numbers at the end of the round
+
+| | round 27 | round 28 |
+|---|---|---|
+| filled DRC | 0 violations, 0 unconnected | 0 violations, 0 unconnected |
+| full-severity DRC, hole-to-hole | 4 (two vias in own-net PTH pads) | **0**, and an error if it recurs |
+| silkscreen | `rev B` | `rev A 2026-09-14`, from `design.py` |
+| placements / distinct parts | 457 / 38 | 458 / 38 (R2025) |
+| release quantity, parts + assembly | 5 boards, $207.36 | **1 board, $99.78** |
+| gateware | v1.0, 47 sim checks, WNS +1.258 ns | **v1.1, 57 checks, WNS +0.971 ns**, on the PYNQ |
+| host tests | 24 | 49 |
+| I2C devices with drivers | 0 of 4 | 4 of 4, untested on silicon |
+| 3.3 V rails with the host off | present (abs-max violation) | **absent** (interlock) |
+| board builds this round | | 3 (one discarded), 1188 + 2037 + 1496 s |
