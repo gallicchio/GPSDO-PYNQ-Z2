@@ -3,7 +3,7 @@
 A 13-channel Digital DMTD front end that plugs onto a PYNQ-Z2's Raspberry Pi
 40-pin header and compares thirteen GPSDOs' 10 MHz and 1 pps outputs at about
 12 ps single-shot resolution. This file is the design log and the tutorial:
-thirty-six rounds of prompts and answers, in order, including the mistakes
+thirty-eight rounds of prompts and answers, in order, including the mistakes
 and what they cost. The board, the generator that draws it, the manufacturing
 release and the FPGA gateware are all in this directory.
 
@@ -11819,3 +11819,253 @@ Confirmed in the preview by you, part by part: all 79 polarised parts
 including X3001, D2003 and every SOT-23.  That is the whole assembly checked
 against the thing that actually builds it, which is the first time that has
 been true on this board.
+
+
+## Prompt 37
+
+Make sure that everything relevant to GPSDO-PYNQ-Z2 is checked in. I just ordered 2 assembled boards. Unless they come back to me with complaints or changes, I'd like to keep a record of this so I can easily open it up and compare to a version with changes. Having two copies of the git repo open to different hashes might work, but would be a pain. Make a zip file with revA in the title. Include the kicad project, schematic, PCB, gerbers, BOM, GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv. Basically everything in release plus the kicad stuff.
+
+
+## Round 37
+
+**Two assembled boards ordered from JLCPCB, 2026-09-15.**  Rev A exists.
+
+### 37.1 What went in, and the two things that did not
+
+The only outstanding tracked change was `GPSDO-PYNQ-Z2.kicad_pro`: the KiCad
+GUI had rewritten it, expanding it with its own defaults.  All twelve of the
+JLCPCB-derived DRC values were checked one by one against the committed
+version before it went in -- nothing was loosened, KiCad had only filled in
+fields we never set.
+
+Two things were ignored rather than committed, both reversible:
+
+* `*-drc.rpt`, `*-erc.rpt`, `filled-drc.rpt` at the board's own level.  Dated
+  2026-09-13, which is eight rounds stale, and describing a board that no
+  longer exists.  `build.py` writes fresh ones into `build/` on every run.  **A
+  stale report that looks current is worse than no report**, which is the
+  whole argument for ignoring rather than keeping them.
+* 14 MB of design-review attachments in `design_review_GPT-5.6Terra/` -- PNG
+  renders, sheet PDFs, DRC JSON dumps and a 6 MB zone-filled copy of the old
+  board.  `design_review_Gemini3.8Flash/` and `design_review_Grok4.6/` set the
+  pattern: the review's markdown is tracked, and so is code written by hand
+  for it, but not the renders.  The review document itself was already in.
+
+### 37.2 The tag, which is the part I would reach for first
+
+```
+    git checkout GPSDO-PYNQ-Z2-revA
+    git diff GPSDO-PYNQ-Z2-revA -- GPSDO-PYNQ-Z2/
+    git show GPSDO-PYNQ-Z2-revA:GPSDO-PYNQ-Z2/mfg/release/GPSDO-PYNQ-Z2_bom.csv
+```
+
+`GPSDO-PYNQ-Z2-revA` is an annotated tag at `0f9a4dd` carrying what was
+uploaded and what was verified.  You asked for a zip because two working trees
+are a pain, and they are -- but `git diff <tag> -- <path>` is neither, and it
+is the thing that answers "what changed since we ordered" in one line.
+
+### 37.3 The zip
+
+`GPSDO-PYNQ-Z2-revA.zip`, 4.5 MB, 58 files, committed at `9a2dd9f`:
+
+```
+  GPSDO-PYNQ-Z2.kicad_pro / .kicad_prl / .kicad_pcb
+  19 x *.kicad_sch, library/, fp-lib-table, sym-lib-table
+  mfg/release/     gerbers loose and zipped, drill, drill map, BOM, both CPLs,
+                   assembly PDFs, FABRICATION_NOTES, MANIFEST, annotated and
+                   hand-solder BOMs, excluded_from_assembly
+  HANDBOOK.md, README.md
+  README-revA.txt  provenance, what was uploaded, what was verified, and the
+                   rotation corrections per footprint
+  SHA256SUMS.txt   all 58 files; they verify after an unzip round-trip
+```
+
+The KiCad files sit at the repo's own relative paths, so unzipping and opening
+`GPSDO-PYNQ-Z2.kicad_pro` works with no path fixing.  `README-revA.txt` is
+**generated from `parts_map.py`**, not typed, so the rotation table printed in
+the archive cannot disagree with the CPL shipped beside it.
+
+The zip commit deliberately sits *after* the tag: the tag is the design that
+was ordered, the zip is a convenience built from it, and checking out revA
+should not hand you an archive of itself.
+
+### 37.4 One inaccuracy in the archive, stated rather than patched
+
+`FABRICATION_NOTES.txt` in the archive says `PCB assembly ... TOP side, 1
+boards`, because `build_release.py` was last run with its default argument of
+1 and you ordered 2.  The board quantity reaches exactly two places: that line
+of prose, and `annotated_bom`'s order quantities and cost estimate, which are
+therefore costed for one board rather than two.  **It reaches none of the fab
+outputs** -- gerbers, drill, BOM and both CPLs are quantity-independent and
+are what was uploaded.  Regenerating for 2 would move the notes and the
+manifest out from under the tag for a cosmetic gain, so it is recorded here
+instead.
+
+
+## Prompt 38
+
+Make sure the README.md file reflects what you learned about the component rotations and the latest information about GPSDO-PYNQ-Z2-revA.zip. It serves as a chronological log of what we did and why (in addition to comments in the code and on the schematic and silkscreen.) When that is up to date, check that in and push.
+
+
+## Round 38
+
+Rotations took six rounds, 31 through 36, and the story is spread across all
+of them.  Gathered here, because the next board should pay for this once.
+
+### 38.1 The rule
+
+**The only authority for a CPL rotation correction is JLCPCB's own "Confirm
+parts placement" preview.**  Not a published table, not a datasheet, not
+geometry computed from our own files.  The offset is a property of *their*
+parts library, and nothing in this repository can derive it.
+
+Everything below is a way I got that wrong anyway.
+
+### 38.2 The table, as shipped in Rev A
+
+Corrections to the KiCad-native rotation, positive counter-clockwise, which is
+both KiCad's sign and JLCPCB's.  "90 clockwise" therefore lands here as 270.
+
+| footprint | correction | read off the preview on |
+|---|---|---|
+| `MSOP-10_3x3mm_P0.5mm` | +270 | U3001 |
+| `Oscillator_SMD_Fox_FT5H_5.0x3.2mm` | +270 | X3001 |
+| `SOIC-8_3.9x4.9mm_P1.27mm` | +270 | U5001, U6001 |
+| `SOT-223-3_TabPin2` | +180 | Q2001 |
+| `SOT-23-5` | +180 | U102 + 58 others |
+| `SOT-23-6` | +270 | U5009 |
+
+74 of 458 placements move.  Everything else is uncorrected, and that is a
+claim rather than an accident -- see 38.3.3.
+
+### 38.3 Six ways this went wrong, in order
+
+**1.  A third-party table instead of a preview (round 28).**  The corrections
+came from JLCKicadTools.  Two of its five entries were wrong for these parts,
+one of them on **59 of 458 placements**.  A table that is right for somebody
+else's upload is not evidence about yours.
+
+**2.  A prefix where the answer is per-package (round 33).**  The table was
+three regexes, and
+
+```python
+(re.compile(r"^SOT-23"), -90),     # SOT-23-5 and SOT-23-6 both
+```
+
+matched the 5-pin and the 6-pin part with one number, under a comment
+asserting that was fine.  It was an assumption written as a statement and
+never checked.  SOT-23-5 needs +180 and SOT-23-6 needs +270 -- and the joke is
+that the package the comment was guessing about is the one it got right.  **A
+prefix is how one wrong number reaches 59 parts.**  Exact footprint names cost
+a line each and cannot do that.
+
+**3.  "No entry" and "no correction needed" producing identical output
+(round 33).**  `MSOP-10` and the FT5H oscillator had no table entry, so they
+got no correction, so they were wrong -- silently, for five rounds.  Those are
+completely different claims and the code could not tell them apart.  Now:
+`JLC_ROTATION` for corrections, `JLC_ROTATION_OK` for checked-and-zero,
+`JLC_ROTATION_NA` for unpolarised two-terminal passives, and anything in none
+of the three is reported by the build:
+
+```
+    ROTATION: 2 footprint(s) never checked against a placement preview:
+              D_SMB x1, D_SOD-323 x1
+```
+
+**4.  A hand-written rotation transform, transposed (round 34).**  This is the
+expensive one.  To check X3001 I typed a rotation into a throwaway script:
+
+```python
+bx = fx + lx*ca + ly*sa;  by = fy - lx*sa + ly*ca      # mine, wrong
+bx = fx + lx*ca - ly*sa;  by = fy + lx*sa + ly*ca      # place.pads(), right
+```
+
+**They agree exactly at rot 0.**  Eight of the ten parts I checked were at rot
+0, so the check looked right -- and X3001 and U3001, the two the question was
+actually about, are the only parts on this board placed at -90.  I built a
+test that was blind in precisely the place I was pointing it, told you your
+correct reading of the preview was wrong, and had you believed me X3001 would
+have been assembled with its 25 MHz output and +3V3 on its two GND pads.
+
+The fix is not a better transform.  It is **not writing one**: `pin1_corner()`
+now uses `place.pads()`' formula -- the one the router uses, which KiCad's own
+DRC has validated at 0 unconnected items -- and it was checked against
+`pcbnew` on **all 458 placements** rather than ten spot checks.
+
+**5.  Inventing evidence (round 35, caught in 36).**  My audit script printed
+
+```
+   pad 1 (  21.140, 21.900)  net GND   cathode/K
+```
+
+and I read `cathode/K` back as a finding.  It was a string literal I had typed
+into the print statement.  D6001 has no cathode -- it is a bidirectional TVS,
+`pinfunction` `A1`/`A2` -- so the round-35 claim that "the three diodes mark
+the CATHODE, which is pad 1" was two-thirds right and one-third fabricated.
+Diagnostic output that hardcodes its own conclusion is not a diagnostic.  The
+release now *derives* it: any part whose pinfunctions are all `A<n>` is listed
+as orientation-free.
+
+**6.  An instruction nobody could act on (rounds 33-35).**  `FABRICATION_NOTES`
+said "check pin 1 in the placement preview" without ever saying where pin 1
+was supposed to be.  That is not a check, it is a request to have an opinion.
+It now says, per footprint **and per rotation**, because they differ inside
+one BOM row -- the 59 SOT-23-5s sit at four rotations and their pin 1 points
+four different ways:
+
+```
+    SOT-23-5  (59)
+      rot  -90 -> pin 1 north-east  x6   U3002, U3003, U3004, U3005, U3006 ...
+      rot    0 -> pin 1 north-west  x27  U101, U102, U103, U104, U301 ...
+      rot   90 -> pin 1 south-west  x2   U2001, U2002
+      rot  180 -> pin 1 south-east  x24  U201, U202, U203, U204, U401 ...
+```
+
+North is the screw-terminal edge, south the Raspberry Pi socket edge -- stated
+physically so it does not depend on which way up a viewer draws the board.
+
+### 38.4 The silkscreen half of it
+
+A correction is only checkable if the board carries a mark to check it
+against.  Audited with `pcbnew`, every polarised footprint, by the angle
+between (marker - origin) and (pad 1 - origin):
+
+| footprint | x | mark | angle |
+|---|---|---|---|
+| `SOT-23-5` | 59 | filled triangle | 10.2 deg |
+| `SOT-23-6` | 1 | filled triangle | 10.2 deg |
+| `SOT-223-3_TabPin2` | 3 | filled triangle | 11.9 deg |
+| `SOIC-8_3.9x4.9mm` | 9 | filled triangle | 8.4 deg |
+| `MSOP-10_3x3mm` | 1 | filled triangle | 12.2 deg |
+| `Oscillator_Fox_FT5H` | 1 | **none** | -- |
+| `D_SMA` / `D_SMB` | 5 | cathode bar on the pad-1 side | -- |
+| `D_SOD-323` | 1 | bar, but the part is symmetric | n/a |
+
+**One footprint in fifteen shipped with no pin-1 mark at all.**  Worse, the
+FT5H's outline is four disconnected stubs, and the two nearest its *north-east*
+corner -- a 2.2 mm edge and a 0.7 mm cap -- read far more like a pin-1 bracket
+than its two real 0.45 mm tails do.  It is a footprint that actively points at
+the wrong corner, and it cost rounds 34 and 35.  Rev A prints an 0.8 mm filled
+dot beside its pad 1, placed by the silkscreen pass so it dodges pads like
+everything else.
+
+79 polarised parts; the other 379 are unpolarised two-terminal passives.  All
+79 were confirmed one by one in the preview before the order went in, which is
+the first time this board's whole assembly has been checked against the thing
+that builds it.
+
+### 38.5 What Rev B inherits
+
+* **A bottom-side mirror that never applied here.**  All 458 placements are
+  Top.  JLCPCB reads a bottom-side placement mirrored, which is a property of
+  how they read the BOARD and is applied *before* the per-footprint
+  correction, which is a property of their PARTS LIBRARY.  The two are
+  independent and the order is not arbitrary.  Nothing in this repo has ever
+  exercised it; the moment a part moves to the bottom, it matters.
+* **Two diodes that had never been checked** when Rev A's notes were first
+  written -- `D2003` (`D_SMB`) and `D6001` (`D_SOD-323`) -- both since
+  confirmed in the preview.  The mechanism that surfaced them, reporting any
+  footprint in none of the three tables, is the part worth keeping.
+* `IcepiZeroADCDAC/jlcbuild/jlc_rotation.py` in this same repository now
+  carries these rules in reusable form, including the bottom-side mirror, and
+  cites this board's 59-placement mistake as its reason for existing.
