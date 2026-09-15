@@ -1,6 +1,8 @@
 # Everything build.py regenerates.  Its header says "Everything below is
-# REGENERATED", and `python3 build.py --clean` deletes exactly this; a clean
-# rebuild reproduces the board bit for bit, so there is nothing here to diff.
+# REGENERATED", and `python3 build.py --clean` deletes exactly this.  A clean
+# rebuild reproduces every fab output byte for byte (the board file itself
+# differs only in uuids that pcbnew rewrites as it pours the zones -- see
+# build.py's docstring, which has the measurement).
 build/
 
 # Vivado's PS7 board-preset automation writes a summary into a directory named

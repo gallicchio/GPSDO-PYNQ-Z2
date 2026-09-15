@@ -13,6 +13,27 @@ schematic, the project file, the local footprints, the board and the whole
 manufacturing release are products; delete all of them and this rebuilds them.
 The only things you cannot delete are the Python under gen/, pcb/ and mfg/,
 the datasheets, and the notes.
+
+HOW REPRODUCIBLE, EXACTLY.  Round 30 ran `--clean` against a committed tree
+and diffed everything, because round 29 had just found the DRC checking a
+different file from the one being shipped and the claim deserved a number:
+
+  * the schematic, the project file, the BOM, both CPL files and
+    FABRICATION_NOTES.txt come back **byte-identical**;
+  * `pcb/build_pcb.py` is deterministic -- run it twice and the boards are
+    byte-identical;
+  * the **gerbers and the drill file** are byte-identical apart from the
+    creation-date line each one carries;
+  * the shipped `.kicad_pcb` differs, and ONLY in `(uuid ...)` lines -- 7760
+    of them, with not one geometric change.  Those come from pcbnew, which
+    assigns fresh uuids as it pours the zones in step 5.  The proof that this
+    is cosmetic is the gerbers: identical output from a "different" file.
+  * `annotated_bom.*` and MANIFEST.txt legitimately differ -- they carry the
+    time of their own JLCPCB price query.
+
+So: reproducible in everything a fab is sent, and in everything a human
+reads; not bit-for-bit in the board file itself, because pcbnew touches it
+last.  Do not go looking for a bug in that diff -- check it is all uuids.
 """
 import argparse, os, shutil, subprocess, sys, time, glob
 

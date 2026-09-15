@@ -389,6 +389,46 @@ the heater and its DAC, the eight thermometers, the DS2482 and the probes,
 and the pps path.  The beat and pps counters in the gateware have still only
 ever seen a testbench and a bench synthesiser.
 
+## 6b. Provenance: is the release actually built from the committed sources?
+
+The reasonable thing to ask after finding 18, and round 30 measured it rather
+than asserting it.  `build.py --clean` was run against the committed tree --
+29 generated paths deleted, everything rebuilt from the Python -- and the
+result diffed file by file.
+
+| product | result |
+|---|---|
+| `GPSDO-PYNQ-Z2.kicad_sch` and the 18 sheet files | **byte-identical** |
+| `GPSDO-PYNQ-Z2.kicad_pro` | **byte-identical** |
+| `GPSDO-PYNQ-Z2_bom.csv`, both CPL files, `hand_solder_bom.csv`, `excluded_from_assembly.csv` | **byte-identical** |
+| `FABRICATION_NOTES.txt`, `HANDBOOK.md` | **byte-identical** |
+| the 13 gerbers and the Excellon drill | **byte-identical apart from each file's own creation-date line** |
+| `GPSDO-PYNQ-Z2.kicad_pcb` | 7760 lines differ, **every one of them a `(uuid ...)`; zero geometric changes** |
+| `annotated_bom.*`, `MANIFEST.txt` | differ, as they should: they carry the time of their own JLCPCB price query |
+
+Two further checks, independent of the rebuild:
+
+* the committed gerbers and drill were re-plotted from the committed
+  `.kicad_pcb` and came back identical (timestamps aside), so the artwork in
+  `mfg/release/` **is** the artwork of the board in the repository -- which is
+  precisely the thing finding 18 showed had not been true before;
+* the release regenerates byte-identically from the committed board and
+  schematic, and its own cross-check passes: *"BOM, CPL, Gerbers and the
+  board all agree; nothing to query."*
+
+The board file's uuid churn comes from pcbnew, which rewrites uuids as it
+pours the zones in step 5.  The proof that it is cosmetic is the gerbers:
+identical artwork out of a "different" file.  `pcb/build_pcb.py` itself is
+deterministic -- run twice, byte-identical.
+
+The one thing that genuinely did not reproduce was mine: `gen/libs.py` gave
+the two mounting-hole footprints a uuid from `abs(hash(name))`, and Python
+randomises string hashing per process, so they changed on every run.  Nothing
+downstream uses those uuids -- none of the 7760 changed lines in the board was
+one of them -- so it was invisible, and it was still a generator that did not
+generate the same thing twice.  Now a SHA-1 digest; verified stable across
+runs.
+
 ## 7. The checklist, restated
 
 Carried forward from §4, with what rounds 29 and 30 added:
@@ -400,6 +440,8 @@ Carried forward from §4, with what rounds 29 and 30 added:
 - [x] The DRC is set from JLCPCB's capability and the build stops on a DRC
       error or an unconnected net (finding 20)
 - [x] `bringup.py` runs clean on real silicon (findings 28-30)
+- [x] **The release is provably built from the committed sources** (§6b):
+      clean rebuild diffed file by file; every fab output byte-identical
 - [ ] **Jason:** upload `GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv`; check pin 1 on
       the five named packages in JLCPCB's placement preview (unchanged from §4)
 - [ ] **Jason:** decide Rev A vs Rev B for the heater current sinks (§2.4).

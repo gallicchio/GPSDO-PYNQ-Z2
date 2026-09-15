@@ -100,6 +100,7 @@ def _mounting(d):
     3.2 mm hole has no millimetre to give.  Round 11's mock-up already drew it
     as a slot and said so; nothing had ever built it.
     """
+    import hashlib as _hl
     import os as _os
     for name, w, h, drill, shape, cw, ch, descr in (
             ("MountingHole_M3_NPTH", 3.2, 3.2, "3.2", "circle", 3.3, 3.3,
@@ -107,7 +108,16 @@ def _mounting(d):
             ("MountingSlot_M3_NPTH", 7.0, 3.2, "oval 7 3.2", "oval", 5.2, 3.3,
              "M3 slot 7 x 3.2 mm, non-plated, for the standoff shared with the host")):
         open(_os.path.join(d, name + ".kicad_mod"), "w", encoding="utf-8").write(
-            MOUNT_FP % dict(name=name, descr=descr, u=abs(hash(name)) % 10**9,
+            # A DIGEST, not hash().  Python randomises str hashing per
+            # process, so `abs(hash(name))` gave these two footprints a
+            # different uuid on every run -- which round 30's clean-rebuild
+            # check caught as the one thing in this repository that did not
+            # reproduce.  Nothing downstream uses these uuids (build_pcb
+            # replaces the footprint's own and pcbnew rewrites the rest), so
+            # it was invisible; it was still a generator that did not generate
+            # the same thing twice.
+            MOUNT_FP % dict(name=name, descr=descr,
+                            u=int(_hl.sha1(name.encode()).hexdigest()[:12], 16) % 10 ** 9,
                             w=w, h=h, drill=drill, shape=shape,
                             cx0=-cw, cy0=-ch, cx1=cw, cy1=ch))
 
