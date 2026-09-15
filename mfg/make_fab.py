@@ -6,6 +6,7 @@ to ask about is not the artwork -- it is "what stackup?", "what finish?",
 "is this 0.2 mm gap intentional?".  So this measures the board and writes the
 answers down next to the files, rather than leaving them to be guessed.
 """
+import math as _m
 import os, re, shutil, subprocess, sys, textwrap, zipfile, collections
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -136,6 +137,39 @@ def export(outdir):
     return zpath, gerb, asm
 
 
+def pin1_corner(ref):
+    """Which corner of its own body pad 1 of `ref` sits in, on this board.
+
+    ROUND 34.  "Check pin 1 in the preview" is only checkable if the notes say
+    where pin 1 is SUPPOSED to be, and the footprints' own pin-1 marks are
+    sometimes two 0.45 mm stubs (the FT5H) that are easy to read as belonging
+    to the neighbouring part.  So derive it: north is the screw-terminal edge
+    of the board, south is the Raspberry Pi socket edge.  Derived, so it
+    cannot go stale, and stated physically so it does not depend on which way
+    up anyone's viewer draws the thing."""
+    src = open(PCB, encoding="utf-8").read()
+    for b in src.split('(footprint "')[1:]:
+        if '"%s"' % ref not in b:
+            continue
+        fat = re.search(r"\(at ([-\d.]+) ([-\d.]+)(?: ([-\d.]+))?\)", b)
+        if not fat:
+            continue
+        fx, fy = float(fat.group(1)), float(fat.group(2))
+        fr = float(fat.group(3) or 0)
+        a_ = _m.radians(-fr)
+        ca, sa = _m.cos(a_), _m.sin(a_)
+        pad = re.search(r'\(pad "1" \w+ \w+\s*\(at ([-\d.]+) ([-\d.]+)', b)
+        if not pad:
+            return ""
+        px, py = float(pad.group(1)), float(pad.group(2))
+        bx, by = fx + px * ca + py * sa, fy - px * sa + py * ca
+        # file y grows DOWNWARD, so a bigger y is nearer the socket = south
+        ns = "north" if by < fy - 0.05 else ("south" if by > fy + 0.05 else "")
+        ew = "east" if bx > fx + 0.05 else ("west" if bx < fx - 0.05 else "")
+        return "-".join(s for s in (ns, ew) if s) or "centre"
+    return ""
+
+
 def rotation_table():
     """The rotation corrections, from parts_map.py, as fab-note lines.
 
@@ -151,6 +185,11 @@ def rotation_table():
     out = []
     for fp, (corr, who, look) in sorted(parts_map.JLC_ROTATION.items()):
         out.append("    %-36s %+4d  x%-3d  %s" % (fp, corr, n.get(fp, 0), who))
+        ref = re.match(r"[A-Z]+\d+", who)
+        c = pin1_corner(ref.group(0)) if ref else ""
+        if c:
+            out.append(wrap("on %s, pad 1 is at the %s corner of its own body"
+                            % (ref.group(0), c)))
         out.append(wrap(look))
     for fp, (who, why) in sorted(parts_map.JLC_ROTATION_OK.items()):
         out.append("    %-36s    0  x%-3d  %s" % (fp, n.get(fp, 0), who))

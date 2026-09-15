@@ -3,7 +3,7 @@
 A 13-channel Digital DMTD front end that plugs onto a PYNQ-Z2's Raspberry Pi
 40-pin header and compares thirteen GPSDOs' 10 MHz and 1 pps outputs at about
 12 ps single-shot resolution. This file is the design log and the tutorial:
-thirty-three rounds of prompts and answers, in order, including the mistakes
+thirty-four rounds of prompts and answers, in order, including the mistakes
 and what they cost. The board, the generator that draws it, the manufacturing
 release and the FPGA gateware are all in this directory.
 
@@ -11461,3 +11461,109 @@ correction the file does not apply. Verified after regenerating:
 74 rotated, against 72 before: +2 is the MSOP-10 and the oscillator that had
 no entry at all.  **Re-upload the corrected CPL.  The gerbers and the BOM you
 have already uploaded are unchanged.**
+
+
+## Prompt 34
+
+Everything looks good now except maybe X3001. With the corrected CPL, its pin 1 is south west. If the little white 90 degree silkscreen tails mean pin 1, those tails are north east. If pin 1 should be north east, X3001 needs an additional 180 degrees.
+
+
+## Round 34
+
+**No extra 180.  The corrected CPL is right, and the preview you are looking at
+agrees with it.**  This one is settleable from the board file rather than by
+eye, which is lucky, because the thing being eyeballed is 0.45 mm across.
+
+### 34.1 The tails are south-west, not north-east
+
+X3001 sits at (103.300, 40.000) rotated -90.  Everything on `F.SilkS` within
+6 mm of that centre, transformed into board coordinates:
+
+```
+  X3001   (105.90,39.65)-(105.90,40.35)  len 0.70   E     body cap
+  X3001   (104.30,41.70)-(102.30,41.70)  len 2.00   S     body edge
+  X3001   (102.30,41.70)-(102.30,42.15)  len 0.45   SW    <-- pin-1 tail
+  X3001   (102.20,38.30)-(104.40,38.30)  len 2.20   N     body edge
+  X3001   (100.70,40.35)-(100.70,39.65)  len 0.70   W     body cap
+  X3001   (100.70,40.35)-(100.20,40.35)  len 0.50   SW    <-- pin-1 tail
+```
+
+Both tails are **south-west**.  And pad 1 is at (101.250, 41.250), which is
+also **south-west** of the centre:
+
+```
+  pad 1  local(-1.25,-2.05) -> board(101.25,41.25)  SW   net GND
+  pad 2  local(-1.25,+2.05) -> board(105.35,41.25)  SE   net GND
+  pad 3  local(+1.25,+2.05) -> board(105.35,38.75)  NE   net Net-(X3001-OUT)
+  pad 4  local(+1.25,-2.05) -> board(101.25,38.75)  NW   net Net-(X3001-VDD)
+```
+
+So the tails and pad 1 are the **same corner**.  They cannot be north-east and
+south-west respectively -- and since your preview puts pin 1 south-west, it is
+agreeing with our pad 1, which is what "correct" looks like.
+
+### 34.2 What you were almost certainly looking at
+
+There are three other silkscreen ticks within 6 mm of X3001, the same size as
+its tails, belonging to its neighbours:
+
+```
+  C3001   (108.64,38.13)-(109.16,38.13)  len 0.52   NE   <-- probably this one
+  FB3001  (109.30,40.69)-(108.50,40.69)  len 0.80   SE
+  FB3001  (109.30,41.81)-(108.50,41.81)  len 0.80   SE
+```
+
+`C3001`'s tick is 0.52 mm, 5.6 mm north-east of X3001's centre, and is a
+capacitor's body mark rather than anybody's pin 1.  At preview zoom, with
+X3001's real tails being 0.45 and 0.50 mm and hanging off two *different*
+edges rather than meeting at a corner, that is an entirely reasonable thing to
+misread.  The footprint's pin-1 marking is bad.  That is round 33.4's
+complaint and it stands.
+
+### 34.3 The fix is to stop asking anyone to eyeball it
+
+"Confirm pin 1 in the preview" is only a checkable instruction if the notes
+say where pin 1 is supposed to BE.  They now do, and the answer is derived
+from the board rather than typed, so it cannot go stale:
+
+```
+    Oscillator_SMD_Fox_FT5H_5.0x3.2mm     +90  x1    X3001
+        on X3001, pad 1 is at the south-west corner of its own body
+        pin 1 corner -- the footprint's marker is two 0.45 mm stubs and is
+        hard to read; use the assembly drawing
+    SOT-23-5                             +180  x59   U102 + 58 others
+        on U102, pad 1 is at the north-west corner of its own body
+        pin 1 = the D input
+```
+
+North is the screw-terminal edge, south is the Raspberry Pi socket edge --
+stated physically, so it does not depend on which way up a viewer draws the
+board.
+
+### 34.4 The one thing I could not check, said plainly
+
+I can prove our footprint is self-consistent: our silkscreen marks our pad 1,
+and our pad 1 is south-west.  What no file in this repo can tell me is where
+JLCPCB's *own* part model puts pin 1 -- only their preview knows that, and
+only you can see it.  The reasoning is therefore: their preview shows pin 1
+south-west, our pad 1 is south-west, so they match.  **If their preview marks
+pin 1 somewhere else, the rotation is wrong and the table needs another
+entry** -- `mfg/parts_map.py`, one line.
+
+Worth being careful about because of what is on the pads: a 180 degree error
+here swaps pads 1 and 3 and pads 2 and 4, which puts the 25 MHz output and
++3V3 onto the two GND pads.  That is a dead TCXO and possibly a dead rail, not
+a cosmetic error.
+
+### 34.5 What changed
+
+```
+    every gerber, the drill file, the drill map   IDENTICAL
+    both CPLs, the BOM, the assembly PDFs         IDENTICAL
+    FABRICATION_NOTES.txt                         pin-1 corners added
+    MANIFEST.txt                                  all hashes match
+    65 host tests pass
+```
+
+**Nothing to re-upload.**  X3001's corrected rotation is 0.0000, the same
+number round 33 generated.

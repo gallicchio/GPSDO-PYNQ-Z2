@@ -72,17 +72,23 @@ ROTATION  (round 33)
   rebuilt them from YOUR OWN placement preview, which is the only authority,
   and two of the five were wrong -- one of them on 59 parts:
     MSOP-10_3x3mm_P0.5mm                 +270  x1    U3001
+        on U3001, pad 1 is at the south-west corner of its own body
         pin 1 dot
     Oscillator_SMD_Fox_FT5H_5.0x3.2mm     +90  x1    X3001
+        on X3001, pad 1 is at the south-west corner of its own body
         pin 1 corner -- the footprint's marker is two 0.45 mm stubs and is
         hard to read; use the assembly drawing
     SOIC-8_3.9x4.9mm_P1.27mm             +270  x9    U5001, U6001
+        on U5001, pad 1 is at the north-west corner of its own body
         pin 1 dot
     SOT-223-3_TabPin2                    +180  x3    Q2001
+        on Q2001, pad 1 is at the north-west corner of its own body
         tab = drain, the wide pad
     SOT-23-5                             +180  x59   U102 + 58 others
+        on U102, pad 1 is at the north-west corner of its own body
         pin 1 = the D input
     SOT-23-6                             +270  x1    U5009
+        on U5009, pad 1 is at the north-west corner of its own body
         pin 1 dot
     D_SMA                                   0  x4    D2001
         cathode band points south and the silkscreen's closed side is
