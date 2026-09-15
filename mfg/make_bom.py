@@ -54,20 +54,29 @@ def norm_rot(r):
 # diodes, SOD-323, the FT5H oscillator, all passives) are left at KiCad's
 # native rotation in both files.
 # ---------------------------------------------------------------------------
-JLC_ROTATION = [
-    # (regex on the short footprint name, correction in degrees)
-    (re.compile(r"^SOT-223"), 180),
-    (re.compile(r"^SOT-23"),  -90),     # SOT-23-5 and SOT-23-6 both
-    (re.compile(r"^SOIC-"),   270),
-]
-
-
 def jlc_rotation(fpshort, rot):
-    """(corrected rotation, correction applied) for one placement."""
-    for pat, corr in JLC_ROTATION:
-        if pat.match(fpshort):
-            return norm_rot(float(rot) + corr), corr
-    return norm_rot(rot), 0
+    """(corrected rotation, correction applied) for one placement.
+
+    The table lives in parts_map.py, keyed on the EXACT footprint name and
+    read off JLCPCB's own placement preview -- see the long note there.  A
+    footprint with no entry is left alone, and `unchecked()` below is what
+    stops that being silent."""
+    e = parts_map.JLC_ROTATION.get(fpshort)
+    if e is None:
+        return norm_rot(rot), 0
+    return norm_rot(float(rot) + e[0]), e[0]
+
+
+def unchecked(smt):
+    """SMT footprints nobody has confirmed against a placement preview.
+
+    Not a failure -- a new footprint starts here and that is correct.  It is
+    reported because round 28's MSOP-10 and FT5H were silently uncorrected for
+    five rounds, which is the same thing as being silently wrong."""
+    known = (set(parts_map.JLC_ROTATION) | set(parts_map.JLC_ROTATION_OK)
+             | set(parts_map.JLC_ROTATION_NA))
+    n = collections.Counter(r["fpshort"] for r in smt)
+    return sorted((fp, c) for fp, c in n.items() if fp not in known)
 
 
 def write(outdir, rows=None, quiet=False):
@@ -135,6 +144,7 @@ def write(outdir, rows=None, quiet=False):
             w.writerow([r["ref"], "%.4f" % r["x"], "%.4f" % (-r["y"]),
                         r["side"].capitalize(), "%.4f" % norm_rot(r["rot"])])
     cplj = os.path.join(outdir, "%s_cpl_jlc_corrected.csv" % NAME)
+    un = unchecked(smt)
     ncorr = collections.Counter()
     with open(cplj, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -188,6 +198,10 @@ def write(outdir, rows=None, quiet=False):
             w.writerow([r["ref"], r["value"], r["fpshort"],
                         parts_map.NO_PART.get(r["fpshort"], "no component")])
 
+    if un and not quiet:
+        print("    ROTATION: %d footprint(s) never checked against a "
+              "placement preview: %s"
+              % (len(un), ", ".join("%s x%d" % (f, c) for f, c in un)))
     if not quiet:
         print("  %-34s %d distinct parts, %d placements"
               % (os.path.basename(bom), len(by), len(smt)))

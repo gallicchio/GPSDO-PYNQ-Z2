@@ -6,12 +6,12 @@ to ask about is not the artwork -- it is "what stackup?", "what finish?",
 "is this 0.2 mm gap intentional?".  So this measures the board and writes the
 answers down next to the files, rather than leaving them to be guessed.
 """
-import os, re, shutil, subprocess, sys, zipfile, collections
+import os, re, shutil, subprocess, sys, textwrap, zipfile, collections
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-import bomdata                                          # noqa: E402
+import bomdata, parts_map                                          # noqa: E402
 from sexp import parse, kids, kid, val                  # noqa: E402
 
 NAME = "GPSDO-PYNQ-Z2"
@@ -136,6 +136,28 @@ def export(outdir):
     return zpath, gerb, asm
 
 
+def rotation_table():
+    """The rotation corrections, from parts_map.py, as fab-note lines.
+
+    Printed from the same dict the CPL is generated from, so the notes cannot
+    describe a correction the file does not apply."""
+    import make_bom
+    rows = bomdata.components()
+    n = collections.Counter(r["fpshort"] for r in rows if r["cls"] == "smt")
+    def wrap(s):
+        return textwrap.fill(s, width=74, initial_indent=" " * 8,
+                             subsequent_indent=" " * 8)
+
+    out = []
+    for fp, (corr, who, look) in sorted(parts_map.JLC_ROTATION.items()):
+        out.append("    %-36s %+4d  x%-3d  %s" % (fp, corr, n.get(fp, 0), who))
+        out.append(wrap(look))
+    for fp, (who, why) in sorted(parts_map.JLC_ROTATION_OK.items()):
+        out.append("    %-36s    0  x%-3d  %s" % (fp, n.get(fp, 0), who))
+        out.append(wrap(why))
+    return "\n".join(out)
+
+
 def notes(outdir, m, boards=1):
     p = os.path.join(outdir, "FABRICATION_NOTES.txt")
     vias = ", ".join("%.2f/%.2f" % v for v in m["via_sizes"])
@@ -205,25 +227,23 @@ WHAT TO SET ON THE JLCPCB ORDER FORM
   Tooling holes ............ Added by JLCPCB
   Confirm parts placement .. Yes  -- NOT OPTIONAL, see ROTATION below
 
-ROTATION  (round 28)
-  KiCad's footprint zero-orientation and JLCPCB's feeder zero-orientation
-  differ per package, and no two published correction tables agree on the
-  SOT-23 family, which is 62 of this board's 457 placements.  So two
+ROTATION  (round 33)
+  KiCad's footprint zero-orientation and JLCPCB's feeder zero-orientation are
+  not the same, and the offset is a property of JLCPCB's library.  Two
   placement files are supplied:
     %(name)s_cpl.csv ............... KiCad-native rotations
-    %(name)s_cpl_jlc_corrected.csv . the same, with the JLCKicadTools table
-                                     applied: SOT-23-x -90, SOT-223 +180,
-                                     SOIC-8 +270.  Nothing else is touched.
-  UPLOAD THE CORRECTED FILE.  Then, in JLCPCB's placement preview (the
-  "Confirm parts placement" step), check these against the assembly drawing
-  before approving:
-    U102  (74LVC1G80, SOT-23-5)  pin 1 = the D input, bottom-left at rot 0
-    Q2001 (DMN6068SE, SOT-223)   tab = drain, the wide pad
-    U5001 (TMP1075, SOIC-8)      pin 1 dot
-    U3001 (Si5351A, MSOP-10)     pin 1 dot  (NOT corrected: no table entry)
-    D2001 (SS34, SMA)            cathode band  (NOT corrected: no table entry)
-  If the SOT-23-5 preview is wrong, upload the native file instead; one of
-  the two is right for their machines on the day, and the preview says which.
+    %(name)s_cpl_jlc_corrected.csv . the same, corrected.  UPLOAD THIS ONE.
+  Round 28 built the corrections from the JLCKicadTools table.  Round 33
+  rebuilt them from YOUR OWN placement preview, which is the only authority,
+  and two of the five were wrong -- one of them on 59 parts:
+%(rot)s
+  Still confirm them in the preview before approving.  Two footprints on this
+  board have never been checked against a preview at all, both polarised:
+    D2003 (5.6V 5W Zener, SMB)   cathode band
+    D6001 (PESD5V0S1BA, SOD-323) cathode band
+  If a preview still disagrees, upload the native file instead and tell the
+  generator: the table is mfg/parts_map.py, JLC_ROTATION, keyed on the exact
+  footprint name.
 
 FILES
   %(name)s_gerbers.zip ........ Gerber RS-274X + Excellon drill + drill map
@@ -242,7 +262,8 @@ FILES
            vias=vias, nv=m["vias"], mvd=m["min_via_drill_mm"],
            pd=", ".join("%.2f" % d for d in m["pad_drills"]),
            mpd=m["min_pad_drill_mm"], edge=m["smt_to_edge_mm"],
-           edgeref=m["smt_to_edge_ref"], name=NAME, qty=boards))
+           edgeref=m["smt_to_edge_ref"], name=NAME, qty=boards,
+           rot=rotation_table()))
     return p
 
 

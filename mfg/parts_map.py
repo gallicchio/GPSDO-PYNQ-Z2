@@ -137,3 +137,61 @@ NO_PART = {
     # Test points are bare copper pads, not components.
     "TestPoint_Pad_D1.5mm": "bare pad, no component",
 }
+
+
+# ---------------------------------------------------------------------------
+# JLCPCB placement rotation, per footprint
+# ---------------------------------------------------------------------------
+# KiCad's zero-orientation for a footprint and JLCPCB's zero-orientation for
+# the same part in their feeders are not the same thing, and the offset is a
+# property of THEIR library.  It cannot be derived from anything in this repo.
+# The only authority is their "Confirm parts placement" preview.
+#
+# ROUND 33.  Every number below was read off that preview and is a correction
+# to the KiCad-NATIVE rotation in GPSDO-PYNQ-Z2_cpl.csv.  Positive is
+# counter-clockwise, which is KiCad's sign and JLCPCB's sign.
+#
+# Round 28 took these from the JLCKicadTools table rather than from a preview,
+# and got two of them wrong -- one of them 59 times:
+#
+#   regex ^SOT-23 -> -90   matched SOT-23-5 AND SOT-23-6 with one number,
+#                          under a comment that said "SOT-23-5 and SOT-23-6
+#                          both".  That was an assumption, written as a
+#                          statement, and never checked.  SOT-23-5 needs +180.
+#                          SOT-23-6 really does need 270, so the one the
+#                          comment was guessing about is the one it got right.
+#   MSOP-10, FT5H          no entry at all, so no correction, so wrong.
+#
+# Hence EXACT footprint names, not prefixes.  A prefix is what let one wrong
+# number reach 59 of 458 placements.
+#
+#   footprint: (correction, the part(s) it was read off, what to look at)
+JLC_ROTATION = {
+    "SOT-23-5":                          (180, "U102 + 58 others",
+                                          "pin 1 = the D input"),
+    "SOT-23-6":                          (270, "U5009", "pin 1 dot"),
+    "SOT-223-3_TabPin2":                 (180, "Q2001",
+                                          "tab = drain, the wide pad"),
+    "SOIC-8_3.9x4.9mm_P1.27mm":          (270, "U5001, U6001", "pin 1 dot"),
+    "MSOP-10_3x3mm_P0.5mm":              (270, "U3001", "pin 1 dot"),
+    "Oscillator_SMD_Fox_FT5H_5.0x3.2mm": (90,  "X3001",
+                                          "pin 1 corner -- the footprint's "
+                                          "marker is two 0.45 mm stubs and is "
+                                          "hard to read; use the assembly "
+                                          "drawing"),
+}
+
+# Looked at in the same preview and needing NO correction.  Listed rather than
+# simply left out, so that "absent from both tables" can mean "nobody has
+# looked at this one", which is what the release reports.
+JLC_ROTATION_OK = {
+    "D_SMA": ("D2001", "cathode band points south and the silkscreen's closed "
+                       "side is south, so it is already right -- correcting "
+                       "it would be the bug"),
+}
+
+# Two-terminal and unpolarised: which way round they go is not a question.
+JLC_ROTATION_NA = (
+    "C_0805_2012Metric", "R_0805_2012Metric", "L_0805_2012Metric",
+    "R_2010_5025Metric", "R_1206_3216Metric", "Fuse_1206_3216Metric",
+)

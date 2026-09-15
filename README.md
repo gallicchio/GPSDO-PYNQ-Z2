@@ -3,7 +3,7 @@
 A 13-channel Digital DMTD front end that plugs onto a PYNQ-Z2's Raspberry Pi
 40-pin header and compares thirteen GPSDOs' 10 MHz and 1 pps outputs at about
 12 ps single-shot resolution. This file is the design log and the tutorial:
-thirty-two rounds of prompts and answers, in order, including the mistakes
+thirty-three rounds of prompts and answers, in order, including the mistakes
 and what they cost. The board, the generator that draws it, the manufacturing
 release and the FPGA gateware are all in this directory.
 
@@ -11330,3 +11330,134 @@ too.  One-code-one-line is a rule about the file a machine matches.
 
 The board was never touched, so the gerbers you have already uploaded are
 still exactly right.  Replace `GPSDO-PYNQ-Z2_bom.csv` and leave the rest.
+
+
+## Prompt 33
+
+Looking at the Component Placements starting with GPSDO-PYNQ-Z2_cpl.csv,
+
+* U102 and other SOT-23-5 need to be rotated 180 degrees
+* Q2001 needs 180
+* U5001 needs 90 clockwise, along with U6001 (same package?)
+* U3001 needs 90 clockwise
+* D2001 might be fine, but I'm less sure. its "-" and its stripe point down (south), which is where the silkscreen has its closed bottom, as opposed to the open top. If the closed bottom on the silk screen means "-" and should have the bar on the package, this one is right.
+* X3001 (not on your list) looks like it should be rotated 90 degrees counterclockwise, but there is no dot or triangle on the silkscreen or any other indicator that I can make out.
+* U5009 need to rotate by 90 clockwise
+
+Record this information in the README.md as the next prompt. Record this in your source of truth. use it to generate the jcl_corrected. When I did the jcl_corrected, most were still wrong, but Q2001 and U5001 were ok and D2001 was the same as without the correction. Generate a new jcl_corrected file along with anything else that you might think might fall out of sync.
+
+
+## Round 33
+
+Your preview is the only authority there is for this, and round 28 did not use
+one.  It used the JLCKicadTools table, and **two of its five entries were
+wrong, one of them on 59 of 458 placements.**
+
+### 33.1 Your observations, as corrections
+
+Everything below is stated the way you stated it: as a correction to the
+KiCad-NATIVE rotation in `GPSDO-PYNQ-Z2_cpl.csv`, positive counter-clockwise,
+which is KiCad's sign and JLCPCB's sign.
+
+| you said | footprint | correction | was | now |
+|---|---|---|---|---|
+| U102 + other SOT-23-5, 180 | `SOT-23-5` x59 | **+180** | -90 | +180 |
+| Q2001, 180 | `SOT-223-3_TabPin2` x3 | +180 | +180 | unchanged |
+| U5001, U6001, 90 CW | `SOIC-8_3.9x4.9mm` x9 | +270 | +270 | unchanged |
+| U3001, 90 CW | `MSOP-10_3x3mm_P0.5mm` x1 | **+270** | none | +270 |
+| U5009, 90 CW | `SOT-23-6` x1 | **+270** | -90 | +270 |
+| X3001, 90 CCW | `Oscillator_SMD_Fox_FT5H` x1 | **+90** | none | +90 |
+| D2001, probably fine | `D_SMA` x4 | 0 | none | 0 |
+
+**U6001 is the same package as U5001** -- both SOIC-8, a TMP1075 and the
+DS2482 -- so one entry covers them and they were already right.
+
+**D2001 is right, and your reasoning is the reasoning.**  The band and the `-`
+point south; this board's silkscreen draws the cathode as the closed end of
+the outline, and the closed end is south.  It agreed with the uncorrected file
+because `D_SMA` had no table entry, so it is right by luck rather than by
+construction -- which is exactly the distinction the next section is about.
+
+**One thing in your report is arithmetically impossible, and I would rather
+say so than quietly pick.**  You said most were still wrong in the corrected
+file but named only Q2001 and U5001 as good.  `SOT-23-6` was already getting
+-90, which IS 270, which is the 90 clockwise you asked for -- so **U5009
+should have looked right in the old corrected file too.**  If it did not, then
+either its requirement is not +270 or SOT-23-6 needs something else again;
+tell me which and it is one line in the table.  I have taken your stated
+requirement (+270) because that is what you measured.
+
+### 33.2 Where it now lives, and why not as a regex
+
+`mfg/parts_map.py`, next to the LCSC mapping, keyed on the **exact** footprint
+name.  The old table was three regexes:
+
+```python
+(re.compile(r"^SOT-223"), 180),
+(re.compile(r"^SOT-23"),  -90),     # SOT-23-5 and SOT-23-6 both
+(re.compile(r"^SOIC-"),   270),
+```
+
+`^SOT-23` matches `SOT-23-5` and `SOT-23-6` and gave them one number, under a
+comment asserting that was correct.  It was an assumption written as a
+statement and never checked -- and the joke is that the package the comment
+was guessing about, SOT-23-6, is the one it got right.  The 59 it got wrong
+were the ones nobody thought were in question.
+
+A prefix is how one wrong number reaches 59 parts.  Exact names cost a line
+each and cannot do that.
+
+### 33.3 The check that turns "no entry" into something visible
+
+`MSOP-10` and the FT5H oscillator had no entry, so they got no correction, so
+they were wrong -- silently, for five rounds.  "Not in the table" and "needs
+no correction" produced identical output and are completely different claims.
+
+They are now different in the source too.  `JLC_ROTATION_OK` lists footprints
+checked and needing nothing (`D_SMA`, with your reasoning recorded);
+`JLC_ROTATION_NA` lists the unpolarised two-terminal passives, where the
+question does not arise. Anything in none of the three is reported:
+
+```
+    ROTATION: 2 footprint(s) never checked against a placement preview:
+              D_SMB x1, D_SOD-323 x1
+```
+
+**Those two are D2003 (the 5.6 V 5 W Zener) and D6001 (the PESD5V0S1BA on the
+1-Wire), and both are polarised.**  They are in the fab notes now as things to
+look at in the preview.  I cannot check them from here.
+
+### 33.4 X3001 has a pin-1 marker; it is just too small to see
+
+You could not find one because it is nearly invisible, not because it is
+absent.  The Fox FT5H footprint marks pin 1 with two 0.45 mm stubs hanging off
+the body outline:
+
+```
+    fp_line (-1.7, -1) -> (-2.15, -1)
+    fp_line (-0.35, -2.6) -> (-0.35, -3.1)
+```
+
+That is a real silkscreen complaint and I am NOT fixing it in this round,
+because the gerbers are uploaded and a board change would invalidate them for
+a marker you can read off the assembly drawing instead.  **Next spin:** a
+proper dot. Logged here so it is not lost.
+
+### 33.5 What to re-upload, and what not to
+
+The fab notes are generated FROM the table now, so they cannot describe a
+correction the file does not apply. Verified after regenerating:
+
+```
+    every gerber, the drill file, the drill map   IDENTICAL
+    GPSDO-PYNQ-Z2_cpl.csv (native)                IDENTICAL
+    GPSDO-PYNQ-Z2_bom.csv                         unchanged since round 32
+    GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv           74 of 458 rotations changed
+    X and Y                                       identical in both CPLs
+    MANIFEST.txt                                  all hashes match
+    65 host tests pass
+```
+
+74 rotated, against 72 before: +2 is the MSOP-10 and the oscillator that had
+no entry at all.  **Re-upload the corrected CPL.  The gerbers and the BOM you
+have already uploaded are unchanged.**

@@ -62,25 +62,38 @@ WHAT TO SET ON THE JLCPCB ORDER FORM
   Tooling holes ............ Added by JLCPCB
   Confirm parts placement .. Yes  -- NOT OPTIONAL, see ROTATION below
 
-ROTATION  (round 28)
-  KiCad's footprint zero-orientation and JLCPCB's feeder zero-orientation
-  differ per package, and no two published correction tables agree on the
-  SOT-23 family, which is 62 of this board's 457 placements.  So two
+ROTATION  (round 33)
+  KiCad's footprint zero-orientation and JLCPCB's feeder zero-orientation are
+  not the same, and the offset is a property of JLCPCB's library.  Two
   placement files are supplied:
     GPSDO-PYNQ-Z2_cpl.csv ............... KiCad-native rotations
-    GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv . the same, with the JLCKicadTools table
-                                     applied: SOT-23-x -90, SOT-223 +180,
-                                     SOIC-8 +270.  Nothing else is touched.
-  UPLOAD THE CORRECTED FILE.  Then, in JLCPCB's placement preview (the
-  "Confirm parts placement" step), check these against the assembly drawing
-  before approving:
-    U102  (74LVC1G80, SOT-23-5)  pin 1 = the D input, bottom-left at rot 0
-    Q2001 (DMN6068SE, SOT-223)   tab = drain, the wide pad
-    U5001 (TMP1075, SOIC-8)      pin 1 dot
-    U3001 (Si5351A, MSOP-10)     pin 1 dot  (NOT corrected: no table entry)
-    D2001 (SS34, SMA)            cathode band  (NOT corrected: no table entry)
-  If the SOT-23-5 preview is wrong, upload the native file instead; one of
-  the two is right for their machines on the day, and the preview says which.
+    GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv . the same, corrected.  UPLOAD THIS ONE.
+  Round 28 built the corrections from the JLCKicadTools table.  Round 33
+  rebuilt them from YOUR OWN placement preview, which is the only authority,
+  and two of the five were wrong -- one of them on 59 parts:
+    MSOP-10_3x3mm_P0.5mm                 +270  x1    U3001
+        pin 1 dot
+    Oscillator_SMD_Fox_FT5H_5.0x3.2mm     +90  x1    X3001
+        pin 1 corner -- the footprint's marker is two 0.45 mm stubs and is
+        hard to read; use the assembly drawing
+    SOIC-8_3.9x4.9mm_P1.27mm             +270  x9    U5001, U6001
+        pin 1 dot
+    SOT-223-3_TabPin2                    +180  x3    Q2001
+        tab = drain, the wide pad
+    SOT-23-5                             +180  x59   U102 + 58 others
+        pin 1 = the D input
+    SOT-23-6                             +270  x1    U5009
+        pin 1 dot
+    D_SMA                                   0  x4    D2001
+        cathode band points south and the silkscreen's closed side is
+        south, so it is already right -- correcting it would be the bug
+  Still confirm them in the preview before approving.  Two footprints on this
+  board have never been checked against a preview at all, both polarised:
+    D2003 (5.6V 5W Zener, SMB)   cathode band
+    D6001 (PESD5V0S1BA, SOD-323) cathode band
+  If a preview still disagrees, upload the native file instead and tell the
+  generator: the table is mfg/parts_map.py, JLC_ROTATION, keyed on the exact
+  footprint name.
 
 FILES
   GPSDO-PYNQ-Z2_gerbers.zip ........ Gerber RS-274X + Excellon drill + drill map
