@@ -463,8 +463,15 @@ this board has jacks called `1`.
 
 The two SMA ranges, which the board also prints along the bottom:
 
-* 10 MHz in: %(vmin).1f to %(vmax).1f Vpp AC at the SMA with the 50 ohm jumper
-  fitted; %(vopen).1f Vpp maximum without it.
+* 10 MHz in: %(vmin).1f to %(vmax).1f Vpp AC **at the SMA** -- that is the
+  range the thirteen sources in this inventory actually present, each with its
+  own jumper setting.  The board's ceiling is %(vabs).1f Vpp: R_S is a link on
+  every channel, so the swing at the SMA is the swing at the gate, and the gate
+  tolerates a diode drop outside each rail.  A source's OPEN-CIRCUIT rating is
+  a different number and is not a limit on this connector -- the TM-4 is
+  %(vopen).1f Vpp open circuit and 2.0 Vpp at the SMA through its mandatory
+  50 ohm jumper.  Round 29 printed the %(vopen).1f on the silkscreen, which was
+  backwards: see the jumper note above.
 * 1 pps in: 0 to 5.5 V DC.
 * `HO` out: 0/3.3 V CMOS, about 1.6 Vpp into 50 ohm.
 
@@ -599,7 +606,8 @@ socket, and nothing else.
         levels=levels_table(), tp=testpoint_table(), drc=drc_table(),
         nch=D.UNITS[-1][0], nulltag="J%d01" % D.UNITS[-1][0],
         termnote=L.TERM_NOTE,
-        vmin=D.V_SMA_MIN, vmax=D.V_SMA_MAX, vopen=D.V_SMA_MAX_OPEN,
+        vmin=D.V_SMA_MIN, vmax=D.V_SMA_MAX, vabs=D.V_SMA_ABSMAX,
+        vopen=D.V_SMA_OPEN_MAX,
         nbeat=(C.N_BEAT if C else 13), nbeat_1=(C.N_BEAT - 1 if C else 12),
         npps=(C.N_PPS if C else 12), pps0=(C.PPS0 if C else 16),
         pps_last=(C.PPS0 + C.N_PPS - 1 if C else 27),

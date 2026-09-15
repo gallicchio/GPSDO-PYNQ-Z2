@@ -39,8 +39,10 @@ TP_LETTER = {"TP_IN": "In", "TP_SQ": "S", "TP_BEAT": "B", "TP_PPS": "P",
 # (key, schematic value, where it is, what you should see)
 TEST_POINTS = [
     ("In", "TP_IN",    "10 MHz box, beside the SMA",
-     "the input as it arrives: %.1f-%.1f Vpp AC, 10 MHz"
-     % (D.V_SMA_MIN, D.V_SMA_MAX)),
+     "the input as it arrives: %.1f-%.1f Vpp AC, 10 MHz.  %.1f Vpp is the "
+     "board's ceiling; a 50 ohm source's OPEN-CIRCUIT rating is a different "
+     "number and is not what arrives here -- see the jumper note"
+     % (D.V_SMA_MIN, D.V_SMA_MAX, D.V_SMA_ABSMAX)),
     ("S",  "TP_SQ",    "10 MHz box, at the squarer's input",
      "AC coupled about %.2f V; 0.6-3.3 Vpp.  This is the node whose slew rate "
      "sets the channel's noise floor" % D.VTH),
@@ -62,7 +64,8 @@ TEST_POINTS = [
 
 # The bottom-of-board key, as two columns of short lines.
 def legend_columns():
-    return (["In  10 MHz at the SMA  %.1f-%.1f Vpp" % (D.V_SMA_MIN, D.V_SMA_MAX),
+    return (["In  10 MHz at SMA  %.1f-%.1f Vpp"
+             % (D.V_SMA_MIN, D.V_SMA_MAX),
              "S  squarer  0.6-3.3 Vpp",
              "B  beat  0/3.3 V, %.1f-%.1f kHz"
              % (D.F_BEAT * 0.9e-3, D.F_BEAT * 1.15e-3),
@@ -112,7 +115,7 @@ def col_head_10m():
     thing that differs between the thirteen, and TERM_NOTE says which.
     """
     return ("10 MHz IN",
-            "AC coupled   50R w/ jumper   %.0f Vpp max" % D.V_SMA_MAX)
+            "AC coupled   50R w/ jumper JP   %.1f Vpp max" % D.V_SMA_ABSMAX)
 
 
 # ---------------------------------------------------------------------------
@@ -131,13 +134,15 @@ REGION = {
     "house":  ["HOUSEKEEPING"],
 }
 
-# The 1-Wire terminals get one line rather than a region label plus a legend:
-# there are exactly 2 mm of clear board between the series resistors and the
-# DS2482, and the wire colours are the part you actually need in your hand.
+# TWO lines, round 31, with the COLOURS ON TOP where the screws are: they are
+# what you need in your hand while wiring, so they belong in the strip nearest
+# the terminals, and the region's name sits below them in the band the DS2482
+# leaves free.  As one long line it also ran across the region box's own
+# right-hand edge and broke it.
 # ("standard speed, no 4k7 pull-up needed" moved to the handbook, which is
 # where a fact you read once belongs.)
-PROBE_HEADING = ("1-WIRE external THERMOMETERS     "
-                 "yel = DATA   red = VCC   blk = GND")
+PROBE_COLOURS = "yel = DATA   red = VCC   blk = GND"
+PROBE_HEADING = "1-WIRE external THERMOMETERS"
 
 
 def PROBE_TAG(i):
@@ -187,10 +192,15 @@ have it is the only way to damage a source from this board:
 * **Units 2 and 3 (ZED-F9T): NEVER fit the jumper.**  TIMEPULSE is 5 mA
   absolute maximum and 3.3 V into 50R asks for 66 mA.  Unterminated, the load
   is `R_SH` alone: 1.5 mA.
-* **Unit 1 (TM-4): the jumper MUST be fitted.**  Unterminated, its 8 Vpp
-  open-circuit output floats the squarer's input above the gate's 6.5 V
-  absolute maximum.
-* Everything else drives 50R happily and wants the jumper in."""
+* **Unit 1 (TM-4): the jumper MUST be fitted.**  Unterminated, its %.1f Vpp
+  open-circuit output rectifies through the gate's ESD diode into the coupling
+  capacitor and floats the input to about +7.4 V, past the gate's 6.5 V
+  absolute maximum.  With the jumper in, the SMA sees %.2f Vpp.  **This is why
+  the silkscreen prints the board's %.1f Vpp ceiling and not a source's
+  open-circuit rating** -- they are different numbers and only one is a
+  limit.
+* Everything else drives 50R happily and wants the jumper in.""" % (
+    D.V_SMA_OPEN_MAX, D.levels(1, "IN", "0R", "2k2")["v_sma"], D.V_SMA_ABSMAX)
 
 
 # ---------------------------------------------------------------------------

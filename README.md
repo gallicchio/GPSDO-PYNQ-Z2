@@ -3,7 +3,7 @@
 A 13-channel Digital DMTD front end that plugs onto a PYNQ-Z2's Raspberry Pi
 40-pin header and compares thirteen GPSDOs' 10 MHz and 1 pps outputs at about
 12 ps single-shot resolution. This file is the design log and the tutorial:
-thirty rounds of prompts and answers, in order, including the mistakes
+thirty-one rounds of prompts and answers, in order, including the mistakes
 and what they cost. The board, the generator that draws it, the manufacturing
 release and the FPGA gateware are all in this directory.
 
@@ -10943,3 +10943,263 @@ and, if it happens again:
 Not tested, and not testable until boards arrive: every one of the thirteen
 front ends, the heater, the thermometers, the 1-Wire bridge, and the pps path.
 The gateware's beat and pps counters have still only ever seen a testbench.
+
+
+## Prompt 31
+
+minor silkscreen updates:
+* "1-WIRE external THERMOMETERS     yel = DATA   red = VCC   blk = GND" should be two lines with "yel = DATA   red = VCC   blk = GND" on top next to the actual screw terminals.
+* The box around the 1-WIRE has a segment (it currently starts at 70.7536, 30.48) which is too low. It is make the "10 MHz" inside the box. Move it up so that it ends up around Y=25.5 and shorten the right segment, which no longer needs to be broken if you did the "1-WIRE" line split.
+* Some of the "T" labels will end up under the ICs. Others, like the one next to "P2" make it seem like it's part of P2.
+* "DEBUG 2x10" looks like it refers to the mounting hole. It should be moved so that it ends up around 20,161.5.
+* Is "In  10 MHz at the SMA  0.7-8.0 Vpp" actually correct? Can the circuit take 8 Vpp? I thought that for the TM-4, you need the 50 ohms or need an attenuator or something to bring it down to a safe voltage.
+
+
+## Round 31
+
+Four of the five were placement, and I have taken them as a set rather than one
+at a time, because three of them are the same bug: **a label that is near the
+wrong thing is worse than no label**, and a placer that only knows how to avoid
+*overlapping* cannot see that.  The fifth is the one that matters, and you were
+right about it.
+
+### 31.1 8 Vpp at the SMA was wrong, and it was wrong in the dangerous direction
+
+You asked whether the circuit can take 8 Vpp.  It cannot, and the board should
+never have said so.  Here is where the number came from:
+
+```python
+V_SMA_MAX = max(v for _s, v, _v50 in SOURCES.values())    # 8.0
+```
+
+`SOURCES[n][1]` is each instrument's **open-circuit** output.  8.0 Vpp is the
+TM-4's emf into an open circuit, which is a fact about the TM-4 and not about
+this connector.  Round 29 printed it as "0.7 - 8.0 Vpp at the SMA" and
+"8 Vpp max" -- as a *permission*.
+
+What the TM-4 actually presents depends entirely on the jumper you asked
+about:
+
+| TM-4 on channel 1 | at the SMA | at the gate |
+|---|---|---|
+| **JP fitted** (50R across the line, mandatory, since round 4) | 2.00 Vpp | 1.65 +/- 1.00 V |
+| **JP out** | 8.00 Vpp | rectifies through the ESD diode, walks to about +7.4 V, past the 6.5 V absolute max |
+
+So the honest reading of round 29's silkscreen was "8 Vpp is fine here", and
+the one condition that makes 8 Vpp survivable -- the jumper -- was printed
+beside it as an option.  That is how you invite exactly the fault the design
+note has warned about since round 4.
+
+Three numbers replace the one, all computed rather than typed, and they are in
+`gen/design.py` after `levels()` because two of them call it:
+
+```python
+V_SMA_MIN    = 0.72                            # the FE-5680A, the weakest
+V_SMA_MAX    = max(_v_at_sma().values())       # 3.30  what the inventory presents
+V_SMA_ABSMAX = 2.0 * min(VTH + 0.4, 3.7 - VTH) # 4.10  the board's ceiling
+V_SMA_OPEN_MAX = max(v for _s, v, _v50 in SOURCES.values())  # 8.00
+assert V_SMA_MAX < V_SMA_ABSMAX < V_SMA_OPEN_MAX
+```
+
+`_v_at_sma()` runs every channel through `levels()` **with its own jumper
+setting** -- the same function that annotates the schematic -- so the maximum
+it returns is 3.30 Vpp, a ZED-F9T's unterminated CMOS output.  Not the TM-4:
+with its mandatory jumper the TM-4 is 2.00 and is no longer anywhere near the
+top of the list.
+
+`V_SMA_ABSMAX` is the only one of the four that is a *limit*, and it comes from
+the board rather than from the inventory.  `levels()` calls a channel healthy
+when the swing about `VTH` stays within a diode drop of each rail, -0.4 to
++3.7 V, and `R_S` is a link on every channel -- so the swing at the gate is the
+swing at the SMA.  `2 * min(1.65 + 0.4, 3.7 - 1.65)` = 4.10 Vpp.
+
+The board now prints:
+
+```
+    In  10 MHz at SMA  0.7-3.3 Vpp                     (the legend)
+    AC coupled   50R w/ jumper JP   4.1 Vpp max        (every 10 MHz column)
+```
+
+and the assertion chain means the three can never drift apart again: the
+inventory must fit under the ceiling, and the ceiling under the open-circuit
+source that makes unit 1's jumper mandatory.  The handbook's limits section and
+`TERM_NOTE` both say the same thing in words now, including the sentence that
+was missing: *a source's open-circuit rating is a different number and is not a
+limit on this connector.*
+
+The line also had to lose four characters -- "at the SMA" became "at SMA" --
+because the legend column is 33 mm wide and the first version with the ceiling
+appended was 41 characters.  The build told me so rather than letting it
+overrun:
+
+```
+SILK: no room for 'In  10 MHz at SMA  0.7-3.3 Vpp  (4.1 max)' in
+      (141,157.6)-(174,164.4): region smaller than the text
+SILK: DROPPED 1 line(s) the board should carry
+```
+
+The ceiling was already on every column head, so the legend does not need it
+twice.
+
+### 31.2 The 1-Wire line, in two, and the box edge it was breaking
+
+The single 67-character line ran from x = 31.9 to x = 92.4.  The region box's
+right-hand edge is at x = 71.55, so the line crossed it, and `silk_edge` --
+which breaks a border wherever it would print on top of something -- dutifully
+cut a 2 mm gap in it at y 19.69..21.69.  You spotted the gap; the line was the
+cause.
+
+Split, with the colours on top, the edge closes:
+
+```
+round 30:  (71.55, 2.50)-(71.55, 19.69)   and   (71.55, 21.69)-(71.55, 30.48)
+round 31:  (71.55, 2.49)-(71.55, 24.30)
+```
+
+one piece, and 6 mm shorter for the reason in the next section.
+
+Getting the colours into the strip nearest the screws took measuring rather
+than guessing, because the strip is 1.28 mm tall and the text is 1.18:
+
+* the fifteen rotated `yel`/`red`/`blk` tags above end at y = 18.18
+* `R6003/5/7/9/11`'s pads run y 18.21..**19.61** -- five columns the line has
+  to cross -- so its ink must start at 19.79, one pad clearance below them
+* `R6001`, `D6001` and `TP6001` start at y = 21.25, so its ink must end by 21.07
+* `FB6001`'s lower pad is x 12.8..14.2, so the line starts at x = 14.5
+
+1.0 mm text fits that with a tenth of a millimetre to spare and 1.1 mm does
+not.  It lands at (14.5, 20.39), directly under `W1`'s three screws, with
+`1-WIRE external THERMOMETERS` at (33.5, 22.04) below it.
+
+**And I got this wrong once in a way worth recording.**  My first attempt let
+the search run to x1 = 77.0, past the box's own edge at 71.55.  There was no
+room in the strip, `place_in` returned None, the whole-board fallback caught
+it, and it printed at **x = 69.2 -- running 28 mm out past the very edge it was
+supposed to stay inside, and breaking it in the same place the old long line
+did.**  I had moved the break 1.3 mm and called it fixed.  The fallback is
+right to exist, but a region that is allowed to be wider than the box it lives
+in cannot fail loudly, so it fails quietly instead.
+
+### 31.3 The box bottom, and why "10 MHz IN" was inside it
+
+The `probes` region's box is the bounding box of the parts the label names, and
+it included `U6001` (the DS2482 bridge) and its two capacitors at y = 25.6 and
+28.2 -- which are the *housekeeping* side of the 1-Wire, not the terminals.
+That pushed the bottom edge to y = 30.48, and unit 1's column heading sits at
+y = 28.22.  So the box enclosed a heading belonging to something 20 mm away.
+
+Dropping those three from the region (`FB6001` stays -- it is the terminals'
+supply) puts the bottom at **24.30**, which is 2.2 mm clear of the heading's
+ink.  You asked for about 25.5; 24.3 is where the remaining parts put it, and I
+would rather the box be drawn round what it contains than nudged to a number.
+
+There is a second guard behind that, because the first was luck.  A region box
+is drawn *after* every label, so it is invisible to anything placed before it
+-- the heading did not avoid the box, the box simply had not been drawn yet.  A
+column heading now stops its search at the bottom of any region box its column
+passes under:
+
+```python
+ytop = r[1] - 10.0
+for _b in rboxes.values():
+    if _b[0] < r[2] and r[0] < _b[2] and _b[3] < r[1]:
+        ytop = max(ytop, _b[3] + 0.7)
+```
+
+I first tried the general version of this -- register all four edges of every
+region box as obstacles before placing anything -- and it cost more than it was
+worth.  The bench-post warning was pushed off its own strip onto the `GND`
+label and `C1006` lost its designator to `F.Fab`.  The containment problem is
+real for the labels that scan a tall strip and imaginary for everything else,
+so it is fixed where it happens.
+
+### 31.4 The T markers: outboard, where nothing else wants to be
+
+Both halves of your complaint were the same placement.  Round 30:
+
+```
+T (  5.61,  45.20)   FB5001 @ 2.4   U5001 @ 2.9      <- on the ferrite bead
+T (194.15,  46.61)   U5002  @ 6.5   J202   @ 7.8     <- 1.8 mm from "P2"
+```
+
+4.2 mm out put the letter on the thermometer's own pads (a SOIC-8's pads reach
+3.45 mm from centre), so the spiral dodge walked it away -- and *inboard* is
+the only direction with any space, which is where the 1 pps jack names live.
+It was not near a thermometer and it was near a jack number, so it read as a
+jack number.  `U5003`'s was 0.9 mm from `P7`.
+
+The right answer is the direction I had not considered.  Each margin
+thermometer sits in a vertical string -- bead at -5.0, part, capacitors at +4.2
+and +7.0 -- so there is no clear row above or below it.  But the strip
+**between the thermometer and the board edge** is 2.75 mm wide, holds nothing
+at all, and is on the opposite side from the jack column.  A local -x offset
+of 4.8 mm centres the letter in it, 0.70 mm off the board edge and 0.35 mm off
+the nearest pad, and because the two margins are placed as mirror images the
+same local offset faces outboard on both sides:
+
+```
+T (  0.70,  48.00)  U5001     T (204.30,  48.00)  U5002
+T (  0.70,  90.00)  U5003     T (204.30,  90.00)  U5004
+T (  0.70, 132.00)  U5005     T (204.30, 132.00)  U5006
+T (  0.70, 168.00)  U5008     T ( 97.70,  27.90)  U5007
+```
+
+Nearest other text to any of them: 12.3 mm.  Round 30's worst was 0.9.
+
+`part_text`'s last-resort fallback also grew a condition.  It used to print at
+the preferred offset when every candidate was blocked, on the grounds that a
+clipped letter beside the right part still points at the right part -- which is
+true, and does not cover *off the board*, which is where `U5005`'s went during
+this round's second build (x = 0.75, ink starting at -0.06).  It now takes the
+first candidate that is at least on the board, and only then the preferred one.
+
+### 31.5 DEBUG 2x10
+
+`(15.1, 158.8)`: 2.8 mm from the M3 hole at (13, 157) and 10 mm off the end of
+the header it names.  Now `(20.0, 160.8)`, 7.9 mm from the hole and centred
+over the ten signal pins.  You asked for 161.5 -- there is one clear row in
+that band, not two, and it is at 160.8; unit 13's 1 pps box is immediately
+above.
+
+### 31.6 What it cost
+
+Nothing moved on the copper.  `git diff --stat` on the board between round 30
+and round 31 is silkscreen only, the netlist is identical, and the build is the
+same as round 30's in every number except the ones above:
+
+```
+    segments  1964, sha1 4e8e0537eef8   -- byte for byte round 30's
+    vias       595, sha1 38b5e1263701   -- byte for byte round 30's
+    597 part placements                 -- identical
+```
+
+The release gerbers say the same thing without being asked.  Every copper layer
+differs from round 30's by exactly two lines:
+
+```
+-%TF.CreationDate,2026-09-14T14:50:14-07:00*%
++%TF.CreationDate,2026-09-14T19:00:46-07:00*%
+-G04 Created by KiCad (PCBNEW 9.0.9.1) date 2026-09-14 14:50:14*
++G04 Created by KiCad (PCBNEW 9.0.9.1) date 2026-09-14 19:00:46*
+```
+
+`F_Cu`, `In1_Cu`, `In2_Cu`, `B_Cu`: 2 lines added, 2 removed, both of them the
+timestamp.  `F_Silkscreen`: 3328 added, 3438 removed.  That is the whole round.
+
+The release itself:
+
+```
+    ERC                        0 violations
+    unfilled (clearances)      0 violations
+    the board, poured          0 violations; 0 unconnected items
+    everything, all severities warning silk_overlap x199, track_dangling x39
+    components 592  {'smt': 458, 'dnp': 28, 'tht': 50, 'nopart': 56}
+    $37.00 parts + $62.78 est. fees = $99.78
+    BOM, CPL, Gerbers and the board all agree; nothing to query.
+    65 host tests pass
+```
+
+`silk_overlap x199` is KiCad's per-type report cap, unchanged from round 30 and
+from round 29 before it: it counts designators touching each other's ink, which
+is a warning and not a fault, and it is the reason `SILK: DROPPED` exists as a
+separate and much louder check for the lines that carry information.

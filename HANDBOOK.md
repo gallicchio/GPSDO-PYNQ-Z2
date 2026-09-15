@@ -315,9 +315,13 @@ have it is the only way to damage a source from this board:
 * **Units 2 and 3 (ZED-F9T): NEVER fit the jumper.**  TIMEPULSE is 5 mA
   absolute maximum and 3.3 V into 50R asks for 66 mA.  Unterminated, the load
   is `R_SH` alone: 1.5 mA.
-* **Unit 1 (TM-4): the jumper MUST be fitted.**  Unterminated, its 8 Vpp
-  open-circuit output floats the squarer's input above the gate's 6.5 V
-  absolute maximum.
+* **Unit 1 (TM-4): the jumper MUST be fitted.**  Unterminated, its 8.0 Vpp
+  open-circuit output rectifies through the gate's ESD diode into the coupling
+  capacitor and floats the input to about +7.4 V, past the gate's 6.5 V
+  absolute maximum.  With the jumper in, the SMA sees 2.00 Vpp.  **This is why
+  the silkscreen prints the board's 4.1 Vpp ceiling and not a source's
+  open-circuit rating** -- they are different numbers and only one is a
+  limit.
 * Everything else drives 50R happily and wants the jumper in.
 
 ### Expected levels, channel by channel
@@ -349,7 +353,7 @@ this board has jacks called `1`.
 
 | letter | net / node | where | what you should see |
 |:---|:---|:---|:---|
-| **In** | `TP_IN` | 10 MHz box, beside the SMA | the input as it arrives: 0.7-8.0 Vpp AC, 10 MHz |
+| **In** | `TP_IN` | 10 MHz box, beside the SMA | the input as it arrives: 0.7-3.3 Vpp AC, 10 MHz.  4.1 Vpp is the board's ceiling; a 50 ohm source's OPEN-CIRCUIT rating is a different number and is not what arrives here -- see the jumper note |
 | **S** | `TP_SQ` | 10 MHz box, at the squarer's input | AC coupled about 1.65 V; 0.6-3.3 Vpp.  This is the node whose slew rate sets the channel's noise floor |
 | **B** | `TP_BEAT` | 10 MHz box, at the far end | 0/3.3 V square at the beat frequency, 1234.4 Hz |
 | **P** | `TP_PPS` | 1 pps box | 0/3.3 V, one rising edge a second |
@@ -361,8 +365,15 @@ this board has jacks called `1`.
 
 The two SMA ranges, which the board also prints along the bottom:
 
-* 10 MHz in: 0.7 to 8.0 Vpp AC at the SMA with the 50 ohm jumper
-  fitted; 3.3 Vpp maximum without it.
+* 10 MHz in: 0.7 to 3.3 Vpp AC **at the SMA** -- that is the
+  range the thirteen sources in this inventory actually present, each with its
+  own jumper setting.  The board's ceiling is 4.1 Vpp: R_S is a link on
+  every channel, so the swing at the SMA is the swing at the gate, and the gate
+  tolerates a diode drop outside each rail.  A source's OPEN-CIRCUIT rating is
+  a different number and is not a limit on this connector -- the TM-4 is
+  8.0 Vpp open circuit and 2.0 Vpp at the SMA through its mandatory
+  50 ohm jumper.  Round 29 printed the 8.0 on the silkscreen, which was
+  backwards: see the jumper note above.
 * 1 pps in: 0 to 5.5 V DC.
 * `HO` out: 0/3.3 V CMOS, about 1.6 Vpp into 50 ohm.
 

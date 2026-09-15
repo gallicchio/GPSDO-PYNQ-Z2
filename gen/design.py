@@ -235,28 +235,6 @@ SOURCES = {
  13: ("cmos", 3.30, 1.65),   # NULL: Si5351 CLK1 at exactly 10.000000 MHz
 }
 
-# --- what may be applied to a 10 MHz SMA ------------------------------------
-# Round 29: the silkscreen and the handbook both print these, and before this
-# round they were typed into the silkscreen as "0.7 - 8.0" with no derivation.
-#
-# The WEAKEST thing this board is asked to square is the FE-5680A rubidium on
-# channel 12, 0.72 Vpp into 50 ohm.  It is not in SOURCES because SOURCES holds
-# the part that is normally on each channel and channel 12 normally carries the
-# HP 10811B; the FE-5680A is the alternative named in UNITS[11]'s note, and it
-# is the number that sets the low end of the printed range.
-#
-# The HOTTEST is the TM-4 on channel 1, 8.0 Vpp open circuit, and it is only
-# safe because that channel's 50R TERM jumper is fitted -- which is why the
-# silkscreen prints the jumper and the voltage in the same breath.  Without a
-# jumper the ceiling is a CMOS source's own rail: nothing in the inventory that
-# is meant to run unterminated exceeds 3.3 Vpp, and above that the coupling
-# capacitor rectifies through the gate's ESD diode and walks the input up.
-V_SMA_MIN = 0.72
-V_SMA_MAX = max(v for _s, v, _v50 in SOURCES.values())
-V_SMA_MAX_OPEN = max(SOURCES[n][1] for n, _b, _p, _s, term, _r, _r2, _nt in UNITS
-                     if term == "OUT")
-assert V_SMA_MAX == 8.0 and V_SMA_MAX_OPEN == 3.3, (V_SMA_MAX, V_SMA_MAX_OPEN)
-
 VTH = 1.65        # self-biased 74LVC1GU04 switching threshold on a 3.3 V rail
 F   = 10.0e6      # Hz
 
@@ -294,3 +272,55 @@ def levels(unit_n, term, rser, rsh2):
         term_note=("TERMINATED" if term == "IN" else "UNTERMINATED"),
         headroom_ok=(VTH - v_in / 2 > -0.4 and VTH + v_in / 2 < 3.7),
     )
+
+
+# --- what may be applied to a 10 MHz SMA ------------------------------------
+# ROUND 31.  These print on the silkscreen, and round 29 got them wrong in the
+# direction that matters: it printed "8.0 Vpp max" at the SMA, taken from
+# max(vpp_open) over SOURCES.  8.0 Vpp is the TM-4's OPEN-CIRCUIT emf.  It is
+# not what appears at the SMA and it is not safe there:
+#
+#   * with the 50R TERM jumper fitted -- which unit 1's note has said since
+#     round 4 is MANDATORY on that channel -- the TM-4 delivers 2.00 Vpp into
+#     the 50 ohm, and that is what the connector and the gate see;
+#   * with the jumper OUT, 8 Vpp does reach the gate, rectifies through its
+#     ESD diode into the coupling capacitor and floats the input to about
+#     +7.4 V, past the 6.5 V absolute maximum.  That is the fault the note
+#     warns about, and "8 Vpp max at the SMA" on the silkscreen invited it.
+#
+# So the number to print is what the board may actually be offered, computed
+# through levels() -- the same function the schematic annotations use -- and
+# not the raw open-circuit column.
+def _v_at_sma():
+    return {n: levels(n, term, rs, rsh)["v_sma"]
+            for n, _b, _p, _s, term, rs, rsh, _nt in UNITS}
+
+
+# The weakest thing this board is asked to square is the FE-5680A rubidium on
+# channel 12, 0.72 Vpp into 50 ohm.  It is not in SOURCES because SOURCES holds
+# the part normally on each channel and channel 12 normally carries the HP
+# 10811B; the FE-5680A is the alternative named in UNITS[11]'s note.
+V_SMA_MIN = 0.72
+
+# The hottest thing the inventory actually presents AT AN SMA, each channel
+# taken with its own jumper setting.  3.30 Vpp, a ZED-F9T's unterminated CMOS
+# output -- not the TM-4, whose jumper brings it down to 2.00.
+V_SMA_MAX = max(_v_at_sma().values())
+
+# The ceiling, from the board rather than from the inventory.  levels() calls a
+# channel healthy when the swing about VTH stays inside -0.4 .. +3.7 V at the
+# gate -- a diode drop outside each rail -- and R_S is a link on every channel,
+# so the swing at the gate IS the swing at the SMA.  4.10 Vpp.
+V_SMA_ABSMAX = 2.0 * min(VTH + 0.4, 3.7 - VTH)
+
+# The hottest OPEN-CIRCUIT source in the inventory.  This is the number that
+# makes unit 1's jumper mandatory rather than optional, and it is the only
+# thing V_SMA_MAX used to be.
+V_SMA_OPEN_MAX = max(v for _s, v, _v50 in SOURCES.values())
+
+assert abs(V_SMA_MAX - 3.30) < 1e-9, V_SMA_MAX
+assert abs(V_SMA_ABSMAX - 4.10) < 1e-9, V_SMA_ABSMAX
+assert abs(V_SMA_OPEN_MAX - 8.00) < 1e-9, V_SMA_OPEN_MAX
+assert V_SMA_MAX < V_SMA_ABSMAX < V_SMA_OPEN_MAX, \
+    "the inventory must fit under the board's ceiling, and the ceiling under " \
+    "the open-circuit source that makes unit 1's jumper mandatory"

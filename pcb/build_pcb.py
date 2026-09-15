@@ -2524,14 +2524,32 @@ def build():
         so they mirror with it), each with a small spiral round it.  Only if
         every one of them is on copper does it print at the preferred spot
         anyway -- a clipped letter beside the right part still points at the
-        right part, and moving it further away would not."""
+        right part, and moving it further away would not.
+
+        ROUND 31.  "Anyway" has one exception: OFF THE BOARD is not a clipped
+        letter, it is no letter.  U5005 and U5004 sit hard against the left
+        and right edges, and the forced fallback put their T at x = 0.75,
+        whose ink runs off the edge at x = -0.06.  So the fallback picks the
+        first candidate that is at least ON the board, and only then the
+        preferred one."""
         if ref not in placed:
             return
         px, py, prot = placed[ref]
-        for ax, ay in ((ldx, ldy),) + tuple(alts) + ((-ldx, -ldy),):
+        cands = ((ldx, ldy),) + tuple(alts) + ((-ldx, -ldy),)
+        for ax, ay in cands:
             bx, by = to_board(prot, ax, ay)
             if place_text(px + bx, py + by, s, size, thick,
                           spiral(0.45, rmax), angle=angle, force=False):
+                return
+        w = len(s) * adv(s, size) + thick
+        for ax, ay in cands:
+            bx, by = to_board(prot, ax, ay)
+            x0, y0, x1, y1 = ink(px + bx - (0.0 if angle else w / 2.0),
+                                 py + by + (w / 2.0 if angle else 0.0),
+                                 s, size, thick, "left", angle)
+            if x0 > 0.3 and y0 > 0.3 and x1 < G.BW - 0.3 and y1 < G.BH - 0.3:
+                place_text(px + bx, py + by, s, size, thick, [(0.0, 0.0)],
+                           angle=angle)
                 return
         bx, by = to_board(prot, ldx, ldy)
         place_text(px + bx, py + by, s, size, thick, [(0.0, 0.0)], angle=angle)
@@ -2637,12 +2655,18 @@ def build():
         "power": sorted(PW.PARTS),
         "house": sorted(blockrefs.get("house", [])) + ["U5009", "FB5009",
                                                        "C5017", "C5018"],
-        # the five screw terminals and their series resistors belong with the
-        # 1-Wire bridge; they are hand-placed and the packer never sees them
+        # ROUND 31.  The box is drawn round what the LABEL names -- the five
+        # screw terminals you wire external probes into, their ten series
+        # resistors, and the bus's own pull-up, diode and test point.  The
+        # DS2482 bridge and its decoupling sit below it and are deliberately
+        # outside: including them dragged the bottom edge down to y = 30.5,
+        # which is past the "10 MHz IN" heading of the column beneath, so the
+        # heading read as part of the 1-Wire block.  A bridge is not an
+        # external thermometer, and this is the honest place to draw the line.
         "probes": (sorted(blockrefs.get("probes", []))
                    + ["J600%d" % (i + 1) for i in range(5)]
                    + ["R60%02d" % n for n in range(2, 12)]
-                   + ["U6001", "FB6001", "C6001", "C6002"]),
+                   + ["FB6001"]),
     }
     rboxes = {}
     for _name, _refs in sorted(REGIONS.items()):
@@ -2655,6 +2679,15 @@ def build():
     # label -- a region border breaks round anything already printed, which is
     # how the region's own name comes to sit in a gap in its own border
     # instead of being pushed out of the region it names.
+    #
+    # ROUND 31.  A box is invisible to a label placed BEFORE it, which is how
+    # the left column's "10 MHz IN" came to sit inside the 1-Wire box at
+    # y = 28.2 with its own sub-heading outside it at 31.8.  Reserving all
+    # four edges of every region here fixes that and costs more than it is
+    # worth -- it moved the bench-post warning off its own strip and onto the
+    # GND label, and lost C1006's designator.  Containment is only a problem
+    # for the labels that scan a tall strip, so it is handled there: see the
+    # column headings below.
 
     # ---- the big labels ---------------------------------------------------
     def region_label(name, x0, y0, x1, y1, size=1.9, thick=0.32):
@@ -2703,14 +2736,33 @@ def build():
             if lab:
                 place_text(ax, 16.6, lab, 1.0, 0.16,
                            spiral(0.5, 3.5), angle=90)
-    # One line under the middle terminal, so it reads as belonging to all
-    # five, in the strip between the series resistors and the DS2482.
-    # The strip is 1.8 mm tall: the series resistors' pads end at y = 19.43
-    # and the first packed part starts at 21.2.  1.0 mm text fits with a
-    # quarter of a millimetre either side; 1.1 does not.  It starts east of
-    # FB6001, whose pads run from y = 18.9 to 21.7 at x = 12.8..14.2.
-    if not place_in(14.5, 19.55, 77.0, 21.1, LB.PROBE_HEADING, 1.0, 0.18):
-        place_in(4.0, 19.0, G.BW - 4.0, 34.0, LB.PROBE_HEADING, 1.0, 0.18)
+    # ROUND 31: two lines, colours on top, and every number here is measured
+    # off the board rather than eyeballed, because the strip they have to fit
+    # in is 1.28 mm tall and the text is 1.18.
+    #
+    #   the fifteen rotated colour tags above end at y = 18.18
+    #   R6003/5/7/9/11's pads run y 18.21..19.61, five columns the line
+    #     would otherwise cross -- so its ink starts at 19.79, a pad
+    #     clearance below them
+    #   R6001, D6001 and TP6001 start at y = 21.25, so its ink ends by 21.07
+    #   FB6001's lower pad is x 12.8..14.2, so the line starts at 14.5
+    #
+    # That is the line you want under your eyes while you are screwing wires
+    # down, and it is why it is 1.0 mm text: 1.1 does not fit.
+    #
+    # x1 = 71.0 KEEPS IT INSIDE THE BOX, whose right edge is at 71.55.  Round
+    # 31's first attempt allowed 77.0, the line found no room in the strip and
+    # fell through to the whole-board fallback, and it printed at x = 69.2
+    # running 28 mm past the edge it was supposed to stay inside -- breaking
+    # that edge in the same place the single long line used to, which was the
+    # whole complaint.
+    #
+    # The region's NAME goes below it, in the band east of the three packed
+    # parts (they occupy x 12..32 at y 21..23).
+    if not place_in(14.5, 19.8, 71.0, 21.1, LB.PROBE_COLOURS, 1.0, 0.18):
+        place_in(4.0, 19.0, G.BW - 4.0, 34.0, LB.PROBE_COLOURS, 1.0, 0.18)
+    if not place_in(33.5, 21.4, 70.5, 24.3, LB.PROBE_HEADING, 1.1, 0.18):
+        place_in(4.0, 19.0, G.BW - 4.0, 34.0, LB.PROBE_HEADING, 1.1, 0.18)
 
     # ---- every jack named, beside the unit it belongs to -------------------
     for x, y, tag, _desc in G.sma_rows():
@@ -2737,8 +2789,15 @@ def build():
     for (kind, _side), r in sorted(colbox.items()):
         head, sub = (LB.col_head_pps() if kind == "pps" else LB.col_head_10m())
         # The strip above the column's topmost box, which already holds that
-        # jack's own number: stack_in finds the rows that are left.
-        stack_in(r[0], r[1] - 10.0, r[2], r[1] - 0.6,
+        # jack's own number: stack_in finds the rows that are left.  The top
+        # of the strip stops below any REGION BOX the column passes under, or
+        # the heading lands inside that box and reads as part of it -- round
+        # 31, "10 MHz IN" sitting inside the 1-Wire terminal's box.
+        ytop = r[1] - 10.0
+        for _b in rboxes.values():
+            if _b[0] < r[2] and r[0] < _b[2] and _b[3] < r[1]:
+                ytop = max(ytop, _b[3] + 0.7)
+        stack_in(r[0], ytop, r[2], r[1] - 0.6,
                  [(head, 3.0, 0.44), (sub, 1.25, 0.22)], gap=1.1)
 
     # ---- test-point letters ------------------------------------------------
@@ -2781,8 +2840,31 @@ def build():
             part_text(r, -5.5, 0.0, "H", 1.5, 0.26, rmax=2.2,
                       alts=((0.0, 3.2), (0.0, -3.2)))
         elif re.match(r"^U500[1-8]$", r):
-            part_text(r, 4.2, 0.0, "T", 1.7, 0.3, rmax=2.4,
-                      alts=((0.0, 4.6), (0.0, -4.6)))
+            # ROUND 31.  Where this letter goes is fixed by three numbers,
+            # all measured off the board rather than guessed:
+            #
+            #   the SOIC-8's pads reach 3.45 mm either side of its centre
+            #   its bead and its two capacitors are at -5.0, +4.2 and +7.0
+            #     in y, so there is no 1.7 mm row above or below it
+            #   the 1 pps jack names are a column of 2.4 mm text at x = 13
+            #     and x = 188, and the thermometers are at 6.5 and 200.5
+            #
+            # 4.2 mm out put the T on the pads; the dodge then walked it
+            # inboard, where the only free space is the gap between the
+            # thermometer and the jack column -- so U5003's T landed 0.9 mm
+            # from "P7" and U5002's 1.8 mm from "P2", and a lone capital
+            # letter that close to a jack number reads as part of it.
+            #
+            # OUTBOARD is the answer, and it is the one place nothing else
+            # wants: the strip between the board edge and the thermometer is
+            # 2.75 mm wide, holds nothing, and is on the opposite side from
+            # the jack names.  4.8 centres the letter in it -- 0.89 mm off the
+            # edge, 0.54 mm off the nearest pad.  Every thermometer's local
+            # -x faces outboard, because the two margins are placed as mirror
+            # images; the alternates walk along that strip before the last
+            # resort turns back inboard.
+            part_text(r, -4.8, 0.0, "T", 1.7, 0.3, rmax=1.2,
+                      alts=((-4.8, 2.9), (-4.8, -2.9), (5.2, 0.0)))
 
     # ---- title, author and the key -----------------------------------------
     # Round 21 moved this whole band out of the bottom-left, where the legend
@@ -2853,8 +2935,14 @@ def build():
         # ...and the whole even row is ground, which nothing said at all.
         place_in(hx + 2.2, hy + 1.2, hx + 22.0, hy + 4.0, "GND x10", 1.1, 0.18)
         # The clear band between unit 13's 1 pps box and the tops of this
-        # connector's own rotated pin names.
-        stack_in(hx - 24.0, hy - 16.0, hx + 5.0, hy - 11.6,
+        # connector's own rotated pin names.  ROUND 31: starting the search at
+        # hx - 24 put it at (15.1, 158.8), which is 2.8 mm from the M3 hole at
+        # (13, 157) and nowhere near the middle of the header -- so it read as
+        # that hole's label.  Starting at hx - 16.9 lands it at (20.0, 160.8),
+        # 7.9 mm from the hole and centred over the ten signal pins it names.
+        # (The asked-for 161.5 is half a millimetre lower than the band goes:
+        # unit 13's 1 pps box is above and there is one clear row, not two.)
+        stack_in(hx - 16.9, hy - 14.0, hx + 6.0, hy - 11.0,
                  [("DEBUG 2x10", 1.4, 0.24)])
 
     # ---- the connectors in the power block ---------------------------------
