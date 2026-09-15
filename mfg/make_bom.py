@@ -78,17 +78,53 @@ def write(outdir, rows=None, quiet=False):
     dnp = [r for r in rows if r["cls"] == "dnp"]
 
     # ---- BOM: one line per distinct part, designators joined --------------
+    # ONE LINE PER LCSC CODE -- not per (code, value string), which is what
+    # this did until round 32 and is a real defect rather than a cosmetic one.
+    # JLCPCB matches a BOM line to a part BY ITS CODE, so two lines carrying
+    # the same code are two lines matched to the same part: it refuses to
+    # guess, sets BOTH quantities to zero, and waits for a human to tick two
+    # boxes.  A BOM whose correctness depends on someone remembering to tick a
+    # box is a BOM that will one day be uploaded by someone who does not.
+    #
+    # What shipped: C17738 on two lines, because the thirteen channel
+    # terminations are drawn `51R 1%` and the external helper's is drawn
+    # `51R`.  They are the same 0805 51 ohm part -- parts_map.py has said so
+    # in its own comment since it was written -- and 13 + 1 = 14 pieces.
+    #
+    # A value string is a LABEL.  The code is the PART.  Group on the part,
+    # label the line with the most specific of the strings, and say out loud
+    # that the merge happened rather than doing it silently.
     by = collections.defaultdict(list)
     for r in smt:
-        by[(r["lcsc"], r["value"], r["fpshort"])].append(r["ref"])
+        by[r["lcsc"]].append(r)
+    lines, merged = [], []
+    for lcsc, group in sorted(by.items()):
+        fps = sorted({g["fpshort"] for g in group})
+        if len(fps) > 1:
+            raise SystemExit(
+                "BOM: LCSC %s is used with %d different footprints (%s).  One "
+                "code is one part, so this is a parts_map.py error, not "
+                "something to merge." % (lcsc, len(fps), ", ".join(fps)))
+        # most specific label first: longest string, ties broken alphabetically
+        vals = sorted({g["value"] for g in group}, key=lambda v: (-len(v), v))
+        if len(vals) > 1:
+            merged.append((lcsc, vals))
+        lines.append((vals[0],
+                      sorted((g["ref"] for g in group),
+                             key=lambda s: (len(s), s)),
+                      fps[0], lcsc))
     bom = os.path.join(outdir, "%s_bom.csv" % NAME)
     with open(bom, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["Comment", "Designator", "Footprint", "LCSC"])
-        for (lcsc, value, fp), refs in sorted(by.items(),
-                                              key=lambda kv: -len(kv[1])):
-            refs = sorted(refs, key=lambda s: (len(s), s))
+        for value, refs, fp, lcsc in sorted(lines, key=lambda t: -len(t[1])):
             w.writerow([value, ",".join(refs), fp, lcsc])
+    if merged and not quiet:
+        for lcsc, vals in merged:
+            print("    BOM: %s is one part drawn with %d value strings (%s) "
+                  "-- one line, labelled %r"
+                  % (lcsc, len(vals), ", ".join(repr(v) for v in vals),
+                     vals[0]))
 
     # ---- CPL, twice: KiCad-native and JLCPCB-corrected ---------------------
     cpl = os.path.join(outdir, "%s_cpl.csv" % NAME)
@@ -111,6 +147,13 @@ def write(outdir, rows=None, quiet=False):
                         r["side"].capitalize(), "%.4f" % rot])
 
     # ---- hand-solder list --------------------------------------------------
+    # This one DOES group by value string, on purpose, and must keep doing so.
+    # Nobody uploads it: it is a shopping list and a bench list for a person,
+    # and "10MHz IN / 1pps IN / EXT HELPER IN / CLK1 OUT" are four useful rows
+    # even though all four are C496549, the same SMA jack.  C2337 is the same
+    # 1x40 header strip snapped to 1x01 and to 1x02, so it legitimately
+    # appears under two footprints as well.  The rule that one LCSC code gets
+    # one line belongs to the assembly BOM above, where a machine matches it.
     hby = collections.defaultdict(list)
     for r in tht:
         hby[(r["lcsc"], r["value"], r["fpshort"], r["why"])].append(r["ref"])

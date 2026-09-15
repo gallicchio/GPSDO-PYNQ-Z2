@@ -3,7 +3,7 @@
 A 13-channel Digital DMTD front end that plugs onto a PYNQ-Z2's Raspberry Pi
 40-pin header and compares thirteen GPSDOs' 10 MHz and 1 pps outputs at about
 12 ps single-shot resolution. This file is the design log and the tutorial:
-thirty-one rounds of prompts and answers, in order, including the mistakes
+thirty-two rounds of prompts and answers, in order, including the mistakes
 and what they cost. The board, the generator that draws it, the manufacturing
 release and the FPGA gateware are all in this directory.
 
@@ -11203,3 +11203,130 @@ The release itself:
 from round 29 before it: it counts designators touching each other's ink, which
 is a warning and not a fault, and it is the reason `SILK: DROPPED` exists as a
 separate and much louder check for the lines that carry information.
+
+
+## Prompt 32
+
+I got the following error on two rows of the BOM. For "R101,R201,R301,R401,R501,R601,etc" and "R3003", I got "Multiple lines in the BOM have been matched to the same part. Please check if the matching is correct." Right now these are listed as as a Qty of 0, but if I check the "Select" boxes these two total to 28. I might be that their values are "51R1%" and "51R".  They both match to MFR.Part # 0805W8F510JT5E / JLCPCB Part # C17738 / Package 0805. If this is correct, I'll select both boxes, but in the future we should avoid this error and potential issue where something might go wrong if I forget to select the boxes. Should I select the boxes and go on? Or should you correct the code that generates this issue in the BOM and I upload a new BOM?
+
+
+## Round 32
+
+**The matching is correct and the BOM is wrong**, which is the awkward pair.
+Both rows really are the same part -- and the file that maps them has said so
+in its own comment since it was written:
+
+```python
+("51R",    "R_0805_2012Metric"): ("C17738", "Basic 0805W8F510JT5E"),
+("51R 1%", "R_0805_2012Metric"): ("C17738", "same part as '51R' -- the two "
+                                            "value strings are the same 1% "
+                                            "resistor"),
+```
+
+`R101..R1301` are the thirteen channel input terminations, drawn `51R 1%` on
+the unit sheet; `R3003` is the external helper SMA's termination, drawn `51R`
+on the housekeeping sheet.  Same 0805 51 ohm part, 13 + 1 = 14 per board, which
+is your 28 across two boards.
+
+So ticking both boxes would have ordered the right thing.  **Don't**, though --
+not because it is wrong this time, but because you named the actual defect:
+*a BOM whose correctness depends on someone remembering to tick a box is a BOM
+that will one day be uploaded by someone who does not.*  Upload the new one.
+
+### 32.1 The bug is one line, and its own comment disagreed with it
+
+```python
+    # ---- BOM: one line per distinct part, designators joined --------------
+    by = collections.defaultdict(list)
+    for r in smt:
+        by[(r["lcsc"], r["value"], r["fpshort"])].append(r["ref"])
+```
+
+The comment says one line per distinct **part**.  The key says one line per
+distinct **(part, value string, footprint)**.  JLCPCB matches a line to a part
+by its code, so two lines carrying one code are two lines matched to the same
+part: it refuses to guess, zeroes both quantities and waits for a human.
+
+A value string is a LABEL.  The code is the PART.  Group on the code:
+
+```python
+    by = collections.defaultdict(list)
+    for r in smt:
+        by[r["lcsc"]].append(r)
+    for lcsc, group in sorted(by.items()):
+        fps = sorted({g["fpshort"] for g in group})
+        if len(fps) > 1:
+            raise SystemExit("BOM: LCSC %s is used with %d different "
+                             "footprints (%s).  One code is one part, so "
+                             "this is a parts_map.py error, not something "
+                             "to merge." % (lcsc, len(fps), ", ".join(fps)))
+        vals = sorted({g["value"] for g in group}, key=lambda v: (-len(v), v))
+```
+
+Two things there are deliberate.  Differing **footprints** under one code
+raise rather than merge -- that would be a mapping error, and merging it would
+hide it.  Differing **value strings** merge, take the most specific label, and
+say so out loud rather than silently:
+
+```
+BOM: C17738 is one part drawn with 2 value strings ('51R 1%', '51R')
+     -- one line, labelled '51R 1%'
+```
+
+```
+-51R 1%,"R101,...,R1301",R_0805_2012Metric,C17738
+-51R,R3003,R_0805_2012Metric,C17738
++51R 1%,"R101,...,R1301,R3003",R_0805_2012Metric,C17738
+```
+
+37 lines, 37 distinct codes, 458 placements -- the same 458 the CPL has.
+
+### 32.2 The check that should have caught it before you saw it
+
+Fixing the generator is half of it.  The release now refuses to ship a BOM
+with a code on two lines, and `build.py` raises when the release check
+complains, so this cannot reach JLCPCB again:
+
+```
+    BOM has LCSC C17738 on two lines ('51R 1%' and '51R') -- JLCPCB will match
+    both to the same part, zero both quantities and ask a human to sort it out
+```
+
+Demonstrated rather than asserted: the fixed release passes the check, and the
+same release with that one row split back in two fails it.
+
+### 32.3 The same defect in the costing table, and what it was costing
+
+`annotated_bom.md` had C17738 twice as well -- `51R 1%` qty 13 and `51R`
+qty 1 -- so it asked the parts API the same question twice and rounded **two**
+lines up to a reel minimum instead of one:
+
+```
+-  parts $37.00 + est. fees $62.78 = $99.78   (20 basic, 18 extended, 458 joints)
++  parts $36.96 + est. fees $62.78 = $99.74   (19 basic, 18 extended, 458 joints)
+```
+
+Four cents, and 20 basic parts that were really 19.  Trivial in money and not
+trivial as a signal: the count of distinct parts is one of the numbers you
+check an order against.
+
+The hand-solder list deliberately still groups by value string, and there is
+now a comment saying so, because nobody uploads it: `10MHz IN`, `1pps IN`,
+`EXT HELPER IN` and `CLK1 OUT` are four useful rows for a person even though
+all four are C496549, one SMA jack.  C2337 is the same 1x40 header strip
+snapped to 1x01 and to 1x02, so it legitimately appears under two footprints
+too.  One-code-one-line is a rule about the file a machine matches.
+
+### 32.4 What to re-upload
+
+**The BOM only.**  Verified after the change, not assumed:
+
+```
+    every gerber, the drill file and the drill map   IDENTICAL
+    GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv             IDENTICAL
+    MANIFEST.txt                                    all hashes match
+    65 host tests pass
+```
+
+The board was never touched, so the gerbers you have already uploaded are
+still exactly right.  Replace `GPSDO-PYNQ-Z2_bom.csv` and leave the rest.

@@ -81,10 +81,23 @@ def gather(boards=1, refresh=False):
     groups = collections.defaultdict(list)
     for r in rows:
         if r["cls"] in ("smt", "tht"):
-            groups[(r["cls"], r["lcsc"], r["value"], r["fpshort"])].append(r)
+            # ROUND 32.  An SMT line is keyed on the PART, not on the value
+            # string -- the same rule, and the same reason, as make_bom.py:
+            # C17738 appeared here twice as well, once as `51R 1%` x13 and
+            # once as `51R` x1, which asks the parts API the same question
+            # twice and prices two lines that are one order.  The tht rows
+            # keep their value strings, because there they are labels for a
+            # person ("10MHz IN" vs "1pps IN", one SMA jack).
+            key = ((r["cls"], r["lcsc"], None, r["fpshort"])
+                   if r["cls"] == "smt" else
+                   (r["cls"], r["lcsc"], r["value"], r["fpshort"]))
+            groups[key].append(r)
     out = []
     for (cls, lcsc, value, fp), members in sorted(
             groups.items(), key=lambda kv: (kv[0][0], -len(kv[1]))):
+        if value is None:            # smt: label with the most specific string
+            value = sorted({m["value"] for m in members},
+                           key=lambda v: (-len(v), v))[0]
         need = len(members) * boards
         part, ts = jlc_api.by_code(lcsc, refresh=refresh)
         notes = []

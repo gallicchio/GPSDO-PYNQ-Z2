@@ -38,11 +38,25 @@ def check(outdir, rows, res):
     nop = {r["ref"] for r in rows if r["cls"] == "nopart"}
 
     bom_refs, cpl_refs = set(), set()
+    seen_lcsc = {}
     with open(res["bom"], encoding="utf-8") as f:
         for row in csv.DictReader(f):
             bom_refs |= {d.strip() for d in row["Designator"].split(",") if d.strip()}
-            if not row["LCSC"].strip():
+            code = row["LCSC"].strip()
+            if not code:
                 bad.append("BOM line %r has no LCSC code" % row["Comment"])
+            elif code in seen_lcsc:
+                # ROUND 32.  JLCPCB matches a BOM line to a part by its code,
+                # so the same code on two lines is "Multiple lines in the BOM
+                # have been matched to the same part": it zeroes both
+                # quantities and waits for someone to tick two boxes.  This
+                # shipped once, as C17738 on a `51R 1%` line and a `51R` line.
+                bad.append("BOM has LCSC %s on two lines (%r and %r) -- "
+                           "JLCPCB will match both to the same part, zero "
+                           "both quantities and ask a human to sort it out"
+                           % (code, seen_lcsc[code], row["Comment"]))
+            else:
+                seen_lcsc[code] = row["Comment"]
     with open(res["cpl"], encoding="utf-8") as f:
         for row in csv.DictReader(f):
             cpl_refs.add(row["Designator"].strip())
