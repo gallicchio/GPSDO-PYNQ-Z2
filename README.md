@@ -3,7 +3,7 @@
 A 13-channel Digital DMTD front end that plugs onto a PYNQ-Z2's Raspberry Pi
 40-pin header and compares thirteen GPSDOs' 10 MHz and 1 pps outputs at about
 12 ps single-shot resolution. This file is the design log and the tutorial:
-thirty-five rounds of prompts and answers, in order, including the mistakes
+thirty-six rounds of prompts and answers, in order, including the mistakes
 and what they cost. The board, the generator that draws it, the manufacturing
 release and the FPGA gateware are all in this directory.
 
@@ -11720,3 +11720,102 @@ model.
 And the prediction, so it is falsifiable: after the re-upload, **X3001's purple
 pin-1 dot should sit north-east**, on the new white dot.  If it does not, the
 correction is wrong again -- tell me rather than trusting me twice.
+
+
+## Prompt 36
+
+D003 is correct. D6001 is correct, but I think it's symmetric under 180 rotation, so it's not obvious which pin should go toward the filled-in bar. If it doesn't matter (and only 90 degree rotations could screw things up), consider it good. I flipped through all of the components and they all seem fine, including X3001. The only one I could not really confirm was R2001, which has a small checkerboard pattern rather than a component model (as in the screenshot).
+
+
+## Round 36
+
+**X3001 is confirmed on silicon-adjacent evidence at last**: your screenshot
+shows the purple pin-1 dot at the part's north-east corner, on the new white
+dot, which is where pad 1 is.  The +270 correction was right and round 34 was
+wrong.  That closes it.
+
+### 36.1 D6001 has no cathode, and the netlist says so
+
+Your instinct is right and it is better than "it probably does not matter" --
+the part is genuinely symmetric, and this is checkable rather than a judgement
+call:
+
+```
+  (node (ref "D6001") (pin "1") (pinfunction "A1") (pintype "passive"))
+  (node (ref "D6001") (pin "2") (pinfunction "A2") (pintype "passive"))
+```
+
+**A1 and A2.  Two anodes, no cathode.**  It is a `Device:D_TVS`, KiCad's
+*bidirectional* TVS symbol, carrying a PESD5V0S1BA, a bidirectional ESD
+clamp sitting across the 1-Wire line to ground.  Every other diode on the
+board is `1=K, 2=A`:
+
+| ref | value | pins | |
+|---|---|---|---|
+| D2001, D2002, D2004 | SS34 | 1=K, 2=A | polarised |
+| D2003 | 5.6V 5W Zener | 1=K, 2=A | polarised |
+| D2005 | SMAJ18A | 1=K, 2=A | polarised |
+| **D6001** | **PESD5V0S1BA** | **1=A1, 2=A2** | **symmetric** |
+
+So no multiple of 180 can be wrong on it, and you are right that only a 90
+would be -- which on a two-terminal part lands the pads crosswise and is
+impossible to miss.
+
+**This also means round 35 was wrong about it.**  35.3 said "the three diodes
+mark the CATHODE, which is pad 1" -- true for the SS34s and the Zener, and
+meaningless for D6001, whose silkscreen bar marks nothing at all.  My audit
+script printed `cathode/K` beside D6001's pad 1 because *I typed that string
+into the print statement*, not because anything checked it.  A label I
+invented, presented as evidence.  That is the same failure as round 34's
+transpose in a smaller hat.
+
+`FABRICATION_NOTES.txt` now derives the distinction instead of asserting it --
+any part whose pinfunctions are all `A<n>` is called out as orientation-free:
+
+```
+    ORIENTATION-FREE, ignore the pin-1 dot on these: D6001
+      their terminals are interchangeable (a bidirectional TVS: pins A1/A2,
+      no cathode), so no rotation of any multiple of 180 can be wrong.
+    79 polarised parts; the other 379 are unpolarised two-terminal passives.
+```
+
+Derived from the netlist, so swapping the part for a unidirectional one moves
+it back into the polarised list by itself.
+
+### 36.2 R2001's checkerboard is a missing picture, not a missing part
+
+```
+| C48997026 | CL2010FN560RB | 560R | 2010 | Extended | 24 | stock 3,284 |
+```
+
+That is one of the **24 heater resistors** -- 560R, 2010, the parts the `H`
+markers name.  A plain two-terminal resistor with no polarity, and the part is
+real and in stock.  The checkerboard is EasyEDA having no 2D model for
+`C48997026`: it is an Extended part, and Extended parts often have no drawn
+model, so the viewer falls back to a placeholder.
+
+Nothing to confirm, and nothing you *could* confirm: for a 560R chip resistor
+0 and 180 are the same component, and `R2001` is at 180 while `R2002` is at 0
+for no reason other than which way the tile was mirrored.  A 90 would be
+visible as a part sitting crosswise on its pads.
+
+It is already in the `JLC_ROTATION_NA` list -- the unpolarised two-terminal
+footprints where the question does not arise -- which is why it gets no
+rotation correction.
+
+### 36.3 State of the order
+
+```
+    every gerber, drill, drill map, both CPLs, the BOM   IDENTICAL to round 35
+    FABRICATION_NOTES.txt                               D6001 reclassified
+```
+
+Nothing to re-upload beyond what round 35 already asked for: the **gerbers**
+(they gained X3001's dot) and the **corrected CPL** (X3001 0 -> 180).  If
+those are already uploaded and the preview looks right, this round changes
+nothing you are holding.
+
+Confirmed in the preview by you, part by part: all 79 polarised parts
+including X3001, D2003 and every SOT-23.  That is the whole assembly checked
+against the thing that actually builds it, which is the first time that has
+been true on this board.

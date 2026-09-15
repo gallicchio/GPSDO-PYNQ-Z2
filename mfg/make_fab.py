@@ -185,6 +185,25 @@ POLARISED = ("SOT-23-5", "SOT-23-6", "SOT-223-3_TabPin2",
              "D_SMA", "D_SMB", "D_SOD-323")
 
 
+def symmetric_parts():
+    """Refs whose terminals are electrically interchangeable.
+
+    ROUND 36.  Jason noticed D6001 looks the same either way round in the
+    preview and asked whether it mattered.  It does not, and the netlist says
+    so without anyone having to know the part: a bidirectional TVS carries
+    pinfunctions A1/A2 -- two anodes, no cathode -- where a real diode carries
+    K and A.  Derived rather than listed, so a part swap cannot make this
+    stale.  Round 35 called all three diodes "cathode marked, pad 1", which
+    was right for the SS34s and the Zener and wrong for this one."""
+    src = open(os.path.join(HERE, "_netlist.net"), encoding="utf-8").read()
+    fns = collections.defaultdict(set)
+    for m in re.finditer(r'\(node \(ref "([^"]+)"\) \(pin "[^"]*"\)'
+                         r'\s*\(pinfunction "([^"]*)"\)', src):
+        fns[m.group(1)].add(m.group(2))
+    return {r for r, f in fns.items()
+            if len(f) > 1 and all(re.fullmatch(r"A\d+", x) for x in f)}
+
+
 def pin1_checklist():
     """Where the placement preview's pin-1 dot must land, part by part.
 
@@ -215,8 +234,17 @@ def pin1_checklist():
                 shown += " ... +%d more" % (len(refs) - 5)
             out.append("      rot %4d -> pin 1 %-11s x%-3d %s"
                        % (rot, corner, len(refs), shown))
+    sym = symmetric_parts()
+    hit = sorted(r["ref"] for r in rows if r["ref"] in sym)
+    if hit:
+        out.append("    ORIENTATION-FREE, ignore the pin-1 dot on these: %s"
+                   % ", ".join(hit))
+        out.append("      their terminals are interchangeable (a bidirectional"
+                   " TVS: pins A1/A2, no cathode), so no rotation of any"
+                   " multiple of 180 can be wrong.")
     out.append("    %d polarised parts; the other %d are unpolarised "
-               "two-terminal passives." % (len(rows), 458 - len(rows)))
+               "two-terminal passives." % (len(rows) - len(hit),
+                                           458 - len(rows) + len(hit)))
     return "\n".join(out)
 
 
@@ -342,8 +370,8 @@ PIN 1, PART BY PART  (round 35)
 %(pin1)s
   Every polarised footprint above carries a filled pin-1 triangle of its own
   EXCEPT the FT5H oscillator, which ships with none; round 35 prints a 0.8 mm
-  dot beside its pin 1.  The three diodes mark the CATHODE, which is pad 1,
-  as the closed end of the silkscreen outline.
+  dot beside its pin 1.  The SS34s, the Zener and the SMAJ18A mark the
+  CATHODE, which is pad 1, as the closed end of the silkscreen outline.
 
 FILES
   %(name)s_gerbers.zip ........ Gerber RS-274X + Excellon drill + drill map

@@ -130,11 +130,13 @@ PIN 1, PART BY PART  (round 35)
       rot  180 -> pin 1 south-east  x24  U201, U202, U203, U204, U401 ... +19 more
     SOT-23-6  (1)
       rot    0 -> pin 1 north-west  x1   U5009
-    80 polarised parts; the other 378 are unpolarised two-terminal passives.
+    ORIENTATION-FREE, ignore the pin-1 dot on these: D6001
+      their terminals are interchangeable (a bidirectional TVS: pins A1/A2, no cathode), so no rotation of any multiple of 180 can be wrong.
+    79 polarised parts; the other 379 are unpolarised two-terminal passives.
   Every polarised footprint above carries a filled pin-1 triangle of its own
   EXCEPT the FT5H oscillator, which ships with none; round 35 prints a 0.8 mm
-  dot beside its pin 1.  The three diodes mark the CATHODE, which is pad 1,
-  as the closed end of the silkscreen outline.
+  dot beside its pin 1.  The SS34s, the Zener and the SMAJ18A mark the
+  CATHODE, which is pad 1, as the closed end of the silkscreen outline.
 
 FILES
   GPSDO-PYNQ-Z2_gerbers.zip ........ Gerber RS-274X + Excellon drill + drill map
