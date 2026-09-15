@@ -21,3 +21,23 @@ mfg/jlc_cache.json
 *.r14
 
 # gateware/ has its own .gitignore for the Vivado project and build tree.
+
+# Ad-hoc kicad-cli reports written next to the board rather than into build/.
+# build.py puts its own DRC and ERC in build/ on every run; these are whatever
+# was left behind by a one-off command or by the GUI, they carry no date in
+# their name, and the ones sitting here in round 36 were from 2026-09-13 --
+# eight rounds stale and describing a board that no longer exists.  A stale
+# report that looks current is worse than no report.
+/*-drc.rpt
+/*-erc.rpt
+/filled-drc.rpt
+
+# Attachments generated FOR an LLM design review: board renders, sheet PDFs,
+# DRC dumps and a zone-filled copy of the board.  14 MB, all of it derived
+# from whatever the board was on the day, and design_review_Gemini3.8Flash/
+# and design_review_Grok4.6/ set the pattern -- the review's MARKDOWN is
+# tracked, and so is any code written by hand for it, but not the renders.
+design_review_*/*.png
+design_review_*/*.pdf
+design_review_*/drc-*.json
+design_review_*/filled.kicad_p*
