@@ -162,12 +162,62 @@ def pin1_corner(ref):
         if not pad:
             return ""
         px, py = float(pad.group(1)), float(pad.group(2))
-        bx, by = fx + px * ca + py * sa, fy - px * sa + py * ca
+        # ROUND 35: this was `fx + px*ca + py*sa, fy - px*sa + py*ca`, which
+        # is the transpose -- it mirrors every part placed at a non-zero
+        # rotation and agrees with the truth only at rot 0, so it read right
+        # on eight of ten parts and put U3001's and X3001's pad 1 in the
+        # opposite corner.  This is place.pads()' formula, the one the router
+        # uses, which KiCad's own DRC has validated at 0 unconnected items.
+        bx, by = fx + px * ca - py * sa, fy + px * sa + py * ca
         # file y grows DOWNWARD, so a bigger y is nearer the socket = south
         ns = "north" if by < fy - 0.05 else ("south" if by > fy + 0.05 else "")
         ew = "east" if bx > fx + 0.05 else ("west" if bx < fx - 0.05 else "")
         return "-".join(s for s in (ns, ew) if s) or "centre"
     return ""
+
+
+# The packages where getting pin 1 wrong is a fault rather than a cosmetic
+# complaint.  Everything else on this board is a two-terminal unpolarised
+# passive, where which way round it goes is not a question.
+POLARISED = ("SOT-23-5", "SOT-23-6", "SOT-223-3_TabPin2",
+             "SOIC-8_3.9x4.9mm_P1.27mm", "MSOP-10_3x3mm_P0.5mm",
+             "Oscillator_SMD_Fox_FT5H_5.0x3.2mm",
+             "D_SMA", "D_SMB", "D_SOD-323")
+
+
+def pin1_checklist():
+    """Where the placement preview's pin-1 dot must land, part by part.
+
+    ROUND 35.  "Confirm pin 1 in the preview" was an instruction nobody could
+    act on, because it never said what the right answer was -- which is how
+    X3001 got argued about for two rounds.  This is the answer, derived from
+    the board.
+
+    Grouped by footprint AND by board rotation, because they differ within one
+    BOM row: the 59 SOT-23-5s sit at four different rotations and so their pin
+    1 points four different ways.  The rotation CORRECTION is per footprint,
+    though, so confirming one part per footprint confirms the lot -- as long
+    as it is checked against its own rotation's row."""
+    rows = [r for r in bomdata.components()
+            if r["cls"] == "smt" and r["fpshort"] in POLARISED]
+    g = collections.defaultdict(lambda: collections.defaultdict(list))
+    for r in rows:
+        g[r["fpshort"]][(int(round(float(r["rot"]))), pin1_corner(r["ref"]))]\
+            .append(r["ref"])
+    out = []
+    for fp in sorted(g):
+        n = sum(len(v) for v in g[fp].values())
+        out.append("    %s  (%d)" % (fp, n))
+        for (rot, corner), refs in sorted(g[fp].items()):
+            refs = sorted(refs, key=lambda s: (len(s), s))
+            shown = ", ".join(refs[:5])
+            if len(refs) > 5:
+                shown += " ... +%d more" % (len(refs) - 5)
+            out.append("      rot %4d -> pin 1 %-11s x%-3d %s"
+                       % (rot, corner, len(refs), shown))
+    out.append("    %d polarised parts; the other %d are unpolarised "
+               "two-terminal passives." % (len(rows), 458 - len(rows)))
+    return "\n".join(out)
 
 
 def rotation_table():
@@ -284,6 +334,17 @@ ROTATION  (round 33)
   generator: the table is mfg/parts_map.py, JLC_ROTATION, keyed on the exact
   footprint name.
 
+PIN 1, PART BY PART  (round 35)
+  Where the preview's pin-1 dot must land.  North is the screw-terminal edge
+  of the board, south is the Raspberry Pi socket edge.  Every one of these is
+  computed from the board, and the same arithmetic has been checked against
+  KiCad's own pcbnew for all 458 placements.
+%(pin1)s
+  Every polarised footprint above carries a filled pin-1 triangle of its own
+  EXCEPT the FT5H oscillator, which ships with none; round 35 prints a 0.8 mm
+  dot beside its pin 1.  The three diodes mark the CATHODE, which is pad 1,
+  as the closed end of the silkscreen outline.
+
 FILES
   %(name)s_gerbers.zip ........ Gerber RS-274X + Excellon drill + drill map
   %(name)s_bom.csv ............ assembly BOM
@@ -302,7 +363,7 @@ FILES
            pd=", ".join("%.2f" % d for d in m["pad_drills"]),
            mpd=m["min_pad_drill_mm"], edge=m["smt_to_edge_mm"],
            edgeref=m["smt_to_edge_ref"], name=NAME, qty=boards,
-           rot=rotation_table()))
+           rot=rotation_table(), pin1=pin1_checklist()))
     return p
 
 

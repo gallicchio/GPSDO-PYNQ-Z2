@@ -3,7 +3,7 @@
 A 13-channel Digital DMTD front end that plugs onto a PYNQ-Z2's Raspberry Pi
 40-pin header and compares thirteen GPSDOs' 10 MHz and 1 pps outputs at about
 12 ps single-shot resolution. This file is the design log and the tutorial:
-thirty-four rounds of prompts and answers, in order, including the mistakes
+thirty-five rounds of prompts and answers, in order, including the mistakes
 and what they cost. The board, the generator that draws it, the manufacturing
 release and the FPGA gateware are all in this directory.
 
@@ -11470,6 +11470,12 @@ Everything looks good now except maybe X3001. With the corrected CPL, its pin 1 
 
 ## Round 34
 
+> **THIS ROUND'S CONCLUSION IS WRONG.  See 35.1.**  X3001 did need another 180
+> degrees.  Everything below rests on a rotation transform I wrote by hand and
+> did not check, which is transposed -- it mirrors any part placed at a
+> non-zero rotation.  It is left as written, because what it cost is the
+> point.
+
 **No extra 180.  The corrected CPL is right, and the preview you are looking at
 agrees with it.**  This one is settleable from the board file rather than by
 eye, which is lucky, because the thing being eyeballed is 0.45 mm across.
@@ -11567,3 +11573,150 @@ a cosmetic error.
 
 **Nothing to re-upload.**  X3001's corrected rotation is 0.0000, the same
 number round 33 generated.
+
+
+## Prompt 35
+
+The things I was calling "tails" are the bits that point up toward the 3 and right toward the FB
+
+It might be good to change the footprint of this part to include a big dot for pin 1. At least the final silkscreen should have it.
+
+While you are waiting, I'd like to be really sure that there are no other parts where this could happen. Double check that all of the dots or triangles are correct. When I go through the EasyEDA's orientation selection, I will click on each row one by one and check. I now know how to check diodes. Maybe X3001 was the last one that was difficult to check by eye, but make sure that around every package there is an obvious pin 1 dot or triangle on the silkscreen *and* that it actually corresponds to where EasyEDA will put the big purple dot.
+
+## Round 35
+
+### 35.1 I was wrong in round 34, and here is the line that did it
+
+You read the preview correctly twice and I talked you out of it once.  X3001
+needed the extra 180 degrees.
+
+Round 34 "proved" it did not, using a rotation I typed into a throwaway script:
+
+```python
+bx = fx + lx*ca + ly*sa;  by = fy - lx*sa + ly*ca      # mine
+bx = fx + lx*ca - ly*sa;  by = fy + lx*sa + ly*ca      # place.pads(), correct
+```
+
+Those rotate in opposite directions.  **They agree exactly at rot 0**, which is
+why the answer looked right on eight of the ten parts I checked -- and X3001
+and U3001 are the only two on this board placed at -90.  I built a check that
+was blind in precisely the place I was pointing it.
+
+`pcbnew`, which is the authority and which I should have used first:
+
+```
+X3001 origin (103.300, 40.000) rot -90
+  pad 1  (105.350, 38.750)  north-east   net GND
+  pad 2  (101.250, 38.750)  north-west   net GND
+  pad 3  (101.250, 41.250)  south-west   net Net-(X3001-OUT)
+  pad 4  (105.350, 41.250)  south-east   net Net-(X3001-VDD)
+```
+
+Pad 1 is **north-east**.  So the two marks you identified are its real pin-1
+tails and they point at the right corner -- `(104.30,38.30)-(104.30,37.85)`
+going north toward the "3", and `(105.90,39.65)-(106.40,39.65)` going east
+toward the FB.  Round 34's claim that they were "just the body outline" was
+the transpose talking.  Your preview put pin 1 south-west; our pad 1 is
+north-east; 180 out.
+
+`Oscillator_SMD_Fox_FT5H_5.0x3.2mm` goes from **+90 to +270**, so X3001's
+corrected rotation is 180 rather than 0.  `pin1_corner()` was rebuilt on
+`place.pads()`' formula -- the one the router uses and KiCad's own DRC has
+validated at 0 unconnected items -- and now agrees with `pcbnew` on **all 458
+placements**, not the ten I spot-checked last time.
+
+Had you taken round 34's advice, X3001 would have been assembled with its
+25 MHz output and +3V3 on the two GND pads.
+
+### 35.2 The dot
+
+X3001 is the only part on this board with no pin-1 mark of any kind.  Every
+other polarised package carries a filled triangle.  So this is one part, not a
+policy:
+
+```
+    SILK: pin-1 dot for X3001 at (106.27, 37.25)
+```
+
+0.8 mm, filled, 1.76 mm from pad 1, north-east, just outside the courtyard.
+It is placed by the silkscreen pass rather than baked into the footprint, so
+it dodges pads like everything else does.  The first attempt found no room at
+all, because I had it avoiding tented vias; prose silk has ignored vias since
+round 29 for exactly this reason, and 0.8 mm of ink over a tented via DRCs
+clean.
+
+### 35.3 The audit: every polarised package on the board
+
+Done with `pcbnew` as ground truth, not with my own arithmetic.  For each
+footprint: is there a filled marker on the silkscreen, and what is the angle
+between (marker - origin) and (pad 1 - origin)?
+
+| footprint | x | mark | angle from pad 1 |
+|---|---|---|---|
+| `SOT-23-5` | 59 | filled triangle | 10.2 deg |
+| `SOT-23-6` | 1 | filled triangle | 10.2 deg |
+| `SOT-223-3_TabPin2` | 3 | filled triangle | 11.9 deg |
+| `SOIC-8_3.9x4.9mm` | 9 | filled triangle | 8.4 deg |
+| `MSOP-10_3x3mm` | 1 | filled triangle | 12.2 deg |
+| `Oscillator_Fox_FT5H` | 1 | **none** -- 0.45 mm stubs at 24 deg | dot added, 35.2 |
+| `D_SMA` / `D_SMB` / `D_SOD-323` | 6 | cathode bar | see below |
+
+The diodes mark the cathode, which is pad 1, as the closed end of the outline.
+Checked in the footprint's own frame so the placement rotation cannot flatter
+it:
+
+| diode | pad 1 (cathode) local | silk bar local | |
+|---|---|---|---|
+| D2001 `D_SMA` | (+2.00, 0) | x = +3.51, 3.30 mm | same side |
+| D2003 `D_SMB` | (-2.15, 0) | x = -3.66, 4.30 mm | same side |
+| D6001 `D_SOD-323` | (-1.05, 0) | x = -1.61, 1.70 mm | same side |
+
+80 polarised parts.  The other 378 are unpolarised two-terminal passives.
+**X3001 was the last difficult one.**
+
+### 35.4 The checklist, in the fab notes, generated
+
+"Confirm pin 1 in the preview" was never an instruction anyone could act on,
+because it never said what the right answer was.  That is what cost rounds 33,
+34 and 35.  `FABRICATION_NOTES.txt` now carries the answer, derived:
+
+```
+PIN 1, PART BY PART  (round 35)
+    SOT-23-5  (59)
+      rot  -90 -> pin 1 north-east  x6   U3002, U3003, U3004, U3005, U3006 ...
+      rot    0 -> pin 1 north-west  x27  U101, U102, U103, U104, U301 ...
+      rot   90 -> pin 1 south-west  x2   U2001, U2002
+      rot  180 -> pin 1 south-east  x24  U201, U202, U203, U204, U401 ...
+    Oscillator_SMD_Fox_FT5H_5.0x3.2mm  (1)
+      rot  -90 -> pin 1 north-east  x1   X3001
+```
+
+Grouped by footprint **and by rotation**, because they differ inside one BOM
+row: the 59 SOT-23-5s sit at four rotations and their pin 1 points four ways.
+The rotation correction is per footprint, so one part per footprint confirms
+the lot -- checked against its own rotation's line.
+
+Two parts have never been seen in a preview at all: **D2003** (`D_SMB`, pin 1
+east) and **D6001** (`D_SOD-323`, pin 1 west).  Their silkscreen is right and
+they take no correction, but nobody has confirmed that against EasyEDA's part
+model.
+
+### 35.5 What changed, and what to re-upload
+
+```
+    every copper layer, mask, paste, Edge.Cuts, drill, drill map   IDENTICAL
+    segments 1964 sha1 4e8e0537eef8   vias 595 sha1 38b5e1263701   IDENTICAL
+    GPSDO-PYNQ-Z2_bom.csv, GPSDO-PYNQ-Z2_cpl.csv (native)          IDENTICAL
+    F_Silkscreen.gbr                        the pin-1 dot
+    GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv     X3001 0 -> 180
+    assembly PDFs, FABRICATION_NOTES.txt    the dot and the checklist
+    poured DRC 0 violations, 0 unconnected;  ERC 0;  65 tests pass
+```
+
+**Re-upload the gerbers AND the corrected CPL.**  This is the first round since
+28 that changes the board, so the gerbers already uploaded are stale by one
+0.8 mm dot.
+
+And the prediction, so it is falsifiable: after the re-upload, **X3001's purple
+pin-1 dot should sit north-east**, on the new white dot.  If it does not, the
+correction is wrong again -- tell me rather than trusting me twice.

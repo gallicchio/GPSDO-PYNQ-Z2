@@ -72,12 +72,13 @@ ROTATION  (round 33)
   rebuilt them from YOUR OWN placement preview, which is the only authority,
   and two of the five were wrong -- one of them on 59 parts:
     MSOP-10_3x3mm_P0.5mm                 +270  x1    U3001
-        on U3001, pad 1 is at the south-west corner of its own body
+        on U3001, pad 1 is at the north-east corner of its own body
         pin 1 dot
-    Oscillator_SMD_Fox_FT5H_5.0x3.2mm     +90  x1    X3001
-        on X3001, pad 1 is at the south-west corner of its own body
-        pin 1 corner -- the footprint's marker is two 0.45 mm stubs and is
-        hard to read; use the assembly drawing
+    Oscillator_SMD_Fox_FT5H_5.0x3.2mm    +270  x1    X3001
+        on X3001, pad 1 is at the north-east corner of its own body
+        pin 1 is the NORTH-EAST pad; a 0.8 mm dot is printed beside it
+        from round 35, because this footprint ships with no pin-1 mark of
+        its own
     SOIC-8_3.9x4.9mm_P1.27mm             +270  x9    U5001, U6001
         on U5001, pad 1 is at the north-west corner of its own body
         pin 1 dot
@@ -100,6 +101,40 @@ ROTATION  (round 33)
   If a preview still disagrees, upload the native file instead and tell the
   generator: the table is mfg/parts_map.py, JLC_ROTATION, keyed on the exact
   footprint name.
+
+PIN 1, PART BY PART  (round 35)
+  Where the preview's pin-1 dot must land.  North is the screw-terminal edge
+  of the board, south is the Raspberry Pi socket edge.  Every one of these is
+  computed from the board, and the same arithmetic has been checked against
+  KiCad's own pcbnew for all 458 placements.
+    D_SMA  (4)
+      rot  -90 -> pin 1 north       x3   D2002, D2004, D2005
+      rot   90 -> pin 1 south       x1   D2001
+    D_SMB  (1)
+      rot  180 -> pin 1 east        x1   D2003
+    D_SOD-323  (1)
+      rot    0 -> pin 1 west        x1   D6001
+    MSOP-10_3x3mm_P0.5mm  (1)
+      rot  -90 -> pin 1 north-east  x1   U3001
+    Oscillator_SMD_Fox_FT5H_5.0x3.2mm  (1)
+      rot  -90 -> pin 1 north-east  x1   X3001
+    SOIC-8_3.9x4.9mm_P1.27mm  (9)
+      rot    0 -> pin 1 north-west  x6   U5001, U5003, U5005, U5007, U5008 ... +1 more
+      rot  180 -> pin 1 south-east  x3   U5002, U5004, U5006
+    SOT-223-3_TabPin2  (3)
+      rot    0 -> pin 1 north-west  x3   Q2001, Q2002, Q2003
+    SOT-23-5  (59)
+      rot  -90 -> pin 1 north-east  x6   U3002, U3003, U3004, U3005, U3006 ... +1 more
+      rot    0 -> pin 1 north-west  x27  U101, U102, U103, U104, U301 ... +22 more
+      rot   90 -> pin 1 south-west  x2   U2001, U2002
+      rot  180 -> pin 1 south-east  x24  U201, U202, U203, U204, U401 ... +19 more
+    SOT-23-6  (1)
+      rot    0 -> pin 1 north-west  x1   U5009
+    80 polarised parts; the other 378 are unpolarised two-terminal passives.
+  Every polarised footprint above carries a filled pin-1 triangle of its own
+  EXCEPT the FT5H oscillator, which ships with none; round 35 prints a 0.8 mm
+  dot beside its pin 1.  The three diodes mark the CATHODE, which is pad 1,
+  as the closed end of the silkscreen outline.
 
 FILES
   GPSDO-PYNQ-Z2_gerbers.zip ........ Gerber RS-274X + Excellon drill + drill map

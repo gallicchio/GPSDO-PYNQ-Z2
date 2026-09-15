@@ -174,11 +174,18 @@ JLC_ROTATION = {
                                           "tab = drain, the wide pad"),
     "SOIC-8_3.9x4.9mm_P1.27mm":          (270, "U5001, U6001", "pin 1 dot"),
     "MSOP-10_3x3mm_P0.5mm":              (270, "U3001", "pin 1 dot"),
-    "Oscillator_SMD_Fox_FT5H_5.0x3.2mm": (90,  "X3001",
-                                          "pin 1 corner -- the footprint's "
-                                          "marker is two 0.45 mm stubs and is "
-                                          "hard to read; use the assembly "
-                                          "drawing"),
+    # ROUND 35.  Was 90.  Round 34 said this was already right, on the
+    # strength of a hand-written rotation that turned out to be transposed --
+    # it put pad 1 south-west when KiCad puts it north-east.  Jason read the
+    # preview correctly twice and I talked him out of it once.  pcbnew is the
+    # authority now: X3001 pad 1 is at (105.350, 38.750), north-east, and the
+    # preview showed pin 1 south-west, so it was 180 out.
+    "Oscillator_SMD_Fox_FT5H_5.0x3.2mm": (270, "X3001",
+                                          "pin 1 is the NORTH-EAST pad; a "
+                                          "0.8 mm dot is printed beside it "
+                                          "from round 35, because this "
+                                          "footprint ships with no pin-1 "
+                                          "mark of its own"),
 }
 
 # Looked at in the same preview and needing NO correction.  Listed rather than

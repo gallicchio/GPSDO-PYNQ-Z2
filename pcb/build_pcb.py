@@ -2817,6 +2817,59 @@ def build():
         part_text(r, dx, dy, L, sz, 0.26, rmax=2.2,
                   alts=((dy, -dx), (-dy, dx)))
 
+    # ---- a pin-1 dot where the footprint forgot one ------------------------
+    # ROUND 35.  Every other package on this board marks pin 1 with a filled
+    # triangle -- SOT-23-5, SOT-23-6, SOT-223, SOIC-8 and MSOP-10 all carry
+    # one.  KiCad's Oscillator_SMD_Fox_FT5H_5.0x3.2mm carries NONE.  What it
+    # has instead is an outline drawn as four disconnected stubs, and the two
+    # nearest the NORTH-EAST corner (a 2.2 mm north edge and a 0.7 mm east
+    # cap) look far more like a right-angle pin-1 bracket than the two real
+    # pin-1 tails do, which are 0.45 and 0.50 mm and sit at the SOUTH-WEST.
+    #
+    # That cost two rounds of "does X3001 need another 180 degrees?" against
+    # a part where 180 degrees out puts the 25 MHz output and +3V3 onto the
+    # two GND pads.  A 0.8 mm filled dot outside the courtyard, beside pad 1,
+    # costs nothing and ends the question.
+    for _r in sorted(placed):
+        if _r not in fpof or _r not in vals:
+            continue
+        _dd, _nm = fpof[_r]
+        if "FT5H" not in _nm:
+            continue
+        _px, _py, _prot = placed[_r]
+        _p1 = [q for q in P.pads(_dd, _nm, _px, _py, _prot) if q[0] == "1"]
+        if not _p1:
+            continue
+        _ax, _ay = _p1[0][1], _p1[0][2]
+        # Outward from the part centre, through pad 1, past the courtyard --
+        # then along each axis, then a small spiral.  Vias do not count: the
+        # dot is 0.8 mm of ink over a tented via, which round 29 established
+        # DRCs clean, and insisting on via-free ink is what left this with no
+        # room at all on the first try.
+        _vx, _vy = _ax - _px, _ay - _py
+        _l = _m.hypot(_vx, _vy) or 1.0
+        _ux, _uy = _vx / _l, _vy / _l
+        _cands = [(_px + _ux * (_l + _d), _py + _uy * (_l + _d))
+                  for _d in (1.55, 1.9, 2.25)]
+        _cands += [(_ax + _ux * 1.6, _ay), (_ax, _ay + _uy * 1.6),
+                   (_ax + _ux * 2.1, _ay), (_ax, _ay + _uy * 2.1)]
+        _cands = [(x + dx, y + dy) for x, y in _cands
+                  for dx, dy in spiral(0.4, 1.2)]
+        for _cx, _cy in _cands:
+            if not blocked((_cx - 0.5, _cy - 0.5, _cx + 0.5, _cy + 0.5),
+                           kinds=PROSE):
+                out.append(gr("gr_circle", A("center", _cx, _cy),
+                              A("end", _cx + 0.4, _cy),
+                              A("stroke", A("width", 0.16), A("type", "solid")),
+                              A("fill", "yes"), A("layer", S("F.SilkS")),
+                              A("uuid", S(uid("p1dot", _r)))))
+                obstruct((_cx - 0.45, _cy - 0.45, _cx + 0.45, _cy + 0.45))
+                sys.stderr.write("SILK: pin-1 dot for %s at (%.2f, %.2f)\n"
+                                 % (_r, _cx, _cy))
+                break
+        else:
+            sys.stderr.write("SILK: NO ROOM for a pin-1 dot on %s\n" % _r)
+
     # ---- H on every heater, T on every thermometer -------------------------
     # Both derived from the placement, in the part's own frame, so an `H`
     # cannot end up beside a different heater -- or, as round 28's board had
