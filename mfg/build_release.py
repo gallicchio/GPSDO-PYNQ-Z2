@@ -9,13 +9,20 @@ part leaked into the placement file, that every designator in the BOM is also
 in the CPL, that the Gerber set is complete, and that the board the Gerbers
 came from is the same board the BOM was read from.  All of that is asserted
 here, and a non-zero exit means do not upload.
+
+Exit 3 is a DRAFT: the files agree, but the revision has no order date yet
+(gen/design.py DATE), so it is not the thing to upload.  build.py accepts it.
 """
-import os, sys, zipfile, csv, subprocess, datetime, hashlib
+import os, re, sys, zipfile, csv, subprocess, datetime, hashlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(ROOT, "gen"))
 import bomdata, make_bom, make_fab, annotate_bom       # noqa: E402
+import design as D                                     # noqa: E402
+
+DRAFT = 3
 
 NEEDED_GERBERS = ["F_Cu", "In1_Cu", "In2_Cu", "B_Cu", "F_Paste", "B_Paste",
                   "F_Silkscreen", "B_Silkscreen", "F_Mask", "B_Mask",
@@ -88,7 +95,30 @@ def check(outdir, rows, res):
     if bottom:
         bad.append("FABRICATION_NOTES says top-side assembly only, but these "
                    "SMT parts are on the bottom: %s" % bottom[:8])
+
+    # ROUND 42.  A dated revision must be the board that prints that
+    # revision and date; one set in gen/design.py after the board was last
+    # built would ship the old silkscreen.
+    if not undated():
+        pcb = open(bomdata.PCB, encoding="utf-8").read()
+        for what, pat in (("rev %s" % D.REV, r"\brev %s" % re.escape(D.REV)),
+                          (D.DATE, re.escape(D.DATE))):
+            if not re.search(r'gr_text "[^"]*%s"' % pat, pcb):
+                bad.append("the board's silkscreen does not print %r: it was "
+                           "built before gen/design.py said so; rebuild it" % what)
     return bad
+
+
+def undated():
+    """Why this revision is not yet for upload, or '' if it is.
+
+    Round 42: rev A is locked (git tag GPSDO-PYNQ-Z2-revA) and the work since
+    is rev B, which is locked on the day it is ordered, by giving it that
+    date.  Until then a release is a draft, however well its files agree."""
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", D.DATE):
+        return ""
+    return ("rev %s is not dated (gen/design.py DATE = %r); set DATE to the "
+            "order date, rebuild, and it becomes uploadable" % (D.REV, D.DATE))
 
 
 def main():
@@ -119,14 +149,20 @@ def main():
 
     print("\nchecks")
     bad = check(outdir, rows, res)
+    draft = undated()
     for b in bad:
         print("  FAIL  %s" % b)
     if not bad:
         print("  BOM, CPL, Gerbers and the board all agree; nothing to query.")
+    if draft:
+        print("  DRAFT  %s" % draft)
 
     man = os.path.join(outdir, "MANIFEST.txt")
     with open(man, "w", encoding="utf-8") as f:
-        f.write("GPSDO DDMTD front end -- manufacturing release\n")
+        if draft:
+            f.write("DRAFT -- NOT FOR UPLOAD: %s\n\n" % draft)
+        f.write("GPSDO DDMTD front end -- manufacturing release, rev %s, %s\n"
+                % (D.REV, D.DATE))
         f.write("generated %s for %d board(s)\n\n"
                 % (datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
                    boards))
@@ -145,7 +181,9 @@ def main():
     print("  BOM   ...... GPSDO-PYNQ-Z2_bom.csv")
     print("  CPL   ...... GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv  (see FABRICATION_NOTES: ROTATION)")
     print("  and read FABRICATION_NOTES.txt into the order notes.")
-    return 1 if bad else 0
+    if draft and not bad:
+        print("\nDRAFT: do not upload this one -- rev %s is not dated yet." % D.REV)
+    return 1 if bad else (DRAFT if draft else 0)
 
 
 if __name__ == "__main__":

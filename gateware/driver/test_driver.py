@@ -20,7 +20,8 @@ from driver import (                                    # noqa: E402
     REG_ALIVE, REG_CHAN0, CHAN_STRIDE, OFF_TS_LO, OFF_TS_HI, OFF_COUNT,
     REG_LIVE_PS_LO, REG_LIVE_PS_HI, REG_PSCHAN0,
 )
-from driver.dmtd import HELPER_TICK_CYCLES, resolve_cycles   # noqa: E402
+from driver.dmtd import (HELPER_TICK_CYCLES, resolve_cycles,   # noqa: E402
+                         classify_beat_rate, count_slips)
 
 
 class FakeDevice(DmtdRegisters):
@@ -38,6 +39,7 @@ class FakeDevice(DmtdRegisters):
         }
         self.ps_clk_hz = ps_hz
         self.tear = 0            # number of reads still to be corrupted
+        self.spin = set()        # slots whose count moves on EVERY read of it
         self.writes = []
         for slot in range(32):
             for base in (REG_CHAN0, REG_PSCHAN0):
@@ -69,6 +71,12 @@ class FakeDevice(DmtdRegisters):
 
     def read(self, off):
         v = self.regs[off]
+        for slot in self.spin:
+            # An unplugged squarer oscillating at ~0.57 MHz (round 39): the
+            # count has moved on by the time anything reads it again.
+            for base in (REG_CHAN0, REG_PSCHAN0):
+                if off == base + slot * CHAN_STRIDE + OFF_COUNT:
+                    self.regs[off] += 3
         if self.tear:
             # Emulate the helper domain updating between two of our reads:
             # bump the count and the low word, exactly as real hardware would.
@@ -299,6 +307,112 @@ class TestRegisterSemantics(unittest.TestCase):
     def test_settle_helper_gives_up_on_a_dead_helper(self):
         self.d.regs[REG_HELPER] = 0
         self.assertEqual(self.d.settle_helper(timeout=0.3), 0.0)
+
+    @staticmethod
+    def _pairs(n, helper_hz=F_HELPER * (1 + 6.2e-6), steps=()):
+        """(helper, ps) pairs every 1024 helper cycles, the way the pair
+        register latches them, with the PS side quantised to whole ticks and
+        `steps` = {interval index: extra PS ticks} added on top."""
+        H, P, extra = [], [], 0.0
+        steps = dict(steps)
+        for i in range(n):
+            extra += steps.get(i, 0.0)
+            H.append(i * 1024)
+            P.append(int(round(i * 1024 * 100e6 / helper_hz + extra)))
+        return H, P
+
+    def test_a_clean_helper_has_no_slips(self):
+        self.assertEqual(count_slips(*self._pairs(5000)), (0, 0))
+
+    def test_reference_cycle_slips_are_counted(self):
+        """ROUND 39: 40 ns steps, mostly gaining, the way fractional PLLA
+        behaved with CLK0 at 8 mA; a double step counts twice."""
+        H, P = self._pairs(5000, steps={100: -4, 900: -4, 1500: +4, 3000: -8})
+        self.assertEqual(count_slips(H, P), (5, 0))
+
+    def test_a_whole_helper_period_is_not_a_reference_slip(self):
+        H, P = self._pairs(5000, steps={2000: -10})    # an extra edge at the pin
+        self.assertEqual(count_slips(H, P), (0, 1))
+
+    def test_missed_refreshes_do_not_look_like_slips(self):
+        H, P = self._pairs(5000)
+        keep = [i for i in range(len(H)) if i % 7 != 3]  # Python misses some pairs
+        self.assertEqual(count_slips([H[i] for i in keep], [P[i] for i in keep]), (0, 0))
+
+    def test_the_rate_on_a_beat_slot_is_classified(self):
+        self.assertEqual(classify_beat_rate(0.0)[0], 'quiet')
+        self.assertEqual(classify_beat_rate(F_BEAT)[0], 'beat')
+        self.assertEqual(classify_beat_rate(F_BEAT + 25.0)[0], 'beat')   # a 2.5 ppm TCXO
+        self.assertEqual(classify_beat_rate(570e3)[0], 'fast')           # round 39
+        self.assertEqual(classify_beat_rate(5400.0)[0], 'chatter')       # round 39, a generator
+        self.assertEqual(classify_beat_rate(300.0)[0], 'slow')
+
+    def test_a_chattering_beat_on_an_expected_channel_is_not_a_failure(self):
+        """ROUND 39: a real beat whose edges chatter reads 4-6 rising edges
+        per period, and the count alone cannot tell it from an unplugged
+        squarer chattering -- so it is reported, not failed."""
+        counts = dict((n, 0) for n in range(N_BEAT))
+        counts[0] = int(round(5400 * 0.05))
+        res = self._selftest_with(counts, inputs={0})
+        ok, detail = [v for k, v in res.items() if k.startswith('beat  0')][0]
+        self.assertIsNone(ok)
+        self.assertIn('chatter', detail)
+
+    def test_an_oscillating_unplugged_channel_does_not_sink_the_snapshot(self):
+        """ROUND 39, first board: five unplugged squarers oscillated at
+        ~0.57 MHz, channel() could never read one consistently, and the
+        exception it raised killed the selftest -- and would have killed
+        every snapshot() of an instrument with one cable out."""
+        for n in range(N_BEAT):
+            self.d.set_channel(n, 100 * n, 7)
+        self.d.spin = {2}
+        with self.assertRaises(RuntimeError):
+            self.d.channel(2)                  # channel() itself still refuses
+        snap = self.d.snapshot()
+        self.assertIsNone(snap['beat_ts'][2])
+        self.assertGreater(snap['beat_count'][2], 7)   # the count is still there
+        self.assertEqual(snap['beat_ts'][5], 500)      # and nobody else is hurt
+        ph = self.d.phases_ps(snap=snap)
+        self.assertIsNone(ph[2])
+        self.assertIsNotNone(ph[5])
+
+    def test_phases_are_all_none_when_the_reference_is_unreadable(self):
+        self.d.spin = {NULL_CHANNEL}
+        ph = self.d.phases_ps()
+        self.assertTrue(all(p is None for p in ph))
+
+    def _selftest_with(self, counts, **kw):
+        settle = 0.05
+        for n, c in counts.items():
+            self.d.set_channel(n, 0, c)
+        return {name: (ok, detail) for name, ok, detail in
+                self.d.selftest(settle=settle, verbose=False, **kw)}
+
+    def test_selftest_describes_unplugged_channels_without_failing_them(self):
+        beat = int(round(F_BEAT * 0.05))
+        counts = dict((n, 0) for n in range(N_BEAT))
+        counts[0] = int(570e3 * 0.05)          # oscillating squarer, no cable
+        counts[NULL_CHANNEL] = beat            # HO cabled to unit 13
+        res = self._selftest_with(counts, inputs={NULL_CHANNEL})
+        beats = dict((k, v) for k, v in res.items() if k.startswith('beat'))
+        null = [v for k, v in beats.items() if k.startswith('beat 12')][0]
+        osc = [v for k, v in beats.items() if k.startswith('beat  0')][0]
+        self.assertTrue(null[0])
+        self.assertIsNone(osc[0])
+        self.assertIn('oscillating', osc[1])
+        self.assertFalse([k for k, v in beats.items() if v[0] is False])
+
+    def test_selftest_fails_a_channel_that_should_have_a_source(self):
+        counts = dict((n, 0) for n in range(N_BEAT))
+        res = self._selftest_with(counts, inputs={3})
+        failed = [k for k, v in res.items() if k.startswith('beat') and v[0] is False]
+        self.assertEqual(len(failed), 1)
+        self.assertTrue(failed[0].startswith('beat  3'))
+
+    def test_selftest_survives_a_channel_it_cannot_read_consistently(self):
+        self.d.spin = {0, 7}
+        res = self.d.selftest(settle=0.05, verbose=False, inputs=set())
+        self.assertTrue(any(name.startswith('beat  0') for name, _, _ in res))
 
     def test_selftest_notices_a_helper_on_the_wrong_frequency(self):
         # 10.000000 MHz instead of 10.0012344: the Si5351 programmed wrong,

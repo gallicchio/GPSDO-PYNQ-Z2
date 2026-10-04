@@ -70,9 +70,9 @@ class Step:
         print("    [%5.1fs] %s" % (time.time() - self.t0, msg), flush=True)
 
 
-def run(args, **kw):
+def run(args, ok=(0,), **kw):
     r = subprocess.run(args, capture_output=True, text=True, cwd=ROOT, **kw)
-    if r.returncode:
+    if r.returncode not in ok:
         sys.stderr.write(r.stdout + r.stderr)
         raise SystemExit("FAILED: %s" % " ".join(str(a) for a in args[:4]))
     return r.stdout + r.stderr
@@ -148,8 +148,14 @@ def main():
     keep = [l for l in o.splitlines()
             if any(k in l for k in ("placed", "routed", "multi-terminal:",
                                     "courtyard", "bonded", "FAILED",
-                                    "silkscreen:", "look split", "SILK:",
+                                    "silkscreen:", "silkscreen boxes:",
+                                    "look split", "SILK:",
                                     "two-point pass left", "dropped"))]
+    # Round 41: every unit-tile part and designator inside its own silkscreen
+    # box, checked again on the file actually written (build_pcb.py already
+    # refuses to write one that fails; this reads it back independently).
+    keep.append(run([sys.executable, "pcb/check_silk_boxes.py",
+                     os.path.join(ROOT, NAME + ".kicad_pcb")]).strip().splitlines()[-1])
     s.done("\n    ".join(l.strip() for l in keep))
 
     if not a.no_drc:
@@ -225,9 +231,12 @@ def main():
 
     if not a.no_release:
         s = Step("6/7  manufacturing release  <- mfg/")
-        o = run([sys.executable, "mfg/build_release.py", str(a.boards)])
+        # exit 3: a DRAFT -- the files agree but the revision is not dated
+        # yet (round 42: rev B until it is ordered), so carry on to step 7
+        o = run([sys.executable, "mfg/build_release.py", str(a.boards)], ok=(0, 3))
         keep = [l for l in o.splitlines()
-                if any(k in l for k in ("parts $", "agree", "FAIL", "components:"))]
+                if any(k in l for k in ("parts $", "agree", "FAIL", "DRAFT",
+                                        "components:"))]
         s.done("\n    ".join(l.strip() for l in keep))
 
     s = Step("7/7  HANDBOOK.md  <- gen/handbook.py")

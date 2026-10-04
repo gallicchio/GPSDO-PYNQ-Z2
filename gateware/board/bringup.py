@@ -4,6 +4,7 @@
     ./pynq-run bringup.py              # everything below
     ./pynq-run bringup.py --scan       # just list who answers on the bus
     ./pynq-run bringup.py --no-si5351  # skip programming the synthesiser
+    ./pynq-run bringup.py --no-heater --inputs 13   # handbook step 5: HO -> 13
 
 Order, and why it is the order:
 
@@ -21,6 +22,12 @@ With NO board on the header (which is how round 28 tested this), every
 device is absent: the scan is empty, steps 2-5 report 'absent' and step 6
 reports a dead helper.  That is a pass for the software path, not for the
 board.
+
+--inputs names the units (1..13, as printed beside the SMAs) that have a
+10 MHz source plugged in; those must show a beat.  The default is none,
+which is the board at handbook step 3: every unplugged channel is then
+measured and described -- quiet, or its squarer oscillating by itself at
+~0.57 MHz (round 39) -- but not counted as a failure.
 """
 import argparse
 import os
@@ -34,12 +41,28 @@ import driver                                          # noqa: E402,F401
 from driver import attach, F_HELPER, F_BEAT, UNIT_NAMES  # noqa: E402
 from driver.i2c_devices import (                       # noqa: E402
     PynqBus, scan, EXPECTED_DEVICES, Si5351, Si5351Config, TMP1075,
-    read_all_thermometers, MCP4725, Heater, DS2482, DS18B20,
+    read_all_thermometers, MCP4725, Heater, DS2482, DS18B20, IDRV_HELPER, IDRV_NULL,
 )
 
 
 def hdr(s):
     print('\n=== %s ===' % s)
+
+
+def parse_units(text):
+    """'none' | 'all' | '1,2,13' (unit numbers as on the silkscreen) ->
+    the set of beat CHANNELS (unit - 1) that should carry a beat."""
+    text = text.strip().lower()
+    if text == 'none':
+        return set()
+    if text == 'all':
+        return set(range(len(UNIT_NAMES)))
+    units = set(int(u) for u in text.split(',') if u.strip())
+    bad = sorted(u for u in units if not 1 <= u <= len(UNIT_NAMES))
+    if bad:
+        raise argparse.ArgumentTypeError('no unit %s: units are 1..%d'
+                                         % (bad, len(UNIT_NAMES)))
+    return set(u - 1 for u in units)
 
 
 def main():
@@ -54,6 +77,10 @@ def main():
                          "1234.4 Hz beat this instrument is built on")
     ap.add_argument('--no-heater', action='store_true',
                     help='do not touch the DAC (only if it has been made safe before)')
+    ap.add_argument('--inputs', type=parse_units, default=set(),
+                    help="units with a 10 MHz source plugged in, as printed "
+                         "beside the SMAs: 'none' (the default), 'all', or a "
+                         "list such as 13 or 1,2,13.  Those must show a beat")
     ap.add_argument('--bit', default=os.path.join(HERE, 'dmtd_top.bit'))
     a = ap.parse_args()
 
@@ -110,6 +137,8 @@ def main():
                                '%.4f Hz  -- %s, a bench witness; CLK1 and CLK2 '
                                'are then %.1f Hz apart'
                                % (f2, a.clk2, abs(f2 - f1))))
+        print('    drive: CLK0 (helper) %d mA, CLK1 (null, HO) %d mA'
+              % (2 * (IDRV_HELPER + 1), 2 * (IDRV_NULL + 1)))
         chip.program(cfg)
         bad = chip.verify(cfg)
         print('    readback: %s' % ('all %d registers agree' % len(cfg.registers())
@@ -119,6 +148,27 @@ def main():
             time.sleep(0.02)
         print('    status after :', chip.status,
               'LOCKED' if chip.lock_status() else 'NOT LOCKED')
+        # ROUND 39.  "Locked" is not enough: with CLK0 at 8 mA the first board's
+        # PLLA cycle-slipped ~650 times a second while LOL stayed clear, and
+        # whether a start comes up slipping is a matter of state.  Count the
+        # 40 ns steps on the core's pair register, and start again if needed.
+        for attempt in range(4):
+            time.sleep(0.3)
+            sl = core.helper_slips(1.0)
+            if sl is None:
+                print('    helper slips: not measurable (no helper at the core, '
+                      'or gateware before 1.1)')
+                break
+            rate, n, other, span = sl
+            print('    helper slips: %d reference-cycle steps, %d other, in %.1f s  -> %s'
+                  % (n, other, span, 'clean' if rate < 2.0 else 'SLIPPING'))
+            if rate < 2.0 or attempt == 3:
+                break
+            print('    re-programming the Si5351 (attempt %d)' % (attempt + 2))
+            chip.program(cfg)
+        # Round 41: start the latched status flags from zero now that the chip
+        # is programmed and clean, and report them at the end of the run.
+        chip.clear_sticky()
 
     hdr('board thermometers')
     for addr, t in read_all_thermometers(bus):
@@ -131,6 +181,16 @@ def main():
         br = DS2482(bus)
         br.reset()
         br.write_config(apu=True)
+        # One 1-Wire reset, and the bridge's own verdict on the bus.  With no
+        # probe on any terminal the right answer is: no presence pulse, NO
+        # SHORT, and the line idling HIGH -- which checks the pull-up and the
+        # five terminals' wiring before a probe is ever fitted.
+        pp = br.ow_reset()
+        st = br.status()
+        print('    bus: presence %s, short %s, line %s'
+              % ('yes' if pp else 'no',
+                 'YES -- a short on the 1-Wire bus' if st & DS2482.ST_SD else 'no',
+                 'high' if st & DS2482.ST_LL else 'LOW -- held down'))
         probes = DS18B20(br)
         roms = probes.search()
         print('    %d probe(s)' % len(roms))
@@ -153,12 +213,23 @@ def main():
         print('    no front-end board on the bus (%s), so the beat and pps '
               'checks are reported as not testable rather than failed'
               % ('nothing but the Si5351 answered' if found else 'nothing answered'))
-    res = core.selftest(settle=1.0, front_end=front_end)
+    if front_end:
+        print('    sources expected on: %s'
+              % (', '.join('unit %d' % (n + 1) for n in sorted(a.inputs))
+                 or 'no unit (--inputs none): unplugged channels are '
+                    'described, not failed'))
+    res = core.selftest(settle=1.0, front_end=front_end, inputs=a.inputs)
     fails = core.failures(res)
     hz = core.helper_hz
     if hz:
         print('    helper %.1f Hz measured against the PS clock (that clock is '
               '+/-50 ppm, so +/-500 Hz: use a pps to measure it properly)' % hz)
+    if not a.no_si5351 and Si5351.ADDR in found:
+        st = Si5351(bus).sticky()
+        print('    Si5351 latched flags since programming: LOL_A %d, LOL_B %d, '
+              'LOS_XTAL %d%s' % (st['lol_a'], st['lol_b'], st['los_xtal'],
+                                 '' if not (st['lol_a'] or st['lol_b'] or st['los_xtal'])
+                                 else '  <-- the chip lost lock during this run'))
     print('\n%d checks, %d failures' % (len(res), len(fails)))
     return 1 if fails else 0
 

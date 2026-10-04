@@ -55,7 +55,10 @@ class TestSi5351Image(unittest.TestCase):
         self.assertEqual(decode_ms(r, REG_MSNB), Fraction(32))
         self.assertEqual(decode_ms(r, REG_MS0), Fraction(80))
         self.assertEqual(decode_ms(r, REG_MS1), Fraction(80))
-        self.assertEqual(r[REG_CLK_CTRL + 0], 0x4F)     # INT, PLLA, MS source, 8 mA
+        # ROUNDS 39-40: the helper at 2 mA -- at 8 mA, and at 4 mA once HO
+        # drives a 50 ohm cable, fractional PLLA cycle-slipped hundreds of
+        # times a second on the first board; the null source stays 8 mA.
+        self.assertEqual(r[REG_CLK_CTRL + 0], 0x4C)     # INT, PLLA, MS source, 2 mA
         self.assertEqual(r[REG_CLK_CTRL + 1], 0x6F)     # INT, PLLB, MS source, 8 mA
         self.assertEqual(r[REG_CLK_CTRL + 2], 0x80)     # CLK2 powered down
         self.assertEqual(r[REG_PLL_SRC], 0x00)          # XTAL for both PLLs
@@ -195,6 +198,22 @@ class TestScan(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class TestSi5351Sticky(unittest.TestCase):
+    """ROUND 41: the latched status flags, for a multi-day log."""
+
+    def test_sticky_decodes_register_1_and_clear_writes_zero(self):
+        bus = MockBus()
+        chip = Si5351(bus)
+        bus.regs[Si5351.ADDR][1] = 0x20 | 0x10          # LOL_A, LOS_CLKIN
+        st = chip.sticky()
+        self.assertTrue(st['lol_a'])
+        self.assertFalse(st['lol_b'])
+        self.assertTrue(st['los_clkin'])
+        chip.clear_sticky()
+        self.assertEqual(bus.regs[Si5351.ADDR][1], 0x00)
+        self.assertFalse(chip.sticky()['lol_a'])
+
 
 class TestClk2Witness(unittest.TestCase):
     """ROUND 30.  CLK2 is not routed on the front-end board, so it stays off

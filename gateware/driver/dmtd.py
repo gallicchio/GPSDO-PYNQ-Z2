@@ -47,8 +47,14 @@ from .dmtd_constants import (
 # testbench is the only thing that ever changes it.
 HELPER_TICK_CYCLES = 1 << 20
 
+# A beat slot's edge rate is a beat if it is within this fraction of F_BEAT.
+# The TCXO's +/-2.5 ppm moves the beat +/-25 Hz (2 %), so 10 % is generous
+# without admitting anything else this board is known to produce.
+BEAT_TOL = 0.10
+
 __all__ = ['DmtdRegisters', 'phase_ps', 'wrap_cycles', 'unwrap_ps',
-           'beat_period_cycles', 'resolve_cycles']
+           'beat_period_cycles', 'resolve_cycles', 'classify_beat_rate',
+           'count_slips']
 if _HAVE_PYNQ:
     __all__ += ['DmtdCapture', 'DmtdOverlay', 'attach']
 
@@ -126,6 +132,85 @@ def resolve_cycles(fine_ps, coarse_ps, wrap=WRAP_PS):
     """
     n = round((coarse_ps - fine_ps) / wrap)
     return fine_ps + n * wrap, int(n), coarse_ps - (fine_ps + n * wrap)
+
+
+def count_slips(helper, ps, ps_clk_hz=100e6, ref_period_s=40e-9):
+    """Whole-reference-cycle steps in a series of (helper counter, PS counter)
+    pairs, as (slips, other_steps).
+
+    ROUND 39.  The pair register latches both counters together every 1024
+    helper cycles, so with two clean crystal clocks every interval between
+    pairs is the same length in PS ticks to +/-1 tick of synchroniser jitter.
+    A synthesiser PLL that slips one 25 MHz reference cycle makes an interval
+    40 ns -- 4 ticks at 100 MHz -- long or short; that is what the first board
+    did ~650 times a second with CLK0 at 8 mA.  An interval off by anything
+    else (a whole 100 ns helper period, say: an extra edge at the FPGA pin)
+    is counted in other_steps.
+    """
+    q = ref_period_s * ps_clk_hz                     # ticks per slip, 4.0
+    iv = [(b - a, d - c) for a, b, c, d in zip(helper, helper[1:], ps, ps[1:])
+          if b > a]
+    if not iv:
+        return 0, 0
+    # PS ticks per helper cycle.  The median of the per-interval ratios is
+    # robust but biased by up to a tick (each interval is a whole number of
+    # ticks), and a tick of bias is enough to make a 10-tick step look like
+    # three slips -- so refine it as the MEAN over the intervals the median
+    # calls clean.  Clean intervals then sit within +/-1 tick of zero.
+    ratios = sorted(p / float(h) for h, p in iv)
+    r0 = ratios[len(ratios) // 2]
+    ok = [(h, p) for h, p in iv if abs(p - h * r0) <= 2]
+    r = sum(p for _, p in ok) / float(sum(h for h, _ in ok)) if ok else r0
+    slips = other = 0
+    for h, p in iv:
+        dev = p - h * r
+        if abs(dev) < 1.5:
+            continue
+        k = int(round(dev / q))
+        if k and abs(dev - k * q) <= 1.0:
+            slips += abs(k)
+        else:
+            other += 1
+    return slips, other
+
+
+def classify_beat_rate(rate_hz, f_beat=F_BEAT):
+    """What an edge rate on a beat slot means, as (kind, text).
+
+    kind is 'beat', 'chatter', 'slow', 'quiet' or 'fast'.  ROUND 39, the
+    first board, helper running and NOTHING on any SMA: some squarers sat
+    still, some toggled at 551-586 kHz (once 1.0 MHz), each at its own steady
+    rate, and a few chattered at 25-7000 edges a second -- and which did what
+    changed every time the Si5351 was reprogrammed.  Moving the helper by
+    +/-1 % did not move the fast rates, so they are not aliases of anything
+    near 10 MHz: the unplugged squarer itself oscillates.  None of that is a
+    fault of the channel.
+
+    The rate counts RISING edges, and the core has no deglitcher yet, so a
+    beat edge that chatters counts several: round 39's function generators
+    read 4-6 rising edges per beat period.  A rate a few times F_BEAT is
+    therefore 'chatter' -- a real beat, or an unplugged squarer chattering,
+    and the count cannot tell which; the timestamps can.  Only 'beat' is a
+    clean pass; 'quiet', 'fast' and 'slow' are definitely not a beat.
+    """
+    if rate_hz <= 0:
+        return 'quiet', ('no edges: nothing plugged in (a quiet squarer), or '
+                         'no helper at its flip-flops')
+    if abs(rate_hz - f_beat) <= BEAT_TOL * f_beat:
+        return 'beat', 'a clean beat'
+    if rate_hz > 20 * f_beat:
+        return 'fast', ('far above any beat: with nothing plugged in, the '
+                        'unplugged squarer oscillating by itself (round 39: '
+                        '0.55-1.0 MHz); with a source plugged in, the source '
+                        'is not being squared')
+    if rate_hz > (1 - BEAT_TOL) * f_beat:
+        return 'chatter', ('%.1f rising edges per beat period: a beat whose '
+                           'edges chatter (the core does not deglitch yet), '
+                           'or an unplugged squarer chattering -- the count '
+                           'cannot tell; the timestamps can'
+                           % (rate_hz / f_beat))
+    return 'slow', ('fewer edges than a beat: an intermittent source, or an '
+                    'unplugged squarer chattering (round 39: 25-7000 per s)')
 
 
 # ---------------------------------------------------------------------------
@@ -253,6 +338,39 @@ class DmtdRegisters(object):
                 return (hi << 32) | lo0, (phi << 32) | plo
         raise RuntimeError('could not read a consistent counter pair')
 
+    def helper_slips(self, seconds=1.0):
+        """(slips_per_second, slips, other_steps, seconds) for the helper,
+        from the pair register read as fast as the bus allows -- see
+        count_slips().  A clean helper reads 0; the first board with CLK0 at
+        8 mA read ~650 per second.  None on gateware without the pair
+        register (before 1.1)."""
+        if not self.has_ps_timestamps:
+            return None
+        H, P, last = [], [], None
+        t_new = time.time()
+        t_end = t_new + seconds
+        while True:
+            now = time.time()
+            # The pair refreshes every ~102 us; 50 ms without a new one means
+            # the helper has stopped, and there is nothing to count.
+            if now >= t_end or now - t_new > 0.05:
+                break
+            lo0 = self.read(REG_LIVE_LO)
+            hi = self.read(REG_LIVE_HI)
+            plo = self.read(REG_LIVE_PS_LO)
+            phi = self.read(REG_LIVE_PS_HI)
+            lo1 = self.read(REG_LIVE_LO)
+            if lo0 != lo1 or lo0 == last:
+                continue
+            last, t_new = lo0, now
+            H.append((hi << 32) | lo0)
+            P.append((phi << 32) | plo)
+        if len(H) < 3:
+            return None
+        span = (P[-1] - P[0]) / float(self.ps_clk_hz)
+        slips, other = count_slips(H, P, self.ps_clk_hz)
+        return (slips / span if span > 0 else 0.0), slips, other, span
+
     def ps_to_helper_cycles(self, ps_ticks, pair=None, helper_hz=None):
         """Map a PS-domain timestamp onto the helper counter's scale, using
         the pair register and the measured helper frequency.  Error is the
@@ -294,6 +412,28 @@ class DmtdRegisters(object):
                 return c0, (hi << 32) | lo
         raise RuntimeError('slot %d kept changing under the read' % slot)
 
+    def edge_count(self, slot):
+        """Edges seen on one slot since the last clear(), from ONE read.
+
+        A single 32-bit read cannot tear, so this works however fast the slot
+        is toggling, which channel() does not: its retry needs the count to
+        hold still across four reads.  ROUND 39, first board, nothing plugged
+        in: five unplugged squarers were oscillating at ~0.57 MHz, channel()
+        gave up on the first of them, and the selftest died with a traceback.
+        """
+        return self.read(REG_CHAN0 + slot * CHAN_STRIDE + OFF_COUNT)
+
+    def _read_or_none(self, slot, ps=False):
+        """channel(slot) -- or ps_channel(slot) -- except that a slot toggling
+        too fast to be read consistently comes back as (count, None) instead
+        of raising, so one unplugged channel cannot take a whole snapshot down
+        with it.  The count is still a single, untorn read."""
+        try:
+            return self.ps_channel(slot) if ps else self.channel(slot)
+        except RuntimeError:
+            base = REG_PSCHAN0 if ps else REG_CHAN0
+            return self.read(base + slot * CHAN_STRIDE + OFF_COUNT), None
+
     def ps_channel(self, slot):
         """(edge_count, ps_timestamp) for one pps slot in the PS domain."""
         base = REG_PSCHAN0 + slot * CHAN_STRIDE
@@ -324,10 +464,14 @@ class DmtdRegisters(object):
         Returns a dict with 'beat_count', 'beat_ts', 'pps_count', 'pps_ts'
         (lists indexed by beat channel; pps entries are None where the unit
         has no pps) plus 'time' from the host clock and 'counter'.
+
+        A timestamp is None where the slot was toggling too fast to read
+        consistently -- in practice an unplugged squarer oscillating (round
+        39) -- and its count is still given.
         """
         bc, bt = [], []
         for n in range(N_BEAT):
-            c, t = self.channel(n)
+            c, t = self._read_or_none(n)
             bc.append(c)
             bt.append(t)
         pc, pt = [], []
@@ -341,11 +485,11 @@ class DmtdRegisters(object):
                 ppc.append(None)
                 ppt.append(None)
             else:
-                c, t = self.channel(slot)
+                c, t = self._read_or_none(slot)
                 pc.append(c)
                 pt.append(t)
                 if ps:
-                    c2, t2 = self.ps_channel(slot)
+                    c2, t2 = self._read_or_none(slot, ps=True)
                     ppc.append(c2)
                     ppt.append(t2)
                 else:
@@ -387,7 +531,8 @@ class DmtdRegisters(object):
         k = self.ps_ns_per_tick * 1e3
         out = []
         for n in range(N_BEAT):
-            if ts[n] is None or ts[reference] is None or not cnt[n] or not cnt[reference]:
+            if (fine[n] is None or ts[n] is None or ts[reference] is None
+                    or not cnt[n] or not cnt[reference]):
                 out.append(None)
             else:
                 out.append(resolve_cycles(fine[n], (ts[n] - ts[reference]) * k))
@@ -401,13 +546,17 @@ class DmtdRegisters(object):
         phase noise and the Si5351's jitter and leaves the difference
         between the oscillators.  Pass reference=n to compare against some
         other channel instead.
+
+        None where a channel's timestamp could not be read (see snapshot());
+        all None if that channel is the reference.
         """
         if reference is None:
             reference = NULL_CHANNEL
         if snap is None:
             snap = self.snapshot()
         ref = snap['beat_ts'][reference]
-        return [phase_ps(ts, ref) for ts in snap['beat_ts']]
+        return [None if (ts is None or ref is None) else phase_ps(ts, ref)
+                for ts in snap['beat_ts']]
 
     def monitor(self, period=0.1, count=None):
         """Yield snapshots forever (or `count` times), `period` seconds apart.
@@ -423,7 +572,7 @@ class DmtdRegisters(object):
             time.sleep(period)
 
     # ---- bring-up --------------------------------------------------------
-    def selftest(self, settle=0.5, verbose=True, front_end=True):
+    def selftest(self, settle=0.5, verbose=True, front_end=True, inputs=None):
         """Check the overlay is alive and every channel is receiving a beat.
 
         Returns a list of (name, ok, detail) where `ok` is True, False, or
@@ -438,6 +587,15 @@ class DmtdRegisters(object):
         to five header pins and got "29 checks, 14 failures", of which
         thirteen were the front end not existing yet.  A count that includes
         the things that cannot be tested is a count nobody reads.
+
+        inputs is the beat channels (0..12) that have a 10 MHz source plugged
+        in; None, the default, means all thirteen -- the instrument in
+        service.  A channel in `inputs` that is quiet, oscillating or too slow
+        for a beat is a failure; one whose rate says 'chatter' is reported but
+        not failed, because a real beat chatters too until the core deglitches
+        (classify_beat_rate).  A channel not in `inputs` is measured and
+        described but never counted, because nothing was asked of it.
+        bringup.py passes --inputs, which defaults to none.
         """
         results = []
 
@@ -467,25 +625,64 @@ class DmtdRegisters(object):
         err = (hz - F_HELPER) / F_HELPER * 1e6 if hz else float('inf')
         note('helper frequency', bool(hz) and abs(err) < 100,
              '%.1f Hz (%.1f ppm from %.1f Hz)' % (hz, err, F_HELPER))
+        # ROUND 39: a synthesiser that cycle-slips still reads "10.0012 MHz"
+        # to within a few tens of ppm, so the frequency check cannot see it.
+        sl = self.helper_slips(1.0) if self.alive else None
+        if sl is not None:
+            rate, n, other, span = sl
+            why = ''
+            if rate >= 2.0:
+                why = (' -- the Si5351 is cycle-slipping: the helper jumps '
+                       '40 ns each time (round 39)')
+            elif other > 1:
+                why = (' -- the helper gains or loses time in steps that are '
+                       'not reference cycles: look for extra edges at the pin')
+            note('helper slips', rate < 2.0 and other <= 1,
+                 '%d whole-reference-cycle (40 ns) steps and %d other steps in '
+                 '%.1f s%s' % (n, other, span, why))
 
+        want = set(range(N_BEAT)) if inputs is None else set(inputs)
         self.clear()
         time.sleep(settle)
-        expect = F_BEAT * settle
+        # edge_count(), not channel(): only the count is needed here, and an
+        # unplugged squarer can toggle too fast for channel()'s retry loop.
         for n in range(N_BEAT):
-            c, _ = self.channel(n)
-            ok = (None if not front_end else 0.5 * expect < c < 1.5 * expect)
-            note('beat %2d %s' % (n, UNIT_NAMES[n]), ok,
-                 '%d edges in %.2f s (expect ~%.0f)%s'
-                 % (c, settle, expect,
-                    '' if front_end else '  -- no front-end board'))
+            c = self.edge_count(n)
+            name = 'beat %2d %s' % (n, UNIT_NAMES[n])
+            if not front_end:
+                note(name, None, '%d edges in %.2f s  -- no front-end board'
+                     % (c, settle))
+                continue
+            if settle <= 0:
+                note(name, None, '%d edges: not a rate, settle = 0' % c)
+                continue
+            rate = c / float(settle)
+            kind, what = classify_beat_rate(rate)
+            if kind == 'beat':
+                ok = True
+            elif kind == 'chatter' or n not in want:
+                ok = None               # possibly a beat: not a verdict
+            else:
+                ok = False
+            note(name, ok, '%d edges in %.2f s, %.1f Hz: %s%s'
+                 % (c, settle, rate, what,
+                    '' if (kind == 'beat' or n in want)
+                    else '  [no source expected]'))
         for n in range(N_BEAT):
             slot = PPS_SLOT[n]
             if slot is None:
                 continue
-            c, _ = self.channel(slot)
-            note('pps  %2d %s' % (n, UNIT_NAMES[n]), None if not front_end else True,
-                 '%d edges in %.2f s%s'
-                 % (c, settle, '' if front_end else '  -- no front-end board'))
+            c = self.edge_count(slot)
+            name = 'pps  %2d %s' % (n, UNIT_NAMES[n])
+            if not front_end:
+                note(name, None, '%d edges in %.2f s  -- no front-end board'
+                     % (c, settle))
+            elif c > settle + 2:
+                note(name, False, '%d edges in %.2f s: far too many for a 1 pps '
+                     '-- chatter, or a clock on a pps input' % (c, settle))
+            else:
+                note(name, True if c else None, '%d edges in %.2f s%s'
+                     % (c, settle, '' if c else ': no pps seen'))
 
         if verbose:
             self._print(results)

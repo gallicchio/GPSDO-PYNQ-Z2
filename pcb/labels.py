@@ -44,8 +44,13 @@ TEST_POINTS = [
      "number and is not what arrives here -- see the jumper note"
      % (D.V_SMA_MIN, D.V_SMA_MAX, D.V_SMA_ABSMAX)),
     ("S",  "TP_SQ",    "10 MHz box, at the squarer's input",
-     "AC coupled about %.2f V; 0.6-3.3 Vpp.  This is the node whose slew rate "
-     "sets the channel's noise floor" % D.VTH),
+     "a sine or a rounded triangle, NOT a square: this is the squarer's "
+     "INPUT, AC coupled about the gate's own threshold (%.2f V by design; "
+     "rev A's sit near 1.4 V); 0.6-3.3 Vpp.  The squared signal has no test "
+     "point.  This is the node whose slew rate sets the channel's noise "
+     "floor, and a 10x probe's ~20 pF through the 330 R rounds what you see "
+     "(round 41: a 10x probe divides the resistance by ten, not the "
+     "capacitance)" % D.VTH),
     ("B",  "TP_BEAT",  "10 MHz box, at the far end",
      "0/3.3 V square at the beat frequency, %.1f Hz" % D.F_BEAT),
     ("P",  "TP_PPS",   "1 pps box",
@@ -57,7 +62,13 @@ TEST_POINTS = [
     ("D",  "TP_3V3_D", "power block, at the digital LDO",
      "3.25-3.35 V.  Absent, by design, when the host is off"),
     ("X",  "TP_XA",    "helper block, at the Si5351's crystal",
-     "0.5-1.0 Vpp, 25 MHz.  Probe this one with a 10x probe or not at all"),
+     "0.5-1.0 Vpp, 25 MHz, by design.  Rev A reads 0.2-0.4 Vpp, a rounded "
+     "triangle (300-520 mV) -- a quarter of the 1 Vpp the datasheet drives XA "
+     "with, and most likely why its fractional PLL can be made to slip (round "
+     "40).  Unprobed it is ~0.4-0.55 Vpp: the probe's ~20 pF matters behind "
+     "767 R (round 42).  This pad is the divider, before the 10 nF into XA, so "
+     "its DC level is the divider's (~0.4 V), not the pin's.  Probe it with a "
+     "10x probe and a ground spring, or not at all"),
     ("W",  "TP_1W",    "1-Wire block, on the bus",
      "the DS18B20 bus: idle high at 3.3 V, with the conversion traffic on it"),
 ]

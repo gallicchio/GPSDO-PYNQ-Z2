@@ -48,7 +48,8 @@ import jlc as J             # the design rules, and JLCPCB's own minimums
 from sexp import parse, kids, kid, val, head
 
 ROOT = os.path.dirname(HERE)
-KFP = os.path.join(os.environ["HOME"], ".local/kicad9/squashfs-root/usr/share/kicad/footprints")
+KFP = os.environ.get("KICAD9_FOOTPRINTS", os.path.join(
+    os.environ["HOME"], ".local/kicad9/squashfs-root/usr/share/kicad/footprints"))
 LOCAL_FP = os.path.join(ROOT, "library", "GPSDO-PYNQ-Z2.pretty")
 
 LAYERS = [(0, "F.Cu", "signal"), (1, "In1.Cu", "signal"), (2, "In2.Cu", "signal"),
@@ -2446,17 +2447,21 @@ def build():
         ca, sa = _m.cos(a), _m.sin(a)
         return (bx * ca - by * sa, bx * sa + by * ca)
 
-    def place_text(cx, cy, s, size, thick, tries=None, angle=0, force=True):
+    def place_text(cx, cy, s, size, thick, tries=None, angle=0, force=True,
+                   within=None):
         """`s` CENTRED on (cx, cy), nudged by the first offset that is clear.
 
         Returns the anchor used, or None when nothing was clear and force is
         off -- which is how a reference designator decides to give up and move
-        itself to the fabrication layer instead of printing on a pad."""
+        itself to the fabrication layer instead of printing on a pad.
+        within: a predicate on the ink box; a candidate it rejects is not
+        clear (round 41: a unit's labels stay inside the unit's box)."""
         w = len(s) * adv(s, size) + thick
         for dx, dy in (tries or spiral()):
             x = cx + dx - (0.0 if angle else w / 2.0)
             y = cy + dy + (w / 2.0 if angle else 0.0)
-            if not blocked(ink(x, y, s, size, thick, "left", angle)):
+            b = ink(x, y, s, size, thick, "left", angle)
+            if not blocked(b) and (within is None or within(b)):
                 silk(x, y, s, size, thick, angle=angle)
                 return (x, y)
         if not force:
@@ -2535,24 +2540,45 @@ def build():
         if ref not in placed:
             return
         px, py, prot = placed[ref]
+        w = len(s) * adv(s, size) + thick
+
+        def keep(at):
+            """Remember what was printed for whom, for check_owned()."""
+            if at:
+                _owned.append((ref, s, ink(at[0], at[1], s, size, thick,
+                                           "left", angle)))
+            return at
+
+        def mine(b):
+            return inside_home(ref, b)
+
         cands = ((ldx, ldy),) + tuple(alts) + ((-ldx, -ldy),)
         for ax, ay in cands:
             bx, by = to_board(prot, ax, ay)
-            if place_text(px + bx, py + by, s, size, thick,
-                          spiral(0.45, rmax), angle=angle, force=False):
+            if keep(place_text(px + bx, py + by, s, size, thick,
+                               spiral(0.45, rmax), angle=angle, force=False,
+                               within=mine)):
                 return
-        w = len(s) * adv(s, size) + thick
+        # Nothing clear near the part: a wider search, still inside the box.
         for ax, ay in cands:
             bx, by = to_board(prot, ax, ay)
-            x0, y0, x1, y1 = ink(px + bx - (0.0 if angle else w / 2.0),
-                                 py + by + (w / 2.0 if angle else 0.0),
-                                 s, size, thick, "left", angle)
-            if x0 > 0.3 and y0 > 0.3 and x1 < G.BW - 0.3 and y1 < G.BH - 0.3:
-                place_text(px + bx, py + by, s, size, thick, [(0.0, 0.0)],
-                           angle=angle)
+            if keep(place_text(px + bx, py + by, s, size, thick,
+                               spiral(0.45, 2.0 * rmax), angle=angle,
+                               force=False, within=mine)):
+                return
+        for ax, ay in cands:
+            bx, by = to_board(prot, ax, ay)
+            b = ink(px + bx - (0.0 if angle else w / 2.0),
+                    py + by + (w / 2.0 if angle else 0.0), s, size, thick,
+                    "left", angle)
+            if (b[0] > 0.3 and b[1] > 0.3 and b[2] < G.BW - 0.3
+                    and b[3] < G.BH - 0.3 and mine(b)):
+                keep(place_text(px + bx, py + by, s, size, thick, [(0.0, 0.0)],
+                                angle=angle))
                 return
         bx, by = to_board(prot, ldx, ldy)
-        place_text(px + bx, py + by, s, size, thick, [(0.0, 0.0)], angle=angle)
+        keep(place_text(px + bx, py + by, s, size, thick, [(0.0, 0.0)],
+                        angle=angle))
 
     # ---- every pad on the board is an obstacle ----------------------------
     for _r, _pn, _ax, _ay, _tht, _net, _hd, _rc in allpads:
@@ -2622,6 +2648,7 @@ def build():
     # only -4.4.  A fixed rectangle also makes a unit's two boxes read as a
     # pair and gives the gutter a constant width for the rail.
     colbox = {}
+    ubox = {}                  # (unit, "10m" | "pps") -> its box, board coords
     for u in sorted(byunit):
         f, _ = xf(u)
         todo = [("10m", T.BOX_10M)]
@@ -2631,11 +2658,37 @@ def build():
             cs = [f(bx0, by0), f(bx1, by0), f(bx1, by1), f(bx0, by1)]
             r = (min(c[0] for c in cs), min(c[1] for c in cs),
                  max(c[0] for c in cs), max(c[1] for c in cs))
+            ubox[(u, kind)] = r
             silk_box(*r)
             k = (kind, "L" if r[0] < G.XC else "R")
             e = colbox.get(k)
             colbox[k] = ((min(e[0], r[0]), min(e[1], r[1]),
                           max(e[2], r[2]), max(e[3], r[3])) if e else r)
+
+    # ROUND 41.  Everything that belongs to a unit's box -- its parts, their
+    # designators and the letters beside its test points -- must print INSIDE
+    # that box.  The tiles are rotated 90 or 270, so a tile's power gutter
+    # faces the neighbouring unit, and a label pushed out of it used to land
+    # in the next box: FB401 in unit 6's, unit 2's R203/C203/C207 in unit 4's,
+    # FB204/C209/R208 outside P2 altogether, 71 designators in all on rev A.
+    # The placement searches below only accept positions inside home_of(ref),
+    # and check_owned() refuses to finish a board that has one outside.
+    BOX_MARGIN = 0.3           # clear of the box's own 0.15 mm line
+    _owned = []                # (ref, what, ink box) for check_owned()
+
+    def home_of(ref):
+        u, slot = unit_of(ref)
+        if not u:
+            return None
+        kind = ("10m" if slot in T.PARTS_10M else
+                "pps" if slot in T.PARTS_PPS else None)
+        return ubox.get((u, kind)) if kind else None
+
+    def inside_home(ref, b):
+        hb = home_of(ref)
+        return hb is None or (b[0] >= hb[0] + BOX_MARGIN and b[1] >= hb[1] + BOX_MARGIN
+                              and b[2] <= hb[2] - BOX_MARGIN
+                              and b[3] <= hb[3] - BOX_MARGIN)
 
     # ---- a box round each named region ------------------------------------
     # Round 29.  "HELPER", "POWER", "HOUSEKEEPING" and "1-WIRE" were four
@@ -3054,6 +3107,10 @@ def build():
     #   library position is 0.35 mm outside it.
     #   the heaters: +5.5 in their own x is the other end from the `H`, and
     #   for the thirteen in-tile ones it is inside the box their part is in.
+    #   the 50R jumpers (round 41): just off the header on the side AWAY from
+    #   the gutter -- above it on the right-hand units, below it (the mirror)
+    #   on the left -- and centred across its two pins, which in the part's
+    #   own frame are (0, 0) and (0, 2.54).
     REFPREF = {}
     for u in sorted(byunit):
         for slot, r in byunit[u].items():
@@ -3061,12 +3118,24 @@ def build():
                 REFPREF[r] = (-6.35, 0.0)
             elif slot == "J02":
                 REFPREF[r] = (-4.8, 0.0)       # the pps box is 11.8 mm wide
+            elif slot == "JP01":
+                REFPREF[r] = (-1.65, 1.27)
     for r in sorted(placed):
         if r.startswith("R20"):
             REFPREF[r] = (5.5, 0.0)
 
     refat, reflayer = {}, {}
-    for r in sorted(placed):
+
+    def ref_order(r):
+        """Who gets the room first.  Round 41: in alphabetical order the ICs
+        came last, and unit 11's crowded 1 pps box gave U1104's name to the
+        passives round it.  An IC's name is worth more than a test pad's --
+        which already carries its letter -- so ICs and connectors go first."""
+        pre = re.match(r"[A-Za-z]+", r).group(0)
+        return ({"U": 0, "Q": 0, "J": 1, "X": 1, "Y": 1, "D": 2,
+                 "TP": 9}.get(pre, 5), r)
+
+    for r in sorted(placed, key=ref_order):
         if r not in fpof:
             continue
         d, name = fpof[r]
@@ -3093,14 +3162,42 @@ def build():
             for dx, dy in spiral(0.45, 3.6):
                 cx, cy = rx + bx + dx, ry + by + dy
                 bb = (cx - w / 2.0, cy - 0.48, cx + w / 2.0, cy + 0.48)
-                if not blocked(bb):
+                if not blocked(bb) and inside_home(r, bb):
                     found = (cx, cy, bb)
                     break
             if found:
                 break
+        hb = home_of(r)
+        if not found and hb:
+            # Round 41: every clear spot inside the part's OWN box, nearest
+            # first, before giving up -- a designator in the next unit's box
+            # names the wrong part, which is worse than none.
+            pts = []
+            y = hb[1] + BOX_MARGIN + 0.48
+            while y <= hb[3] - BOX_MARGIN - 0.48:
+                x = hb[0] + BOX_MARGIN + w / 2.0
+                while x <= hb[2] - BOX_MARGIN - w / 2.0:
+                    pts.append(((x - rx) ** 2 + (y - ry) ** 2, x, y))
+                    x += 0.25
+                y += 0.25
+            # First clear of vias too; then over a via if that is all the box
+            # has left -- they are tented, and ink on them is legal (see the
+            # note where vias become obstacles).  Units 10-12's 1 pps boxes
+            # need it: their five-character names are 0.8 mm wider.
+            for kinds in (ALL, PROSE):
+                for _d2, cx, cy in sorted(pts):
+                    if _d2 > 12.0 ** 2:
+                        break
+                    bb = (cx - w / 2.0, cy - 0.48, cx + w / 2.0, cy + 0.48)
+                    if not blocked(bb, kinds=kinds):
+                        found = (cx, cy, bb)
+                        break
+                if found:
+                    break
         if found:
             obstruct(found[2])
             refat[r] = to_local(rrot, found[0] - rx, found[1] - ry)
+            _owned.append((r, r, found[2]))
         else:
             # Nowhere on 373 cm2 that this name can be printed without
             # landing on a solder-mask opening or on something that matters
@@ -3121,6 +3218,38 @@ def build():
     import sys as _sl
     print("silkscreen: %d designators placed, %d moved to F.Fab %s"
           % (len(refat), len(_nlost), sorted(_nlost)[:40]), file=_sl.stderr)
+
+    # ---- round 41: nothing that belongs to a box may print outside it -----
+    # Every part of a unit tile inside its own box, and every designator and
+    # test-point letter placed for such a part.  The same rule is applied to
+    # a finished board file by pcb/check_silk_boxes.py.
+    def check_owned():
+        bad = []
+        for ref, s, b in _owned:
+            if not inside_home(ref, b):
+                bad.append("%r (for %s) at (%.1f,%.1f)-(%.1f,%.1f) is outside %s"
+                           % (s, ref, b[0], b[1], b[2], b[3], home_of(ref)))
+        for ref in sorted(placed):
+            hb = home_of(ref)
+            if hb and ref in boxes:
+                pb = boxes[ref]
+                if not (pb[0] >= hb[0] and pb[1] >= hb[1] and pb[2] <= hb[2]
+                        and pb[3] <= hb[3]):
+                    bad.append("part %s at (%.1f,%.1f)-(%.1f,%.1f) is outside %s"
+                               % ((ref,) + tuple(pb) + (hb,)))
+        return bad
+
+    _bad_owned = check_owned()
+    _tile_fab = sorted(r for r in _nlost if home_of(r))
+    print("silkscreen boxes: %d owned labels checked, %d outside their box; "
+          "%d tile designators moved to F.Fab %s"
+          % (len(_owned), len(_bad_owned), len(_tile_fab), _tile_fab[:20]),
+          file=_sl.stderr)
+    if _bad_owned:
+        for b in _bad_owned[:40]:
+            print("SILK BOX: " + b, file=_sl.stderr)
+        raise SystemExit("silkscreen: %d item(s) outside the box they belong to"
+                         % len(_bad_owned))
     # Every line that reaches stack_in is one the board is supposed to carry,
     # so a dropped one is a fault and not a detail.  Round 29's second build
     # lost the title, the author line and the test-point legend heading and

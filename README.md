@@ -12069,3 +12069,2009 @@ that builds it.
 * `IcepiZeroADCDAC/jlcbuild/jlc_rotation.py` in this same repository now
   carries these rules in reusable form, including the bottom-side mirror, and
   cites this board's 59-placement mistake as its reason for existing.
+
+
+## Prompt 39
+
+The GPSDO-PYNQ-Z2 boards have been made by JLCPCB. One is connected to a PYNQ-Z2 at `192.168.8.200` with the default login and password. The PYNQ-Z2 is being powered by an external 12V barrel connector. I checked that all of the voltages are correct, with +3V3_A being a little low at 3.15V.
+
+Follow the `HANDBOOK.md` section `## 8  Bring-up, in order` as far as you can and test as much as you can without anything plugged in. Later, I'll plug in 10 MHz inputs.
+
+10 MHz Channels 1 and 2 are connected to the same 10 MHz function generator output. Channel 11 is connected to another 10 MHz function generator output, not phase locked.
+
+
+## Round 39
+
+The board is alive, and everything handbook section 8 can test without a
+signal source passes: power, all eleven I2C parts, the heater DAC made safe,
+the Si5351 locked, the thermometers, the 1-Wire bus and the measurement core.
+Since you then plugged in function generators, unit 11 carries the board's
+first real beat, a clean one, at about 45 ps rms per edge.
+
+Getting there turned up one serious fault, now fixed in software. **The
+Si5351 was slipping a whole 25 MHz reference cycle about 650 times a
+second**, while reporting itself locked, and that scrambled every beat. The
+cause is the helper output's own 8 mA drive. At 4 mA the helper is clean:
+10 clean starts out of 10, against 0 out of 10 at 8 mA.
+
+Four other findings:
+
+- Unplugged squarers oscillate at ~0.57 MHz, which round 36 said they could
+  not.
+- The core badly needs the deglitcher that the design log planned and v1.1
+  never got.
+- Units 1 and 2 are not receiving a usable signal.
+- +3V3_A reads 3.15 V, which looks like a load problem rather than an LDO
+  fault.
+
+### 39.1 The PYNQ, and whether the bitstream matches the board
+
+The PYNQ answered at `192.168.8.200`; `.201` did not respond, and a subnet
+scan found it by its Jupyter port. It is not the PYNQ from rounds 27-30:
+
+| | this round | rounds 27-30 |
+|---|---|---|
+| hostname | `prover1` | -- |
+| PYNQ | **3.1.1 (Carlisle, image 2025-09-24)** | 3.0.1 |
+| kernel | 6.6.10-xilinx-v2024.1 | 5.15.19-xilinx-v2022.1 |
+| clock | NTP-synchronised | 5 December, no NTP |
+
+The Vivado 2022.1 overlay loads under PYNQ 3.1.1 unchanged. So do `attach()`,
+`AxiIIC`, `pynq-run` and the cffi receive buffers.
+
+I logged in with the default password and installed no key. Everything lives
+in `~/gpsdo-dmtd/`, which did not exist before. My experiment scripts have
+been removed from it again, leaving the overlay, `driver/`, `bringup.py`,
+`beats.py`, `pynq-run` and `run_selftest.py`.
+
+**The Sep 14 bitstream matches the fabricated board.** I checked this before
+loading anything that drives pins:
+
+- `gen_xdc.py` regenerates `pins.xdc` from today's `gen/design.py`
+  identically. Every `design.py` change since the build was the round-31 SMA
+  constants.
+- All 40 pads of J4001 in the `.kicad_pcb` carry exactly the nets
+  `design.py` says, with pins 1 and 17 unconnected.
+
+### 39.2 Steps 1 and 2: power, and +3V3_A at 3.15 V
+
+**Step 1 (ohmmeter, unpowered)** was not possible remotely: the board was
+already powered. It is worth doing on the next board before its first power.
+
+**Step 2.** You measured +3V3_A at 3.15 V against the handbook's 3.25-3.35 V,
+with everything else correct. What I can say from here:
+
+- **U2001 is a fixed TPS7A2033**, held to ±1.5 % (3.25-3.35 V) from 1 to
+  300 mA with 0.3 V of headroom.
+- **U2002 is the same part** and makes +3V3_D correctly from the same input.
+  So the input and the part type are fine, and the difference is **the load
+  on +3V3_A**.
+- **The TPS7A20's current limit is 360 mA minimum** (520 typical). An LDO in
+  current limit sits wherever its load's I-V curve meets that limit, a little
+  below its setpoint.
+- **That load has never been measured.** The power sheet budgets 14 × 3 mA
+  for the self-biased `74LVC1GU04` squarers and says in so many words
+  "measure it on the first board".
+  - The GU04's output stage is specified at ±24 mA with VOH ≥ 2.3 V at
+    Vgs = 3 V.
+  - Biased at mid-rail, with both transistors on at Vgs ≈ 1.65 V, my estimate
+    is **10-30 mA each**, not 3. Fourteen of them approach the limit.
+  - This is an estimate, not a measurement.
+- **You measured in the worst state the board has.** Before `bringup.py` runs:
+  - the Si5351 leaves CLK0 static (39.4);
+  - the helper squarer U3002 therefore also sits at mid-rail;
+  - the helper fan-out chatters at 0.76-1.04 MHz;
+  - and several channel squarers oscillate (39.6).
+
+  All of that draws current.
+- **One thermometer is warm.** U5007 (`0x4E`, #6) at (103.5, 25) is the only
+  one not on a board edge, and sits 23-27 mm from the two LDOs. It reads
+  **2.0-2.4 °C above the mean of the other seven** in every reading this
+  round (22-23 °C).
+  That is consistent with a hot power block, but not proof.
+
+The measurements that would settle it are in 39.10.
+
+### 39.3 Step 3: `bringup.py`
+
+| check | result |
+|---|---|
+| I2C scan | **all 11 answer**: 0x18, 0x48-0x4F, 0x60, 0x61. That also proves 5 V on pins 2/4, the socket's orientation and SDA/SCL on pins 3/5 |
+| heater DAC, as shipped | code 2048, EEPROM 2048, PD 0: **1.650 V on the three FET gates**, exactly as the handbook warns |
+| heater DAC, after | EEPROM 0 with the 1 k power-down, DAC 0: **SAFE**. This persists; the 15 V jack is now safe to use |
+| Si5351 | all 38 registers read back; both PLLs locked; LOS_XTAL clear |
+| thermometers | 8 of 8 read; 22.1-22.9 °C, with #6 at 24.5 °C (see 39.2) |
+| 1-Wire | **no presence pulse, no short, line idles high**, 0 probes. The bridge, the pull-up and the terminals' wiring are all fine before any probe is fitted |
+| core selftest | **30 checks, 0 failures**: ID, VERSION v1.1, helper running, helper frequency, and the new helper-slips check. The 25 beat/pps checks are described but not counted, because nothing was expected on them |
+
+The first run of the selftest **crashed**:
+`RuntimeError: slot 0 kept changing under the read`.
+
+- `channel()` insists that the count holds still across four reads before it
+  returns a timestamp.
+- Unit 1's unplugged squarer was toggling at 586 kHz, so that never happened.
+- The same exception would have taken down every `snapshot()`, and so
+  `phases_ps()` and `monitor()`, on an instrument with one cable out.
+
+Fixed in 39.7.
+
+### 39.4 What the Si5351 does before it is programmed
+
+The unprogrammed part reads as follows:
+
+- register 3 = 0x00, so all outputs are enabled;
+- registers 16-18 = 0x00, so CLK0-2 are powered up, sourced from **XTAL**, at
+  2 mA;
+- register 187 = 0x02: **`XO_FANOUT_EN` is off**, so the XTAL path to the
+  outputs is gated and CLK0 is static.
+
+With CLK0 static, the helper squarer U3002 sits self-biased at mid-rail, and
+the buffered fan-out behind it chatters. The core saw that chatter as a
+clock that came and went: `ALIVE` flickered, and `HELPER` was mostly 0,
+with one window of 1.01 s per 2^20 edges. `repr()` printed a "helper" of
+936 228 MHz.
+
+This is harmless and expected, but it is the state the board is in from
+power-on until `bringup.py` runs.
+
+### 39.5 The helper was cycle-slipping: found, isolated, fixed
+
+**The symptom.**
+
+- Against the 100 MHz PS clock, the helper's frequency scattered **3.1 ppm
+  rms from one 105 ms estimator window to the next**, and 0.9 ppm between
+  1 s intervals.
+- It averaged +25 ppm.
+- The resolution is 0.1 ppm and 0.01 ppm respectively, and both clocks are
+  crystals.
+- The generators' beats would not fold at any period. That smearing is what
+  I first took for DDMTD chatter.
+
+**The mechanism, from the pair register.** The core latches the helper
+counter and the PS counter together every 1024 helper cycles. Each interval,
+in PS ticks, compared with the median over 10 s (56 753 intervals):
+
+| deviation (10 ns ticks) | count | meaning |
+|---|---:|---|
+| 0, −1, +1 | 50 460 | normal quantisation |
+| **−4 (−5, −3)** | **5 291** | the helper gained **40 ns** |
+| **+4 (+3, +5)** | **839** | the helper lost 40 ns |
+| **−8 (−7, −9)** | **146** | two in one interval |
+
+**40 ns is exactly one period of the 25 MHz reference.**
+
+- The FPGA counts correctly: a miscount would be a whole 100 ns helper
+  period, and there are none.
+- The Si5351's PLL is cycle-slipping about 640 times a second, mostly gaining
+  cycles. That excess alone makes the helper about 19 ppm fast.
+- LOL stays clear throughout.
+- Each slip moves **every beat by 40 ns × 8101 ≈ 324 µs**, 40 % of a beat
+  period.
+
+**Isolating it.** Each test used the pair register, with the chip
+re-programmed each time:
+
+| configuration | slips per second |
+|---|---:|
+| as designed: PLLA fractional 32 + 1543/390625, CLK0 8 mA, CLK1 8 mA | 633-698 (many runs) |
+| PLLA **integer** 32 (FBA_INT off, and on) | **0** |
+| CLK0 from **PLLB**, integer 32 | **0** |
+| PLLA fractional at other plans: MS0 62-88, fractions 0.004-0.80, VCO 620-880 MHz | 650-713 |
+| XTAL_CL 10 / 8 / 6 pF (internal load on XA) | 633-650 / 2 029 / 3 193-3 222 |
+| CLK0 drive 8 / 6 / **4** / **2** mA (30 s each) | 653 / 569 / **0.17** / **0.13** |
+| CLK1 at 2 mA, CLK0 8 mA | 913 |
+| CLK0 4 mA, CLK1 re-enabled after a power-down, no PLL reset | 637 |
+| **10 fresh program-and-reset starts each:** 8 mA / **4 mA** / **2 mA** | **0 / 10 / 10 clean** |
+
+What the table shows:
+
+- **The TCXO and its XA drive are fine.** In integer mode there are no slips,
+  and the 10 MHz reads a steady +6.14 ppm against the PS clock.
+- **The fault is fractional mode plus the outputs' own drive.** Among the
+  rows above, only CLK0 at 2 or 4 mA made a start clean.
+- **It is a state, not a constant.** Re-enabling CLK1 tipped a clean 4 mA
+  configuration back into slipping.
+
+My reading of the mechanism, which is a hypothesis rather than a
+measurement:
+
+- The outputs' switching reaches the reference path. On this board VDD and
+  VDDO share one bead-fed node (U3001, FB3002). The load capacitance on XA
+  matters strongly.
+- An integer PLL's phase detector is synchronous with that disturbance and
+  sees a constant offset.
+- A fractional PLL's is not synchronous, so the disturbance sweeps through
+  every reference edge and occasionally costs a cycle.
+- Round 30's breakout Si5351 did not do this: it measured 1234.417 Hz against
+  1234.400. So this is this board, not the part.
+
+**The fix: CLK0 at 4 mA** (`i2c_devices.IDRV_HELPER`).
+
+- It costs nothing at the helper squarer, whose 330 Ω, not the driver's
+  impedance, sets the edge.
+- CLK1 stays at 8 mA to drive the null channel's 50 Ω cable. That exact
+  configuration was clean.
+- Because the slipping state exists at all, `bringup.py` now **counts slips
+  after programming and re-programs** if it finds any. The selftest has a
+  `helper slips` check.
+
+**For rev B**, three options:
+
+- give VDDO its own supply, separate from the VDD node;
+- drive XA harder: a lower-impedance divider, or a clipped-sine TCXO;
+- or use the Si5351C, which takes a CMOS reference on CLKIN.
+
+**What "PS-clock units" means.** Every absolute frequency here is against the
+PYNQ's PS crystal. NTP, after 75 minutes, corrects that crystal by
+**+7.05 ppm**, so it runs about 7 ppm slow. On that basis:
+
+| | against the PS clock | against NTP |
+|---|---|---|
+| TCXO | +6.2 ppm | **about −0.85 ppm**, inside its ±2.5 ppm |
+| `HO` on a counter (step 4) | 10 000 062 Hz | **about 9 999 991.5 Hz** (±0.5 ppm on NTP) |
+| unit 11's generator | +5.3 ppm | about −1.75 ppm |
+
+### 39.6 An unplugged squarer is not quiet
+
+With the helper running and nothing on any SMA, each 10 MHz channel does one
+of three things:
+
+- sits still;
+- **chatters** at 8-7 000 rising edges a second;
+- or **oscillates** at 551-586 kHz. Unit 1 once ran at 1.00 MHz, and unit 7
+  once at 70 kHz.
+
+Every Si5351 re-program reshuffles which channel does what. When the
+generators first went in, every unplugged channel went quiet; later
+re-programming restarted five.
+
+**It is the squarer itself.** Moving the helper to 9.9 and 10.1 MHz did not
+move the rates at all. An alias of anything near 10 MHz would have moved by
+±99 kHz per unit of k. The FF simply samples a ~0.57 MHz oscillation.
+
+**Round 36 said this could not happen.** Its argument was that one pole in the
+1 MΩ loop cannot oscillate, which is true of that loop. But every gate on this
+board takes its supply through its own **600 R@100 MHz bead into 100 n +
+10 n**. A typical 0805 bead of that kind is ~0.7-1 µH below 10 MHz, and with
+110 nF that resonates at **~0.5-0.6 MHz**. That is my candidate, unproven.
+
+Two more observations:
+
+- Every left-column squarer except the null channel's (units 1, 3, 5, 7, 9,
+  11) has oscillated at some point, but only three of the six right-column
+  ones (units 4, 8 and 12).
+- The helper squarer U3002 did the same (0.76-1.04 MHz) whenever CLK0 was off.
+
+With a source attached, a channel is driven and does not oscillate. What an
+oscillating unplugged neighbour does to a measuring channel, through the
+shared rail, is untested.
+
+### 39.7 The driver, `bringup.py`, and the handbook
+
+`gateware/driver/dmtd.py`:
+
+- **`edge_count(slot)`** reads a single, untorn count.
+- **`selftest(inputs=...)`** counts with it and never crashes on a fast slot.
+  `inputs` is the set of channels that should carry a source, and defaults to
+  all of them (the instrument in service).
+- **`classify_beat_rate()`** says what a rate means: `beat`, `chatter`,
+  `slow`, `quiet` or `fast`.
+  - An unplugged channel is described, not failed.
+  - A chattering real beat reads 4-6× F_BEAT, which the count cannot tell from
+    an unplugged channel's chatter, so it is reported as inconclusive rather
+    than failed.
+- **`snapshot()`** gives a `None` timestamp, but a real count, for a slot
+  that toggles too fast to read consistently. `phases_ps()` and
+  `absolute_phases_ps()` pass the `None` through.
+- **`count_slips()` and `helper_slips()`** measure 40 ns steps on the pair
+  register. On the recorded 8 mA run the counter reads 641.6 per second.
+  - Its first version called a 100 ns step three slips: the median rate is
+    biased by up to a tick.
+  - A test caught that, and the rate is now refined as a mean over the clean
+    intervals.
+
+Elsewhere:
+
+- **`i2c_devices.py`**: the helper output at 4 mA, and the null output at
+  8 mA.
+- **`bringup.py`**:
+  - `--inputs` takes units as printed beside the SMAs, and defaults to none,
+    which is the board at step 3.
+  - It prints both output drives.
+  - It counts slips after programming and re-programs up to three times.
+  - It reports the 1-Wire bus's presence, short and line-level flags.
+- **`gateware/board/beats.py`** (new) judges beats by their timestamps, for
+  handbook steps 5 and 6.
+  - `record` runs on the PYNQ; `analyse` runs on the laptop.
+  - It folds each unit at its own period and calls it a beat only if its
+    transitions sit in two narrow clusters, one second at a time. A beat
+    scores 100 %; units 1/2 score 28-31 %.
+  - It reports chatter and per-edge scatter, and the edge-by-edge difference
+    for units on the same source.
+  - Its first version folded at half the period, where the two transitions
+    coincide. The period search is now confined to 909-1667 Hz beats.
+- **Tests**: 59 → 70, all passing.
+- **`HANDBOOK.md` section 8**, regenerated through `gen/handbook.py`, now says
+  "zero helper slips" at step 3, and gives steps 5 and 6 the commands above.
+- **`gateware/README.md`** and **`board/README.md`** say the same.
+
+### 39.8 Your generators (step 6, not yet)
+
+**Unit 11** is the board's first real beat, and it is clean.
+
+| | first recording | 40 minutes later |
+|---|---|---|
+| beat | 1242.432 Hz | 1243.192 Hz |
+| input, PS-clock units | +5.47 ppm | +5.30 ppm |
+| rising transitions | 1240/s, 1.5 rising edges each | 1.9 each |
+| falling transitions | 938/s, 3.6 rising edges each | 4.4 each |
+| last-edge scatter about a 0.1 s quadratic | **43 ps and 38 ps rms** | 48 and 42 ps rms |
+
+That scatter is the generator and the helper together, and it is fine for a
+first look.
+
+**Units 1 and 2 are not receiving a usable signal.**
+
+- Both show 5 400-6 600 rising edges a second.
+- **In every 50 ms window their edges fall at all phases of the beat**, where
+  unit 11's fall in two bins out of 40.
+- The two are **identical** to each other: correlation 1.00 on a common time
+  base. So both channels are faithfully squaring the same thing, and that
+  thing is not a 10 MHz big enough to square.
+- The faint structure that is there comes out when folded at our own
+  TCXO's beat period (8102.10 cycles against 8102.1017 by design). That is
+  what a trace of our own `HO` or helper leaking in would look like, rather
+  than the generator itself.
+
+Please check the generator's output is on and at its amplitude, then look at
+`TP_IN` and `TP_SQ` on unit 1 with a scope. Mind the jumpers:
+
+- The handbook says **never** fit unit 2's jumper (it is the ZED-F9T
+  channel), and unit 1's must be fitted.
+- With both fitted on a tee, the generator sees 25 Ω.
+
+The unit 1 − unit 2 splitter test waits on that.
+
+### 39.9 Gateware: the deglitcher is now the next job
+
+Real beats chatter: 1.5-4.4 rising edges per transition here, as the input's
+phase slides through the helper's sampling instant at 12.3 ps a cycle.
+
+- `dmtd_capture.v` v1.1 timestamps **every** rising edge and keeps the
+  **last**.
+- So a slot's timestamp is sometimes a bounce inside the **falling**
+  transition, half a beat period (~50 ns of input phase) away, and
+  `phases_ps()` from snapshots can jump by that much.
+- Design log §10 planned a K-of-K deglitcher plus first/last edge sums per
+  channel. The built core has neither.
+- Until it does, judge beats with `beats.py`.
+
+A second, smaller issue: **`T_RES_PS` is the nominal scale.** A helper 2.5 ppm
+off moves the beat about 25 Hz, and the ps per helper cycle by 2 %. The
+measured beat period should set it.
+
+### 39.10 What I need from you
+
+1. **+3V3_A again, now.** The Si5351 is programmed, with CLK0 at 4 mA. If it
+   is still 3.15 V:
+   - Find the board's current: put a current-limited bench supply with an
+     ammeter on the two 5 V posts at 5.5 V, with the PYNQ on. At 5.5 V the
+     OR-ing diodes hand the bench supply the whole load (at 5.3 V the two
+     sources would share it), and the LDO enables still come from the header.
+   - Or at least measure header pin 2 against `TP_5V`. That drop is an SS34
+     plus the 500 mA PPTC F2001, so it is a rough current gauge.
+   - Is U2001 (126, 11) hot to the touch?
+2. **A scope** on:
+   - `TP_SQ` of an unplugged oscillating unit (at the last run, units 4, 5,
+     8, 9 and 12): expect ~0.57 MHz;
+   - its GU04's pin 5 (VCC), after the bead;
+   - `TP_XA` (step 4), expected 0.5-1.0 Vpp.
+3. **`HO` on a counter** (step 4): expect about 9 999 991.5 Hz (39.5).
+4. **Units 1 and 2**: the generator settings and the jumpers (39.8).
+5. **Step 5, the null channel**: `HO` to jack 13 (J1301) with its jumper
+   fitted, then:
+   - `./pynq-run bringup.py --no-heater --inputs 13`
+   - `./pynq-run beats.py record 20 13`
+   - and `python3 beats.py analyse beats_13.npz` on the laptop.
+
+   HO driving a terminated 50 Ω line is the one output configuration the slip
+   tests have not covered. `bringup.py` will say.
+
+The board is left with the Si5351 programmed and clean, CLK0 at 4 mA, and the
+heater DAC's EEPROM at 0.
+
+
+## Prompt 40
+
+I only soldered SMAs onto HI, HO, and Channels 1, 2, 11, and 12 (both PPS and 10 MHz). I cannot put HO into Channel 13 without soldering another SMA. I put HO into Channel 12 with the 50 ohm jumper.
+
+I looked at HO, the helper output, on an oscilloscope. It looks like it glitches every second or so, but I am only getting snapshots from the oscilloscope. I triggered on HO and every second or so, the rising edges after the trigger show up in a different place for one capture, as if the PLL skipped a cycle or something. This does not look locked.
+
+3V3_A now reads 3.177 V. U2001 does not feel hot to the touch.
+
+I can confirm that a 4Vpp signal from a Siglent SDG 1032X function generator's Output 1 and Output 2 are going into the board's 10 MHz in 1 and 2. These channels had their 50 ohm terminator jumpers in, which should have made the signal around 2Vpp. Poking at the "In" test points on channels 1, 2, and 11, they looked similar: 1.5 Vpp (which actually seemed a bit low, as if it were being loaded by a resistance lower than 50 ohms). Channel 11 is coming from an HP 33120A and looks the same as the others (on the oscilloscope). If you cannot see Channel 1 and 2, something may be wrong with the mapping or something else. I have removed Unit 2's jumper, so its amplitude should be twice as large now. I measure it at  2.85 Vpp at the "In" test point. But if unit 11 worked before, 1 and 2 should have worked before.
+
+The "S" test points on the 4 channels that are hooked up do *not* look very square. The HO Channel 12's "S" looks the best, getting up to 3V without the jumper and going from 700mV to 2.3V with the jumper, but it's more triangular than square. Channel 1 and 11 (with the 50 ohms) look line sine waves going from 0.6V to 2.3V. Channel 2 (with the 50 ohm jumper out) looks pretty triangular with a rounded top, but goes up to 3.1V. The unplugged units look pretty stable at 1.4V. When I AC couple and zoom in, I see what looks like 5-10mV noise. In the FFT, there is a peak around 10 MHz, but by eye it looks more like noise.
+
+Test point "X" looks like a rounded triangular waveform and goes from 300 mV to 525mV.
+
+If it would help, later on I can try to hook up an ADALM2000 (m2k) or a Siglent SDS2104X oscilloscope to USB for you to take data yourself.
+
+I don't know about the TCXO and its XA drive and Si5351 stability in general. I want to thoroughly test this. When you say "The fix: CLK0 at 4 mA", this sounds like a setting that you can change rather than something that is set by a part on the board. Is that correct?
+
+HO measures around 10 MHz, but I don't have an accurate frequency counter.
+
+Start making a list of changes that we'll do for the next JLCPCB run, revB:
+* 1 wire needs color labels at screw terminals
+* LEDs for all power supplies with some indication of 5V and 3.3V "within range"
+* Fixing the Si5351 problem. If Si5351C is in stock at JLCPCB, maybe that's easiest. The TCXO and Si5351 need to work reliably.
+* An idea to fix the unplugged squarer chattering. Since these are AC coupled before the self-bias, I cannot stop it from chattering by grounding the input.
+* An idea to make sure the LDOs are not overloaded (maybe fixed when unplugged channels are addressed).
+
+
+## Round 40
+
+The helper output (CLK0) now runs at **2 mA, and the Si5351 is clean**, now
+with HO cabled into a 50 Ω input. At round 39's 4 mA it had started
+slipping again: 1350 reference cycles a second, which is very likely what
+you saw on the scope.
+
+The 2 mA setting passed every test I could run:
+
+- a 15-configuration drive matrix;
+- 10 fresh starts out of 10;
+- **600 s continuous with 0 slips on either PLL.**
+
+The other results:
+
+- **Units 1 and 2 work, and the mapping is right.** Handbook step 6 passes:
+  unit 1 − unit 2 is a constant −935 ps, with 29.5 ps rms per edge. What hid
+  them was the Siglent's own phase wander, together with a clustering test in
+  `beats.py` that was too strict.
+- **The null channel is excellent.** HO on unit 12 gives exactly one rising
+  edge per transition and **5-8 ps rms per edge**.
+- **HO contaminates the other channels.** Unit 11 goes from 24 ps with HO
+  off to 51 ps with HO at 8 mA.
+- **The rev B list** is at the end (40.9).
+
+### 40.1 Yes, "CLK0 at 2 mA" is a setting, not a part
+
+- The drive strength is bits 1:0 of Si5351 register 16 (CLK0) and register 17
+  (CLK1).
+- The Si5351A-B has no non-volatile configuration. `bringup.py` programs it
+  on every power-up, and it writes these bits each time
+  (`i2c_devices.IDRV_HELPER`, `IDRV_NULL`).
+- No part on the board sets them. The change took one line of the driver,
+  and it is already on the PYNQ.
+
+### 40.2 The Si5351, tested thoroughly
+
+**What changed since round 39.** Round 39 chose 4 mA with HO open. With HO
+driving a 50 Ω load (unit 12, jumper in), 4 mA slipped **1350 times a
+second**. Your "glitches every second or so" were taken in that state.
+
+**Two independent monitors.**
+
+- **PLLA** is watched on the pair register: helper against the PS clock,
+  where each slip is a 40 ns step.
+- **PLLB** is watched through HO's beat against the helper. Both come from one
+  TCXO, so that beat has an exact period of 12 501 543/1543 helper cycles. A
+  slip of either PLL moves it by 0.4 of a period, and a jump with no PLLA slip
+  in the same window is PLLB's.
+- Both are now in `gateware/board/si_watch.py`, which also clears and reads
+  the chip's sticky loss-of-lock bits.
+
+**The matrix.** PLLA slips per second, with HO into 50 Ω on unit 12 and a
+fresh program and reset each time, two trials per cell:
+
+| CLK0 (helper) \ CLK1 (HO) | 2 mA | 4 mA | 6 mA | 8 mA | off |
+|---|---|---|---|---|---|
+| **2 mA** | **0, 0** | **0, 0** | **0, 0** | **0, 0** | **0, 0** |
+| 4 mA | 0, 0 | 923, 932 | 1385, 1358 | 1327, 1315 | 0, 0 |
+| 8 mA | 2193, 2138 | 2188, 2179 | 1970, 1982 | 1489, 1510 | 931, 977 |
+
+A second run of `si_watch.py matrix` reproduced every cell.
+
+**Then the chosen setting: CLK0 at 2 mA, CLK1 at 8 mA.**
+
+- 10 fresh starts: 10 clean.
+- **600 s continuous: 0 PLLA slips, 0 other steps, 0 jumps on HO's beat.**
+  At round 39's 650 a second, that would have been ~390 000 slips.
+- HO's beat updated 74 050 times a minute, one per beat period.
+
+Three things the matrix says:
+
+1. **PLLB never slipped.** In every configuration where PLLA was clean, HO's
+   beat had 0 jumps; every jump coincided with a PLLA slip. I cannot tell
+   what you saw triggering on HO, because while PLLA slipped 1350 times a
+   second a rare PLLB slip would be hidden. My guess is the helper's
+   slipping reaching HO's waveform, not PLLB skipping cycles. A fresh look at
+   HO now that the helper is clean will tell.
+2. **The chip never noticed.** The sticky LOL_A/LOL_B bits stayed 0 through
+   runs of 2 200 slips a second. The Si5351's lock status is worthless for
+   this fault; only the slip count on the pair register catches it.
+3. **What matters is the outputs' switching, in fractional mode only.**
+   - Integer PLLs never slip.
+   - Lower CLK0 drive helps monotonically.
+   - CLK1's effect is not monotonic.
+   - Round 39 found that more internal XA capacitance helps.
+
+   All of that fits the output drivers' own switching reaching the reference
+   path. A fractional PLL's phase detector is not synchronous with that
+   disturbance; an integer one's is.
+
+**Your `X` reading says where the weak point is.** 300-525 mV at `TP_XA`,
+a rounded triangle:
+
+- That is 0.225 Vpp with the probe on it; my estimate without the probe is
+  ~0.4 Vpp. The design said 0.77 Vpp, and the Si5351 datasheet drives XA
+  with 1 Vpp.
+- The FT5HN's own edges are specified at up to 10 ns.
+- The 3k3/1k divider is a 767 Ω source into XA's internal load capacitance,
+  another ~15 ns. That capacitance is not published; for the 10 pF crystal
+  load each pin carries about 20 pF.
+
+So the reference reaches the chip as a small, slow triangle. A small, slow
+edge is exactly what a little coupled switching noise can double-trigger, and
+the slips mostly *gain* cycles (6:1). That is my reading, not a proof. The
+proof would be the rework in 40.9 item 3 surviving CLK0 at 8 mA.
+
+### 40.3 Units 1 and 2 work; handbook step 6 passes
+
+The mapping is right. Units 1 and 2 respond to the Siglent at its own
+frequency, and their difference is steady, edge by edge:
+
+| HO (CLK1) | unit 1 − unit 2 | rms per edge | in the main cluster |
+|---|---|---|---|
+| off | **−74.9 helper cycles = −935 ps**, −75.00 in every fifth of the run | **29.5 ps** | 98 % |
+| 4 mA | −74.6 cycles | 31.0 ps | 79 % (+ a second cluster at −142) |
+| 8 mA | −74.8 cycles | 34.3 ps | 64 % (+ 35 % at −142) |
+
+**"A constant, not a drift."** The skew was −43 cycles (−544 ps) yesterday,
+and moved to −75 when you pulled unit 2's jumper. The termination changes
+the waveform at the squarer by about 400 ps.
+
+**What hid them was the generator.**
+
+- The **Siglent's phase wanders** against our TCXO by ~15 % of a beat period
+  in 0.2 s, about 0.075 ppm of short-term wobble.
+- Its two outputs share one clock, so the wander cancels in the difference.
+- The HP 33120A barely wanders.
+- `beats.py` judged "is it a beat" on one-second folds, which that wander
+  smears. It now judges 0.1 s at a time and follows the rising transition
+  edge by edge.
+- It also pairs every transition of two units by time, so a wandering source
+  cancels. That is how the table above was made.
+
+Your `In` readings are consistent with a 50 Ω source of about 3 Vpp EMF: half
+of that into the 49.8 Ω termination, and 2.85 Vpp into 2k2 alone. So
+"4 Vpp" on the Siglent is probably its setting for a high-impedance load.
+
+### 40.4 HO contaminates the other channels
+
+With CLK0 at 2 mA throughout, I recorded with HO off and at 2, 4 and 8 mA.
+Unit 11 (the HP):
+
+| HO | rising edges/s | per-edge scatter |
+|---|---|---|
+| off | 1 289 (no chatter at all) | **24 ps** |
+| 4 mA into 50 Ω | 2 122 | 37 ps |
+| 8 mA into 50 Ω | 3 430 | 51 ps |
+
+HO is within a ppm of every input, so any HO that couples into a squarer
+moves its zero crossings at the difference frequency (Hz). No fit removes
+that, and it adds chatter. Unit 12, the null channel, is unaffected
+(5-8 ps). For now, HO at 4 mA is a reasonable compromise when you need it,
+and "off" is best for measuring sources. I left the default at 8 mA because
+the handbook's null channel wants it; change `IDRV_NULL` if you prefer. The
+fix belongs on the board (40.9 item 6).
+
+### 40.5 The null channel: 5-8 ps per edge
+
+HO on unit 12 gives **1.00 rising edge per transition**, no chatter at all,
+and **5-8 ps rms per edge** about a 0.1 s fit. That is below one 12.3 ps
+count, and it is the instrument's floor: squarers, flip-flops, both PLLs and
+the fan-out together. Its beat is 1234.4081 Hz against 1234.4000 by design.
+The last digits are the core's helper estimate, not a real difference: both
+come from one TCXO.
+
+### 40.6 What your scope showed
+
+- **`S` is the squarer's INPUT**, so a sine or a rounded triangle is right. The
+  squared signal has no test point. Your probe's 10-15 pF through the 330 Ω
+  also rounds what you see. HO's square wave shows up as a triangle there for
+  that reason.
+- The unplugged units sit at ~1.4 V, the gate's own threshold (1.65 V is
+  VCC/2 at 3.3 V). They show 5-10 mV of noise with a 10 MHz component, which is the
+  helper and HO in the air. The ~0.57 MHz oscillation from round 39 is
+  presumably larger at the gate's output and supply than at its input (the
+  gate has gain); see 40.9 item 4 for how to test it.
+- The handbook's test-point table now says both of these, and `X`'s rev A
+  reading.
+
+### 40.7 +3V3_A at 3.177 V, with U2001 cool
+
+- LCSC C2862740, the part JLCPCB placed, **is the TPS7A2033PDBVR, 3.3 V**, so
+  it is not a wrong fixed-voltage part.
+- A healthy one holds 3.25 V minimum below 300 mA.
+- In its current limit (360 mA minimum, with ~1.4 V across it) it would
+  dissipate ~0.5 W, which a SOT-23-5 cannot do without being too hot to touch.
+
+So "cool" argues against current limit. The rise from 3.150 to 3.177 V when
+four channels went from self-biased to driven says the load matters. Both
+can be true only if the load is heavy but below the limit, and something else
+is pulling the output down. Four readings would settle it:
+
+1. **+3V3_D to three decimals.** It is the same part, lightly loaded.
+2. **U2001 pins 1 and 5 against its own pin 2**, at the part.
+3. **`TP_A` on the scope, AC coupled.** An LDO oscillating into the
+   bead-fed decoupling would read low on a DMM.
+4. **The board current**: a current-limited bench supply at 5.5 V on the
+   5 V posts with the PYNQ on.
+
+### 40.8 Frequencies, without a counter
+
+NTP now corrects the PS crystal by +6.225 ppm (39 packets). Against that:
+
+| | PS-clock units | absolute (±~0.5 ppm, NTP) |
+|---|---|---|
+| TCXO, and so HO | +6.6 ppm | **about +0.4 ppm: HO ≈ 10 000 004 Hz** |
+| HP 33120A | +5.6 ppm | about −0.5 ppm |
+| Siglent SDG1032X | +5.1 ppm | about −1.0 ppm |
+
+The TCXO is comfortably inside its ±2.5 ppm. For better than NTP, any GPSDO
+on any unit gives the helper against a real 10 MHz to 1e-11.
+
+**Your PPS idea needs no firmware change.** The v1.1 core already timestamps
+every edge on each pps input in the 100 MHz PS domain. HO on a spare pps SMA
+would give PLLB against the PS clock directly: a 40 ns slip is 4 ticks,
+independent of the helper. It is not needed now that unit 12 separates the
+two PLLs, but it is a good cross-check for the rework test in 40.9.
+
+### 40.9 Rev B changes
+
+1. **1-Wire colour labels at the screw terminals.**
+   - Each terminal is wired pin 1 DAT (probe **yellow**), pin 2 VCC
+     (**red**), pin 3 GND (**black**).
+   - The schematic has said so since the DROK photographs, but only on the
+     schematic.
+   - Print `YEL RED BLK` beside each terminal's three screws, with
+     `DAT 3V3 GND` under them.
+   - Silkscreen only.
+
+2. **Power LEDs, with "in range".**
+   - One LED per rail to show it exists: +5 V, +3V3_A, +3V3_D and the heater
+     input.
+   - A **TPS3700** window comparator per rail (LCSC C2869617, listed there as
+     TPS3700DDCR2, SOT-23-6), set
+     by a three-resistor divider to e.g. ±4 %. Its two open-drain outputs,
+     wire-ORed, drive a green "OK" LED that lights only in the window. No
+     software, and it would have flagged 3.15 V on sight.
+   - I also recommend an **INA3221** (LCSC C181255): I²C voltage *and
+     current* on three rails through 0.1 Ω shunts (+5 V in, +3V3_A,
+     +3V3_D). The PYNQ could then log rail voltages and the LDOs' load
+     current with the data. It answers 40.7 in a minute and covers item 5.
+   - Keep the LEDs' own current off +3V3_A: drive them from +5 V.
+
+3. **The Si5351 must work with margin, not just at 2 mA.** In order of
+   preference:
+   - **(a) Si5351C with the TCXO on CLKIN.** CLKIN is a CMOS input
+     (10-100 MHz), so there is no analog XA path at all. I could not confirm
+     a blank `SI5351C-B-GM` (QFN-20) in JLCPCB's library; their search pages
+     do not render for me, and the only Si5351C-family parts I found there
+     are factory-programmed codes. Please check the parts search. It may
+     need global sourcing or consignment.
+   - **(b) Keep the Si5351A-B-GTR (C504891), drive XA as the datasheet does**:
+     ~1 Vpp, AC coupled, fast. Either a **clipped-sine** 25 MHz TCXO straight
+     into XA through 100 nF (JLCPCB has Abracon AST3TQ53 parts, C2031171 and
+     C2030784), or the HCMOS TCXO through a stiffer attenuator.
+   - **Try this on rev A first.** Change R3001 3k3 → 1k and R3002
+     1k → 330 Ω: same ratio, a 3× stiffer source (248 Ω), and 2.5 mA of
+     load, which the FT5HN's HCMOS output should manage although it is only
+     specified into 15 pF. Then run `si_watch.py matrix`. If CLK0 at 8 mA
+     comes out clean, the XA drive was the cause.
+   - **In either case:**
+     - give **VDDO its own decoupling**, not the one bead-fed node it shares
+       with VDD (round 21's choice);
+     - route CLK0/CLK1 away from XA/XB and guard XA with ground;
+     - leave CLK0 at 2 mA;
+     - keep the slip check in software.
+
+4. **Unplugged squarers.**
+   - **First, test the cause on rev A.** Bridge **FB401** (unit 4's squarer
+     bead, at (142.8, 78.2); unit 4 was oscillating today) with solder or a
+     0R.
+     Then let `bringup.py` re-program the Si5351 a few times, since that is
+     what reshuffles which channels oscillate. If unit 4 never oscillates
+     again, the ~0.57 MHz is the bead resonating with its 110 nF. Rev B would
+     then feed the squarers through 2.2-10 Ω resistors (RC, no resonance)
+     instead of beads.
+   - **To park an unused channel, act after the coupling capacitor**, where
+     grounding the SMA cannot reach. Put a **100 kΩ from the gate side (`S`)
+     to a jumper to ground**, with the resistor body right at the gate so the
+     jumper's trace hangs off 100 kΩ, not off the node.
+     - With the jumper in, the input sits at ~0.3 V (100 k against the 1 M
+       self-bias). The GU04's output goes to the rail and the flip-flop sees
+       a solid level.
+     - The result is no chatter, no oscillation, and **no crowbar current**.
+     - It can be the third pin of the 50R header: 1-2 = 50R, 2-3 = PARK.
+     - Forgetting to remove it fails loudly (a quiet channel), not subtly.
+     - An I²C port expander driving the thirteen 100 k resistors would let
+       the PYNQ park empty channels itself.
+   - **Not recommended: a permanent offset** (e.g. 1 MΩ to ground on every
+     squarer input). It stops the chatter, but it moves every threshold
+     ~60 mV off the gate's own switching point. That brings back the
+     amplitude sensitivity the self-bias exists to remove, a few ps per 1 %
+     change of source amplitude.
+
+5. **LDOs that cannot be overloaded.**
+   - Measure first (40.7).
+   - Then, in order: parking (item 4) removes the worst load, which is
+     self-biased squarers with nothing plugged in.
+   - **74AUP1GU04**, if one channel's test on rev A is good. It is
+     pin-compatible and built for low-power crystal oscillators, so its
+     linear-region current is far lower.
+   - The INA3221 (item 2) watches it permanently.
+   - A 1 A-class low-noise LDO for +3V3_A if the numbers still say so.
+
+6. **New: isolate HO.** It measurably contaminates every channel (40.4).
+   - Buffer it: do not run the Si5351's pin straight to an SMA.
+   - Low-pass it to a sine at the connector.
+   - Route it far from the channel inputs, and put its jack beside unit 13.
+   - Or make the null channel an on-board path from CLK1 to unit 13 through
+     a fixed attenuator, and keep HO for the bench, off by default.
+
+7. **Worth having:** a test point at a squarer's output (the squared signal),
+   since that is what one expects `S` to be.
+
+### 40.10 Changes this round
+
+- **`i2c_devices.py`**: `IDRV_HELPER` is 2 mA, with the round-40 evidence in
+  the comment. The test expects 0x4C. 70 tests pass.
+- **`board/si_watch.py`** (new): `watch` and `matrix`, as in 40.2.
+- **`board/beats.py`**:
+  - clusters are judged over 0.1 s;
+  - the rising transition is followed edge by edge;
+  - pairs are matched on all transitions by time, so a wandering source
+    cancels.
+- **`HANDBOOK.md`** is regenerated through `gen/handbook.py` and
+  `pcb/labels.py`:
+  - step 3 says 2 mA and names `si_watch.py`;
+  - step 4 gives rev A's real `X` reading;
+  - the `S` and `X` rows say what you will actually see. That table is
+    used only by the handbook, not the silkscreen.
+- **`gateware/README.md`** and **`board/README.md`** are updated to match.
+- **On the PYNQ**: `~/gpsdo-dmtd` holds the synced driver, `bringup.py`,
+  `beats.py` and `si_watch.py`. The Si5351 is programmed with the standard
+  image (CLK0 2 mA, CLK1 8 mA) and verified clean.
+
+### 40.11 Next
+
+1. The four +3V3_A readings (40.7).
+2. The FB401 bridge test (40.9 item 4).
+3. The R3001/R3002 swap, plus `si_watch.py matrix` (40.9 item 3).
+4. A fresh look at HO on the scope.
+
+The ADALM2000 or the SDS2104X on USB would help, so I can take the scope
+readings myself. The M2k is enough for the rail, `X` and the 0.57 MHz. The
+SDS2104X, with its bandwidth and memory, is better for catching a glitch on
+HO or the helper.
+
+## Prompt 41
+
+I no longer see any funny business when looking at HO. That problem seems fixed. When we take real GPSDO data over several days, the LOL_A/LOL_B bits and pair register bits should be monitored and logged.
+
+When you say, "Round 39 found that more internal XA capacitance helps," is this a setting that can be controlled through the PYNQ or a component that must be changed for revB?
+
+What is the best plan for revB to deal with all of the cross talk that you saw? Cross talk between channels and between channels and helper and maybe within the PLL.
+
+With my 10x probe, I read "X" as going from 300 mV to 520 mV and it looks like rounded triangles.
+
+When you talked about my probe of "S", you said "probe's 10-15 pF through the 330 Ω." The Siglent SDS2104X says 1Mohm / 17 pF on the front. Shouldn't  a 10x probe look like 10 Mohm and 1.7 pf? Or does the capacitance not also get "better" by 10x?
+
+I am up for trying to "Change R3001 3k3 → 1k and R3002 1k → 330 Ω" but only after we've done as much testing as we can with the board in its current configuration. Similarly for "Bridge FB401"
+
+Make a new REVB_CHANGES.md file to log the changes that we plan to do (all at once) for revB. Add a minor thing to that list: silkscreen labels like FB401 actually land in the box below 4 (in the 6 box). Fix these, and add a check that everything associated with a silkscreen box (both the components and silkscreen associated with that box) needs to be in that box. This is also a problem for R203 and C207 and C203, which shows up in Box 4. FB204, C209, and R208 all end up outside of the P2 box. Even more minor, the label JP401 and its friends should be above the jumper (for even numbers) and close to it. All of these problems are mirrored on the odd-numbered side.
+
+Before any modifications, a multimeter gives 3V3_A as 3.177 and 3V3_D as 3.291. I have been probing these on the DEBUG 2x10 header J5001. I have one multimeter probe on the ground on that DEBUG 2x10 header and probe other grounds, I always get no more than 0.1 mV, which is often just a fluctuation away from zero. This tells me that the ground plane is good.
+* If I probe  If I directly probe U2001's pin 5 (3V3_A), I get 3.286 V; pin 1 is 4.407 V
+* On U2002 I get 3.298 V on pin 5 and 4.416 V on pin 1.
+On an oscilloscope, with an AC coupled 10x probe, they are both quiet, with noise under 10 mV and no obvious oscillations.
+
+Then I drive the header 5V in with around 5.4V, I see about 230 mA out of the supply. Raising the voltage by a little doesn't raise the current by much at all, so I can assume most of the current is being supplied by the external power supply.
+
+That's all I can do for now. I'll do the rest of the "Four readings would settle it:" list later, unless you add or subtract test ideas.
+
+
+## Round 41
+
+Your measurements settle +3V3_A:
+
+- **The LDO is fine**: 3.286 V at U2001's own pin.
+- **The rail's copper is not**: 109 mV is lost between the LDO and the debug
+  header at ~180 mA, because +3V3_A is routed as tracks with no pour at all.
+
+The rest of this round:
+
+- **The silkscreen boxes are fixed in the generator.** It has a check, and a
+  rebuild has 0 items outside their box, against rev A's 71.
+- **Crosstalk measured on rev A:**
+  - HO puts ~58 ps on a channel across the board and causes most of the
+    chatter;
+  - channel-to-channel crosstalk is ~3 ps.
+- **`REVB_CHANGES.md`** holds the whole rev B list.
+- **"Before" baselines are recorded for both reworks**, and they wait, as you
+  asked.
+
+### 41.1 HO, and logging the Si5351 over days
+
+Good: with CLK0 at 2 mA, HO is clean on the scope too. For multi-day runs, the
+driver now has what a logger needs:
+
+- **`Si5351.sticky()` and `clear_sticky()`** read and clear register 1's
+  latched LOL_A, LOL_B, LOS_XTAL and SYS_INIT flags. `bringup.py` clears
+  them once the chip is programmed and clean, and reports them at the end:
+  "Si5351 latched flags since programming: LOL_A 0, LOL_B 0, LOS_XTAL 0".
+- **Slips** come from `helper_slips()` or `si_watch.py`. Log both.
+  `si_watch.py watch` now stamps every 60 s chunk in UTC and reports and
+  clears any latched LOL/LOS flag as it happens, so it can serve as a
+  long-run logger until there is a real one. Round 40
+  showed the chip's own LOL bits never saw 2000 slips a second, so the sticky
+  bits alone would miss the failure that actually happened.
+- Software sampling covers a slice of the time. A continuous **hardware slip
+  counter** in the gateware would cover all of it. It is on the rev B list
+  (item 16), with the deglitcher.
+
+**A 30-minute continuous watch**, with the settings the driver now uses
+(CLK0 2 mA, CLK1 8 mA into unit 12's 50 Ω) and units 1, 2 and 11 driven:
+
+- **1800 s: 0 PLLA slips, 0 other steps, 0 jumps on HO's beat.**
+- No latched LOL/LOS flag.
+- HO's beat updated 74 065 times in every one of the thirty minutes.
+
+With round 40's 600 s, that is 40 minutes clean, against 650-1350 slips a
+second before.
+
+### 41.2 XA capacitance is a register
+
+It is `XTAL_CL`, bits 7:6 of Si5351 register 183, choosing 6, 8 or 10 pF,
+written by the driver like everything else in the chip.
+
+- The driver already uses **10 pF**, the most there is, and the best on rev A:
+  650, 2000 and 3200 slips a second at 10, 8 and 6 pF (round 39, CLK0 8 mA).
+- More would need a part, a capacitor from XA to ground. It would also shrink
+  a reference that is already a quarter of what the datasheet uses (41.4).
+  The direction to go is a **stiffer drive**, not more capacitance.
+
+### 41.3 The crosstalk, measured, and the plan
+
+Recordings from round 40 contain the answer. Each aggressor sits a few Hz from
+its victim, so its coupling shows as a tone in the victim's phase at exactly
+that difference frequency:
+
+| aggressor → victim | tone | amplitude | floor |
+|---|---|---|---|
+| HO (8 mA into 50 Ω) → unit 11 (HP) | f(HP) − f(HO) = 10.2 Hz | **~58 ps** | 0.6 ps |
+| Siglent (units 1, 2) → unit 11, HO off | f(Siglent) − f(HP) = 4.83 Hz | **3.3 ps** | 0.5 ps |
+| HP → unit 1 − unit 2, HO off | 4.83 Hz | 1.0 ps, at the floor | 1.0 ps |
+| the Si5351's outputs → its own reference | cycle slips | (round 40) | |
+
+**Reading the table.**
+
+- **HO is the aggressor.** 58 ps at the zero crossing means about 3 mV of HO
+  at unit 11's squarer, on the far side of the board. It also causes most of
+  the "chatter".
+  - With HO off, unit 11 makes **exactly one rising edge per transition**:
+    1.00 each, and falling-edge bounces only 45 times a second.
+  - With HO at 8 mA, the rising transitions average 1.12 edges and the
+    falling ones bounce 780 times a second.
+  - Round 39 put all of that down to jitter. Most of it is HO.
+- **Channel to channel is ~3 ps on rev A, about −74 dB.** It is common enough
+  to both units of a same-source pair that it cancels in their difference.
+  Between two GPSDOs a mHz apart it would appear as a slow periodic phase
+  error with a ~1000 s period, which looks like wander. So it has to be
+  small, not merely averaged.
+- **Inside the PLL**, the outputs reach the reference. That is what 2 mA
+  fixed, with thin margin (41.4).
+
+**The plan for rev B**, in order of payoff. `REVB_CHANGES.md` items 5 and
+9-13 have the detail.
+
+1. **Isolate HO** (item 10). Buffer it and low-pass it to a sine at the
+   connector. Route it as stripline away from every input, and put its jack
+   beside unit 13. Or feed the null channel on-board and make HO a bench
+   output that is off by default.
+2. **Give the Si5351 a real reference and separate supplies** (item 9): a
+   Si5351C on CLKIN, or XA driven at ~1 Vpp; VDDO decoupled apart from VDD;
+   no output trace near XA/XB.
+3. **A +3V3_A plane, and RC instead of bead filters** (items 5 and 12). This
+   gives every channel one supply voltage with low impedance and no resonance
+   to excite.
+4. **Park unused channels** (item 11), so nothing on the board oscillates by
+   itself.
+5. **Layout rules**:
+   - every clock as stripline in its own corridor;
+   - squarer input nodes tiny, ground-ringed and via-stitched, with no clock
+     within a few mm;
+   - via fences between channel strips;
+   - series resistors on the beat and pps outputs;
+   - the pps Schmitts on +3V3_D.
+6. **Measure it the same way on rev B**: aggressor at f + Δ, victim at f,
+   tone at Δ in the victim's phase (`beats.py`). The table above is the
+   baseline.
+
+### 41.4 `X`, and what a 10× probe really loads
+
+Your 300-520 mV rounded triangle agrees with round 40's 300-525.
+
+The probe question: **a 10× probe divides the resistance by ten, but not the
+capacitance.** The SDS2104X Plus ships with Siglent's **PP215**, specified at:
+
+- **10×**: 10 MΩ, **18.5-22.5 pF**;
+- **1×**: 85-120 pF;
+- a 130 cm cable.
+
+The 1× figure is mostly the cable's own ~70-100 pF. In 10×, the tip's 9 MΩ
+and its compensation capacitor form a divider with the scope's 1 MΩ || 17 pF
+plus the cable. The capacitance you see at the tip is the compensation
+capacitor in series with all that, plus the tip's own stray, so it comes out
+around 20 pF: about five times better than 1×, not ten. The 1.7 pF you
+expected takes an active (FET) probe, typically ~1 pF.
+
+**What that means here.** On `X` (a 767 Ω source) and `S` (behind 330 Ω), the
+probe's ~20 pF is as large as the circuit's own capacitance, so it rounds and
+shrinks what it shows. My "10-15 pF" in round 40 was optimistic.
+
+- Without the probe, I estimate `X` at ~0.4 Vpp. That is still well short of
+  1 Vpp.
+- Use the spring ground tip at these frequencies; a long ground lead rings
+  with the tip capacitance near 100 MHz.
+
+### 41.5 +3V3_A: the LDO is fine; the copper is not
+
+Your readings:
+
+| | +3V3_A | +3V3_D |
+|---|---|---|
+| at the debug header J5001 | **3.177 V** | 3.291 V |
+| at the LDO's output pin | **3.286 V** (U2001 pin 5) | 3.298 V (U2002 pin 5) |
+| at the LDO's input pin | 4.407 V | 4.416 V |
+| scope, AC coupled | < 10 mV, no oscillation | < 10 mV |
+
+The whole board draws **230 mA from 5.4 V** on the bench posts. Less the ~50 mA
+the +3V3_D parts draw, that is **~180 mA on +3V3_A**.
+
+**The LDO.** 3.286 V is inside its 3.25-3.35 V. At (4.407 − 3.286) V ×
+0.18 A ≈ 0.2 W, it is warm, not hot, which is what you felt. It was never
+near its 360 mA limit.
+
+**The copper.**
+
+- The board's only copper zones are GND. +3V3_A is **1431 mm of 0.5 mm track
+  on F.Cu**, plus a little 0.3 mm on F.Cu and In2.
+- The generator's docstring says the 3.3 V rails are "poured on L1 in the
+  space between tiles". They are not; that sentence is wrong.
+- A 0.5 mm, 1 oz track is about 1 mΩ per mm. So J5001, ~265 mm of track from
+  U2001, sits 109 mV down. +3V3_D, lightly loaded, loses 7 mV.
+
+**A model.** I built a resistor network of every +3V3_A track and via, with
+load currents at each gate's bead, and solved it. At 184 mA it predicts
+**78 mV** to J5001, against your 109. The real copper is warmer or thinner
+than nominal, or more of the load is at the far end. Drop below the LDO at
+each unit's squarer:
+
+| units | predicted drop |
+|---|---|
+| 2, 4, 6, 8, 12, 10 | 27, 40, 43, 45, 47, 54 mV |
+| 13, 11, 9, 7, 5, 1, 3 | 76, 81, 83, 84, 84, 84, 85 mV |
+| helper fan-out | 64-66 mV |
+
+The model feeds the whole left column through one junction near (120, 134).
+Scaled to your
+J5001 reading, it is roughly 110 mV down, and the right column 40-75 mV.
+
+**Why it matters.**
+
+- A static offset does not: each squarer self-biases on its own supply.
+- A **change** of load does. When an unplugged squarer flips in or out of
+  oscillation, or channels are plugged in, ~0.4 Ω of shared track moves every
+  channel's supply by a different amount.
+- A self-biased squarer's threshold follows its supply only over ~10 ms (the
+  1 MΩ with the 10 nF). Against a 50 mV/ns sine, each millivolt that does not
+  cancel is ~20 ps.
+
+Hence the plane, item 5.
+
+**Your "four readings" are done.** Two measurements would now pin the model
+down, both before any rework:
+
+1. **The rail at four beads' rail-side pads**, against U2001 pin 5, grounded
+   at the debug header:
+   - FB201 (unit 2), predicted ~27 mV down;
+   - FB1001 (unit 10), ~54 mV;
+   - FB101 (unit 1) and FB1101 (unit 11), ~80+ mV.
+
+   The bead's rail side is the pad nearer the rail track at the edge of the
+   unit's box.
+2. **The bench current as you plug and unplug one source.** Unplug unit 11's
+   HP while reading the ammeter. The step is one squarer going from driven to
+   self-biased, a number the design log has only ever estimated ("3 mA";
+   round 39 guessed 10-30).
+
+### 41.6 The silkscreen boxes: fixed in the generator, and checked
+
+**The checker.** `pcb/check_silk_boxes.py` reads any board file. It
+reconstructs each unit's two boxes from `pcb/tile.py` and flags any unit-tile
+part or designator outside its own box.
+
+**On rev A it finds 71**, among them every one you named, and their mirror
+images on the odd side:
+
+- FB401, C403 and C407 in unit 6's box;
+- unit 2's R203, C203, C207 and FB201 in unit 4's box;
+- FB204, C209 and R208 outside P2.
+
+Almost all belong to the tile's gutter-side slots: FB01, C03 and C07 in the
+10 MHz box, and C09, FB04 and R08 in the pps box. The tiles are rotated 90 or
+270, so that edge faces the neighbouring unit. The designator search took the
+first clear spot within ~4 mm of the part, and nothing told it which box it
+was in. No part is outside its box; only labels.
+
+**The fix, in `pcb/build_pcb.py`:**
+
+- **Box registry.** Each unit's box is recorded when it is drawn.
+  `home_of(ref)` names a part's box.
+- **In-box placement.** Every designator and test-point letter search accepts
+  only positions inside that box, 0.3 mm clear of its line. If nothing near
+  the part is clear, it scans the whole box, nearest first, and finally may
+  print over a tented via. The generator's own notes show that is harmless.
+- **Priority order.** ICs and connectors are placed first, test pads last.
+  Alphabetical order had left unit 11's crowded P11 box no room for U1104.
+- **Jumper labels.** `JPn01` sits just off the header, centred over its two
+  pins: above it on the even units, and the mirror (below) on the odd.
+- **The check.** The generator **refuses to write a board** with anything
+  outside its box, and `build.py` runs `check_silk_boxes.py` on the file
+  afterwards.
+
+**Result.** The generator was rebuilt without routing, into the scratchpad:
+
+- **0 items outside their box** (681 checked);
+- **all 591 designators printed**, where rev A had three on F.Fab;
+- KiCad's own rendering of units 2-5 and the P boxes, checked before and
+  after, shows each label beside its part.
+
+The routed rev B build has to pass the same check or it stops. The committed
+board file is untouched; rev A stays as fabricated.
+
+To run the generator here I had to point it at KiCad 9's footprints. It now
+takes `KICAD9_FOOTPRINTS`, because this machine has the AppImage rather than
+the extracted tree `build.py` expects (rev B item 14).
+
+### 41.7 Before any rework: what is recorded, and what is left
+
+**Recorded now**, for comparison afterwards:
+
+- **Unplugged squarers**, 30 Si5351 restarts (new tool
+  `gateware/board/unplugged.py`), with units 1, 2, 11 and 12 driven:
+
+  | unit | quiet | oscillating | frequency |
+  |---|---|---|---|
+  | **4** | 0 | **30** | **557.1 kHz** |
+  | 5 | 0 | 30 | 560.4 kHz |
+  | 6 | 0 | 30 | 571.2 kHz |
+  | 8 | 0 | 30 | 563.0 kHz |
+  | 9 | 0 | 30 | 553.8 kHz |
+  | 3 | 27 | 3 | lower, mixed |
+  | 7 | 24 | 6 | lower, mixed |
+  | 10, 13 | 30 | 0 | — |
+
+  Each unit keeps its own frequency to a fraction of a percent, which fits a
+  per-unit LC. Unit 4, oscillating every time, is an ideal subject for
+  bridging FB401.
+- **Slips**: round 40's full drive matrix and 600 s run, and 41.1's
+  continuous run. These are the "before" for the R3001/R3002 swap.
+- **Crosstalk**: 41.3's table.
+
+**Left to do before any rework:**
+
+1. The two measurements at the end of 41.5.
+2. A scope on **U401 pin 4** (unit 4's squarer output) and on **C402**
+   (its supply, after the bead), AC coupled. Expect 557 kHz, and see which
+   node carries it.
+3. HO on the scope again, now that it has come up clean.
+
+**Then the reworks, one at a time:**
+
+1. Bridge FB401, then `./pynq-run unplugged.py 30 1,2,11,12`.
+2. R3001 → 1k and R3002 → 330 Ω, then `./pynq-run si_watch.py matrix 8 2`
+   with HO on unit 12.
+
+### 41.8 `REVB_CHANGES.md`
+
+This is new: seventeen items, grouped as follows.
+
+- **Silkscreen:**
+  - boxes (done in the generator);
+  - jumper labels (done in the generator);
+  - 1-Wire colours;
+  - a squarer-output test point.
+- **Power:**
+  - the +3V3_A plane;
+  - TPS3700 in-range LEDs;
+  - INA3221 monitoring;
+  - squarer current.
+- **The helper synthesiser:**
+  - the Si5351's reference and supplies;
+  - HO isolation.
+- **The channels:**
+  - parking;
+  - RC supply filters;
+  - crosstalk layout rules.
+- **Build environment.**
+- **Firmware and gateware:**
+  - the deglitcher;
+  - slip and LOL logging;
+  - the measured scale factor.
+
+Each item has its evidence and a status.
+
+### 41.9 Changes this round
+
+- **`REVB_CHANGES.md`**: new.
+- **`pcb/build_pcb.py`**:
+  - the box registry, in-box placement and the refusing check;
+  - designator priority;
+  - jumper label position;
+  - `KICAD9_FOOTPRINTS`.
+- **`pcb/check_silk_boxes.py`**: new. `build.py` runs it after the board
+  step.
+- **`gateware/driver/i2c_devices.py`**: `Si5351.sticky()` and
+  `clear_sticky()`, with a test. 71 tests pass.
+- **`gateware/board/bringup.py`**: clears the sticky flags after programming
+  and reports them at the end.
+- **`gateware/board/unplugged.py`**: new.
+- **On the PYNQ**: synced, with the Si5351 programmed by `bringup.py` and
+  clean.
+
+## Prompt 42
+
+I'd like to lock revA as the board that was built by JLCPCB. All of our work now should be called revB, which will get locked when we tell JLCPCB to build it.
+
+According to https://jlcpcb.com/parts/componentSearch?searchTxt=Si5351
+SI5351C-B-GM has 80 in stock
+SI5351C-B-GMR has 148
+Can you not check their inventory? You were able to last week or two weeks ago.
+
+I am not at the bench, but leave me with a list of tests to do before rework and after rework.
+
+
+## Round 42
+
+Three answers:
+
+- **Rev A was already locked, and it checks out.** It was tagged when it was
+  ordered. Everything since is now rev B in the generator, with a guard so
+  rev B cannot be uploaded until it is dated.
+- **Yes, I can check JLCPCB's stock, and round 40 was wrong.** I had used
+  their web page instead of the project's own API client. The Si5351C is in
+  stock, and it is now the rev B plan.
+- **The bench list is below**, mostly one command per stage. I have already
+  run part of the "before" set from here: the drive matrix tonight, and a
+  long logged watch that is running now.
+
+### 42.1 Rev A is locked; the work is rev B
+
+**Rev A has been locked since 2026-09-15**:
+
+- an annotated git tag, `GPSDO-PYNQ-Z2-revA`, on commit `0f9a4dd`, pushed to
+  origin;
+- `GPSDO-PYNQ-Z2-revA.zip`, committed beside it. It holds the KiCad project,
+  `mfg/release/` exactly as uploaded, the handbook and the README.
+
+Re-checked tonight:
+
+- **all 58 of the archive's SHA-256 sums hold**;
+- **its 57 design files are byte-identical to the tag**.
+
+The tag is what was uploaded. Nothing in the log says JLCPCB changed anything
+in review. If they ever did, say a substituted part, it belongs in the new
+rework table (below).
+
+**Rev B is the working tree.**
+
+- `gen/design.py` now says `REV = "B"`, `DATE = "unreleased"`. `DATE` is
+  printed beside the revision on the silkscreen, and it becomes the order
+  date on the day rev B is locked.
+- `HANDBOOK.md` already says "rev B, unreleased", and that the boards on the
+  bench are rev A.
+- The committed board file, the schematics and `mfg/release/` are still rev
+  A's own files, untouched, until the rev B board is built. Their next
+  rebuild prints rev B.
+
+**Rev B cannot be uploaded by accident.** `mfg/build_release.py`:
+
+- marks a release **DRAFT -- NOT FOR UPLOAD** while `DATE` is not a date. It
+  exits 3, and `build.py` carries on past it;
+- once `DATE` is a date, fails any board whose silkscreen does not print that
+  revision and date.
+
+`REVB_CHANGES.md` now opens with three things:
+
+- a revision table;
+- the five steps for **locking rev B**: date it, build, upload, tag, archive;
+- a **rework log for the rev A boards**. Every measurement from here on is
+  read against whichever reworks were in place, so please add a row (date,
+  which board) for each.
+
+### 42.2 JLCPCB's stock, and the Si5351C
+
+**Yes, I can check, and in round 40 I should have.** `mfg/jlc_api.py`:
+
+- calls the same API as the parts search page;
+- has priced and stocked this BOM since round 23.
+
+In round 40 I tried their search page, which renders only in a browser,
+reported "not found", and did not reach for the client. The design log even
+had the answer in §6: `SI5351C-B-GM`, 94 in stock on 2026-09-08. Round 8
+chose the A over it for its deeper stock and its MSOP package.
+
+Through `jlc_api.py`, 2026-09-30 16:39 PDT:
+
+| part | LCSC | package | JLCPCB stock | price @1 / @10 |
+|---|---|---|---|---|
+| **`SI5351C-B-GMR`** | C2649375 | QFN-20 4×4 | **148** | $5.71 / $4.92 |
+| **`SI5351C-B-GM`** | C3608122 | QFN-20 4×4 | **80** | $5.51 / $4.74 |
+| `SI5351C-B-GM1` | C3608072 | QFN-16 3×3 | 1 | $5.03 |
+| `SI5351A-B-GTR` (rev A) | C504891 | MSOP-10 | 34 013 | $1.19 |
+
+Your numbers exactly.
+
+- The two QFN-20 codes are the same blank part. The datasheet (Figure 24)
+  gives the suffix as blank = coil tape, R = tape and reel, so the only
+  difference is packaging. Both are Extended, so one setup fee.
+- The other ~30 `SI5351C-B*` codes are factory-programmed, with 0 in stock.
+- DigiKey lists `SI5351C-B-GM` as active at $5.21. Its quantity would not
+  load for me.
+- **Mouser and DigiKey, your readings after this round was written:**
+  - Mouser: `SI5351C-B-GM` **43 288 in stock** at $5.02, `-GMR` 787 at
+    $5.11, the QFN-16 parts on order only;
+  - DigiKey: `-GMR` **over 3000**, `-GM` none (200 expected in November).
+
+  Since GM and GMR are the same part, both distributors have plenty. That
+  meets your stocking rule for the QFN-20.
+- 228 at JLCPCB is plenty for two-board builds but not deep. Mouser is the
+  backstop, through JLCPCB's global sourcing or by consigning parts. Buying a
+  few into your JLCPCB parts library ahead of the order reserves them.
+
+**Rev B item 9 is now PLANNED: the Si5351C, with the TCXO straight into
+CLKIN.** The case, briefly:
+
+- **CLKIN is a CMOS input** (datasheet Table 6): V_IL ≤ 0.3 VDD, V_IH ≥
+  0.7 VDD, 10-100 MHz, 3.8 V absolute.
+  - The FT5HN's guaranteed V_OL ≤ 0.5 V and V_OH ≥ 2.64 V clear both
+    thresholds.
+  - No divider, no 767 Ω, no XA.
+- **It attacks the likely mechanism.** One extra or missing reference edge
+  is exactly one 40 ns slip, and a slowly crossing input is where a few mV of
+  output switching noise can do that.
+  - An RC model fitted to your probed 300-520 mV puts XA at 0.4-0.55 Vpp
+    unprobed, crossing at **25-45 mV/ns**.
+  - CLKIN would cross at **≥ 210 mV/ns**, the FT5HN's slowest specified
+    edge: five to nine times steeper.
+- **Two layout catches**, both in item 9:
+  - On the QFN-20, **CLK0 and CLK1 share VDDOA**. Put the helper on CLK0 and
+    HO on CLK4, which has its own VDDOC, on the other side of the package.
+  - CLKIN (pin 6) sits between SDA and OEB: leave CLK2/CLK3 unused and tie
+    OEB low.
+- **Optional extras:**
+  - **INTR** (pin 3, open drain) to a test point or a spare FPGA pin, for a
+    hardware record of LOL/LOS;
+  - a DNP crystal footprint on XA/XB, which register 15 can switch back to
+    with no rework.
+- **The driver change is small**:
+  - register 15 selects CLKIN for both PLLs, ÷1;
+  - HO's MultiSynth moves to CLK4;
+  - the reference-loss flag becomes LOS_CLKIN.
+
+**The rev A rework is still worth doing.** R3001 → 1k and R3002 → 330 Ω
+tests the slope mechanism directly; the model gives ~0.8 Vpp at XA and about
+twice the slope.
+
+- **If CLK0 at 4 or 8 mA then runs clean**, CLKIN, being steeper still,
+  should fix it outright, with room to spare.
+- **If not**, the coupling also runs through the supplies, and the separate
+  VDDO banks and the layout rules matter as much as the part.
+
+### 42.3 Already done tonight, from here
+
+The rig was as round 41 left it:
+
+- the standard image (CLK0 2 mA, CLK1 8 mA);
+- HO on unit 12;
+- 0 slips in a 20 s look.
+
+**The "before" drive matrix**, 2026-09-30 23:44 UTC, HO into unit 12's
+50 Ω, slips per second over two fresh starts each:
+
+| CLK0 \ CLK1 | 2 mA | 4 mA | 6 mA | 8 mA | off |
+|---|---|---|---|---|---|
+| **2 mA** | 0 | 0 | 0 | 0 | 0 |
+| 4 mA | 0 | 959-971 | 1415-1421 | 1367-1372 | 0 |
+| 8 mA | 2196-2214 | 2224-2228 | 2025-2026 | 1532-1540 | 1023-1053 |
+
+- It is the same as round 40, so the effect is stable from day to day.
+- The chip latched no LOL or LOS flag in any of the 30 starts.
+- No HO-beat jump came without a PLLA slip, so PLLB never slipped.
+- Saved on the PYNQ as `~/gpsdo-dmtd/logs/matrix_before_20260930T2344Z.log`.
+
+**A long watch is running now**, at the standard image:
+
+```sh
+./pynq-run si_watch.py watch 57600 12   # started 23:49:50 UTC, in the background
+```
+
+- It logs to `~/gpsdo-dmtd/logs/watch_before_20260930T2349Z.log`.
+- 57 600 s is the polling time. Each 60 s chunk takes ~77 s, because the
+  analysis runs between chunks, so the run ends around **13:20 PDT
+  tomorrow** (Oct 1) and covers ~78 % of the wall clock.
+- The first ten minutes were clean.
+- To see only what was not clean (the header and TOTAL lines aside):
+
+  ```sh
+  grep -v 'PLLA 0 slips (0.00/s), 0 other steps.*, 0 jumps' logs/watch_before_*.log
+  ```
+
+- To stop it early: `sudo pkill -f 'si_watch.py watch'`. Every finished
+  minute is already in the log.
+
+### 42.4 The bench list: before any rework
+
+Do 1-4 first. They are hands-on and passive, so the long watch can keep
+running through them; 4 needs a watch running. Then stop the watch and run
+5.
+
+**1. The rail drops, with the DMM.**
+
+- Set it up:
+  - **COM on test point `A`** (TP2002, beside the LDO, at (118.5, 9.9)).
+  - **Red on each bead's rail-side pad.** The meter then reads the drop
+    directly, in mV, negative.
+  - Either bead pad would do within the bead's few mV, but use the rail
+    side.
+- As a first check, red on U2001 pin 5 should read under 2 mV.
+
+| red on | unit | rail pad at (mm) | model | scaled to your 109 mV |
+|---|---|---|---|---|
+| FB201 | 2 | (142.8, 61.5) | 27 mV | ~38 mV |
+| FB1001 | 10 | (142.8, 132.7) | 54 mV | ~76 mV |
+| FB1101 | 11 | (64.2, 126.2) | 81 mV | ~113 mV |
+| FB101 | 1 | (64.2, 37.2) | 84 mV | ~118 mV |
+| J5001 pin 5 | debug header | (31.8, 174.0) | 78 mV | 109 mV last time |
+
+Coordinates are the board's own (KiCad, y down). The scaled column assumes
+the model is uniformly 1.4× optimistic. If FB201 is close to its column but
+FB101 is far off, the left column's single feed is the problem, and the rev B
+plane fixes it (item 5).
+
+**2. The bench current.** Supply at 5.4 V on the posts, as before:
+
+- note the current with all four sources connected (it was 230 mA);
+- unplug unit 11's HP, then plug it back; twice, noting each step;
+- unplug both Siglent cables (units 1 and 2), then plug them back.
+
+Each step is a squarer going between driven and self-biased. That is rev B
+item 8's per-channel number, which we have only ever guessed (3-30 mA). A
+step far above a few mA means the unplugged squarer started oscillating by
+itself.
+
+**3. Unit 4's oscillation, on the scope.** Setup:
+
+- 10× probe, **ground spring**, AC coupled, 20 MHz bandwidth limit;
+- about 1 µs/div;
+- record frequency and Vpp at each node below.
+
+| node | where | ground spring to |
+|---|---|---|
+| U401 pin 4, the squarer's output | (142.8, 70.6) | U401 pin 3, 2.2 mm away |
+| C402 pad 1, the gate's supply after FB401 | (140.8, 74.5) | C402's other pad |
+| FB401's rail pad, +3V3_A before the bead | (142.8, 79.3) | C403's GND pad |
+| `S` (TP402), the squarer's input | (146.7, 74.6) | U401 pin 3, 4.3 mm away |
+
+- Expect ~557 kHz.
+- **The question is where it is largest.** At 557 kHz, `S` sees ~2.5 kΩ to
+  ground through R404, C401 and R403 (less with the 50R jumper on), against
+  1 MΩ of feedback. The input is held near AC ground, so the oscillation has
+  to close its loop through the supply.
+  - A clear 557 kHz on C402, much smaller on the rail side, puts FB401 and
+    its 110 nF in the loop.
+- The same four nodes on unit 10, which never oscillates (U1001, C1002,
+  FB1001), are the control.
+
+**4. `X` and the TCXO, during the long watch.** Setup:
+
+- 10× probe, ground spring, **DC coupled**, no bandwidth limit, ~10 ns/div;
+- record min, max, Vpp and the 10-90 % rise time.
+
+| node | where | ground spring to |
+|---|---|---|
+| `X` (TP3001) | (103.9, 49.4) | R3002's GND pad at (97.2, 49.4) |
+| TCXO output: R3001's pad toward X3001 | (101.2, 46.1) | the same GND pad, 5 mm away |
+
+- `X` read 300-520 mV last time. The TCXO should swing 0-3.3 V with edges of
+  10 ns or less, its specification.
+- **Note the clock time (to the minute) the probe goes on `X` and comes off,
+  and the same for the TCXO.**
+  - The probe's ~20 pF halves XA's swing.
+  - The watch log then says whether that alone makes 2 mA slip: **the margin,
+    measured.**
+  - If the long watch has finished, run
+    `./pynq-run si_watch.py watch 900 12 | tee logs/probe_before.log` in a
+    terminal while you probe.
+
+**5. The automated battery: `./bench.sh before`.** About 12 minutes. Stop
+the long watch first; the script refuses to start while it runs.
+
+- `bringup.py`.
+- `unplugged.py 30` (unit 4 was 30/30 at 557.1 kHz in round 41).
+- 30 s recordings of units 1, 2, 11 and 12.
+- It then asks you to move the Siglent's unit-1 cable to unit 4, records
+  units 2, 4, 11 and 12, and asks you to move it back. That is unit 4 as a
+  live channel, for the FB401 comparison.
+- The drive matrix again.
+- Everything goes to `logs/before_<UTC>/`, with a `summary.txt`.
+
+### 42.5 Rework 1: bridge FB401, then
+
+FB401 is unit 4's squarer bead, at (142.8, 78.2). Use a solder bridge or a 0R.
+
+1. **`./bench.sh fb401`.** **The result is unit 4's row** in the summary's
+   unplugged table.
+   - **Quiet 30/30**: the bead and its 110 nF were the oscillator's tank.
+     Rev B item 12 (RC, not beads) is confirmed.
+   - **Still ~557 kHz**: the bead was not it.
+   - **A new frequency**: the tank is in the loop, but not alone.
+   - The other units' rows should not move; they are the control.
+2. **Repeat 3** (unit 4 on the scope): the 557 kHz should be gone from C402
+   and U401 pin 4.
+3. **Repeat 2's first reading** (all sources connected). The difference is
+   one squarer's oscillation current, if it stopped.
+4. I will compare unit 4 as a live channel (`beats_u4`), before and after:
+   - its per-edge scatter;
+   - its edge-by-edge difference from unit 2.
+
+   That says whether the bead was doing anything useful for a driven
+   channel.
+
+### 42.6 Rework 2: R3001 3k3 → 1k, R3002 1k → 330 Ω, then
+
+These are 0805 resistors at (101.2, 47.0) and (98.1, 49.4). They give the
+same 0.23 ratio from a 248 Ω source.
+
+1. **Repeat 4**, with the same probe and settings, and the probe-on/off
+   times, while `./pynq-run si_watch.py watch 900 12 | tee logs/probe_xa.log`
+   runs at the standard image.
+   - **Expect `X` at ~0.5-0.65 Vpp probed** (it was 0.22), running about
+     0.1-0.7 V, with faster edges. Unprobed it would be ~0.8 Vpp.
+   - XA's absolute maximum is 1.3 V. ~0.8 Vpp is less than the 1 Vpp the
+     datasheet's own example puts on XA through 0.1 µF.
+   - The TCXO's high level should stay above ~3.0 V (2.64 V is its spec).
+     It now sources 2.5 mA into the divider.
+   - Does the probe still make 2 mA slip?
+2. **`./bench.sh xa`.** **The result is the drive matrix**, against 42.3's
+   table:
+   - **4 mA and 8 mA rows at 0**: the reference's slope was the mechanism.
+     Rev B's CLKIN removes it with margin to spare.
+   - **Far fewer slips, but not none**: the slope matters, and the supplies
+     carry the rest. Rev B needs CLKIN *and* separate VDDO banks.
+   - **No change**: the coupling is not through the reference, and the
+     supply and layout half of item 9 carries the fix.
+   - Note `bringup.log`'s helper frequency against the before run. The TCXO's
+     load changed. Its ±0.3 ppm is specified only for ±5 % about 15 pF, and a
+     1.3 kΩ divider is a different load.
+3. **The margin.** If the 4 mA row came out clean:
+
+   ```sh
+   ./pynq-run si_watch.py watch 3600 12 --clk0 4 | tee logs/xa_watch_4mA.log
+   ```
+
+   That is one hour at 4 mA. It puts the standard image back at the end.
+4. **Overnight at the standard image**, the twin of tonight's run:
+
+   ```sh
+   setsid nohup ./pynq-run si_watch.py watch 57600 12 \
+       > logs/watch_xa_$(date -u +%Y%m%dT%H%MZ).log 2>&1 < /dev/null &
+   ```
+
+Add both reworks to the table in `REVB_CHANGES.md`. If the second board is
+still as built, it is a ready rev A reference should any result look odd.
+
+**Send me the DMM and scope numbers, and the probe-on/off times.**
+Screenshots are welcome. The logs and recordings stay on the PYNQ, and I will
+read them from there.
+
+**Not on the list:**
+
+- **HO into a spare pps input.** Unit 12's HO beat already separates PLLB from
+  PLLA, so it adds nothing to these reworks.
+- **HO on the scope.** Your round 41 look was clean.
+- **XTAL_CL.** Settled in round 41.
+
+### 42.7 Changes this round
+
+- **`gen/design.py`**: `REV = "B"`, `DATE = "unreleased"`, with a note that
+  rev A is locked.
+- **`mfg/build_release.py`**:
+  - DRAFT (exit 3) while undated;
+  - once dated, a check that the board prints that revision and date;
+  - `MANIFEST.txt` carries both.
+- **`build.py`**: accepts the DRAFT exit at step 6 and reports it.
+- **`gen/handbook.py`**, `HANDBOOK.md` regenerated:
+  - the rev B header, saying the bench boards are rev A;
+  - `S` and `X` corrected for a 10× probe's ~20 pF;
+  - `X`'s DC level explained: the pad is the divider, before the 10 nF into
+    XA.
+- **`pcb/labels.py`**: those two test-point texts. They are in the handbook
+  only, not on the silkscreen.
+- **`REVB_CHANGES.md`**:
+  - the revisions table, the rev B lock procedure and the rev A rework log;
+  - item 9 rewritten: the Si5351C is PLANNED, with the stock, the corrected
+    round-40 claim, the matrix, the slope argument, the VDDO banks and the
+    driver changes.
+- **`gateware/board/si_watch.py`**: `watch --clk0/--clk1`; the programming
+  is shared with `matrix`. Checked against a stand-in chip on the laptop;
+  not run on the PYNQ, because the long watch is using it.
+- **`gateware/board/beats.py`**: recordings are named by units *and* time.
+- **`gateware/board/bench.sh`**: new.
+  - Its glue was tested on the laptop with a stand-in `pynq-run`.
+  - On the PYNQ, it refused to start while the watch ran, as it should.
+- **`gateware/board/README.md`**: all of the above.
+- **On the PYNQ**:
+  - `si_watch.py`, `beats.py` and `bench.sh` synced;
+  - `logs/matrix_before_20260930T2344Z.log`;
+  - the long watch running until about 13:20 PDT.
+- **Host tests**: 71 pass. Nothing committed.
+
+## Prompt 43
+
+I have plugged USB cables from this computer to the Siglent SDG1032X function generator and Siglent SDS2104X Plus oscilloscope. Output 1 of the function generator is split and goes to input 1 of the oscilloscope and also input 1 of the GPSDO-PYNQ-Z2 PCB's 10 MHz SMA input. Similarly for 2. I have also plugged these instruments into the Ethernet 192.168.8.X internal network. The Siglent SDG1032X function generator is at 192.168.8.246 and the SDS2104X oscilloscope is at 192.168.8.203.
+
+Safely try to read their settings through both methods. Safely change parameters. Aquire oscilloscope data and data from the PYNQ and check for consistency. Do any additional tests that would be useful to do with this setup. Once everything is working, we can go through "42.4 The bench list: before any rework".
+
+
+
+## Round 43
+
+**Part of it works, and two things now need your hands.**
+
+- **The generator works over the network**, by raw socket and by VXI-11. I
+  read its settings, changed phase, frequency and amplitude, read every one
+  back, and put it back exactly. Its safety limits refused what they should.
+- **The scope worked for about ten minutes, then its remote control
+  stopped**, raw socket and VXI-11 both. That was very probably my doing; see
+  43.4. **It needs a power cycle**, and it is probably sitting in **Stop**.
+- **The PYNQ stopped accepting SSH at about 10:40.** It answers ping and
+  Jupyter's login, but sshd sends no greeting, and Jupyter's file page returns
+  HTTP 500. That points at its SD card or filesystem, but I could not look:
+  logging in through Jupyter was refused by my permissions, rightly.
+  **Please check it, or reboot it** (43.5).
+- **USB** needs one udev rule, which needs your sudo (43.1).
+- **One finding**: unit 2 receives **3.5 Vpp**, above its 3.3 Vpp rating
+  (43.2).
+- **Ready to run** the moment the scope and the PYNQ are back:
+  - `siglent.py`, for both instruments;
+  - `xcheck.py`, which measures the same changes with the generator, the
+    scope and the DDMTD at once (43.6).
+
+### 43.1 The instruments, and the three ways in
+
+| | SDG1032X generator | SDS2104X Plus scope |
+|---|---|---|
+| `*IDN?` serial, firmware | SDG1XCAC3R0195, 1.01.01.30R1B2 | SDS2PDDX6R0722, 5.0.1.3.9R12 |
+| LAN | 192.168.8.246 | 192.168.8.203 |
+| USB (vendor f4ec) | 1103 → `/dev/usbtmc1` | 1011 → `/dev/usbtmc2` |
+
+| transport | generator | scope |
+|---|---|---|
+| raw socket, port 5025 | works | worked, then went out of step (43.4) |
+| VXI-11 (`TCPIP::ip::INSTR`) | works, 4 ms a query; **now the default** | service down since 43.4 |
+| USB (usbtmc) | blocked: root-only device nodes | blocked |
+
+**USB.** The kernel's usbtmc driver has both instruments, but Linux makes
+`/dev/usbtmc*` root-only, and sudo here needs your password. One rule fixes
+it for good; you are already in `plugdev`:
+
+```sh
+echo 'SUBSYSTEM=="usbmisc", KERNEL=="usbtmc*", ATTRS{idVendor}=="f4ec", GROUP="plugdev", MODE="0660"' \
+    | sudo tee /etc/udev/rules.d/99-siglent-usbtmc.rules
+sudo udevadm control --reload && sudo udevadm trigger
+```
+
+Then `python3 gateware/board/siglent.py --usb` reads both over USB.
+
+### 43.2 What they were set to, read before touching anything
+
+**Generator.** Both outputs identical:
+
+- 10 MHz sine, 4 Vpp, no offset, phase 0, output on;
+- LOAD high-Z, so 4 Vpp is the open-circuit voltage;
+- internal reference, the two channels in phase-locked mode;
+- no coupling, modulation, sweep or burst.
+
+**Scope.**
+
+- CH1 and CH2 on: 1 V/div, DC, 1 MΩ, 1×, full bandwidth. CH3 and CH4 off.
+- 200 ns/div, 1 GSa/s, 10 Mpts memory (2 kpts on screen).
+- Edge trigger, CH1 rising at 0 V, AUTO.
+- Its clock is 14.5 hours ahead of this laptop: it read 2026/10/2 01:02 at
+  10:29 PDT here. That matters only for its screenshots' time stamps.
+
+**What the scope measured**, with its own measurements:
+
+| | CH1, unit 1 | CH2, unit 2 |
+|---|---|---|
+| peak to peak | **2.10 V** | **3.50 V** |
+| frequency | 10.000000 MHz (counter: 9.999992 MHz) | |
+| CH1 → CH2 skew | 5.7 ns, with both outputs at phase 0 | |
+
+**Unit 2 is getting 3.5 Vpp.**
+
+- The same 4 Vpp open circuit gives 2.1 V on unit 1 and 3.5 V on unit 2. So
+  unit 1's 50R jumper is fitted and unit 2's is not, as the handbook's
+  source table has them.
+- Unterminated, unit 2 sees whatever the cable's open end makes of the
+  generator's 50 Ω.
+- 3.5 Vpp is **above the board's 3.3 Vpp rating**, though under the 4.1 Vpp
+  ceiling where the clamps start to conduct. Nothing is at risk, but it is
+  out of spec.
+- **Fit unit 2's 50R jumper** for these tests. Both channels are then
+  matched at ~2 Vpp, like real 50 Ω sources. Or set the generator to 3.3 V.
+- I left your 4 Vpp alone: it is your setup, and every change I made was put
+  back.
+
+The 5.7 ns skew is probably mostly cable length. The DDMTD will measure its
+own offset, which includes the board's two paths, so absolute offsets will not
+agree with the scope; **changes** must, to the picosecond.
+
+### 43.3 Safe changes, made and undone
+
+All on output 2, with its value read back after each:
+
+| set | read back | time |
+|---|---|---|
+| phase 10° | 10 | 163 ms |
+| phase −25.5° | −25.5 | 162 ms |
+| frequency 10 000 000.001 Hz | 10 000 000 Hz (display, see below) | 162 ms |
+| amplitude 3.3 V | 3.3 V | 162 ms |
+| amplitude 3.4 V | **refused**: 3.40 Vpp open circuit, above 3.3 | |
+| frequency 10.5 MHz | **refused**: not within 0.1 % of 10 MHz | |
+| restore | both outputs 10 MHz, 4 V, 0 V, 0°, exactly as found | |
+
+- The readback carries 10 significant digits, so 0.01 Hz shows and 0.001 Hz
+  does not. The experiments use offsets that display exactly (0.05 Hz).
+- The rules live in `siglent.py`:
+  - no `*RST`;
+  - never change an output's LOAD (the same number would then mean double
+    the volts), its waveform, or its on/off state;
+  - never change the scope's input impedance or coupling;
+  - open-circuit amplitude 3.3 Vpp at most;
+  - restore only the exact snapshot taken at the start.
+
+### 43.4 What went wrong with the scope
+
+The raw socket does not frame replies, and I learned three things about the
+scope the hard way:
+
+1. **It keeps unread replies across connections**, and releases them only
+   when the next command arrives. Draining the socket on connecting finds
+   nothing, and then every reply arrives one late.
+2. **A data block ends in two line ends.** Read up to the end of the block,
+   the next query gets an empty line.
+3. **`:WAVeform:POINt 0` means none, not all.** It returns a zero-length
+   block in the old format, `C1:WF DAT2,#9000000000`.
+
+While I was finding these out, a session sent `:STOP`, read replies out of
+step, and ended mid-transfer, without the `:RUN` that should have followed.
+The next connection was refused. Since then the scope refuses port 5025,
+port 5024 and its VXI-11 service. It still answers ping, and its web page
+loads with the instrument fields blank. It has not recovered in 15 minutes.
+
+**I am fairly sure I caused this, and I am sorry for the disruption.**
+`siglent.py` now:
+
+- uses VXI-11 by default, so every message is framed;
+- syncs on `*IDN?` when it connects;
+- asks the scope how many points it acquired;
+- puts the `:RUN` after a capture in a `finally`.
+
+**Please power-cycle the scope and check that it is running, not stopped.**
+Then `python3 gateware/board/siglent.py` should print both instruments.
+
+Before it stopped, the scope gave its screen (a 57 kB PNG over SCPI), its
+measurements, and 2000-point records of both channels at 1 GSa/s. Its 8-bit
+codes are ~30 per division, by its own MAX/MIN measurements; the preamble's
+field there reads 127. Those are the pieces `xcheck.py --scope` needs.
+
+### 43.5 The PYNQ
+
+What I saw, without being able to log in:
+
+| time (PDT) | |
+|---|---|
+| 10:40:54 | a Syscomp CircuitGear MKII appeared on this laptop's USB, so you were at the bench |
+| ~10:40 | SSH to the PYNQ reset, then accepted connections without ever greeting, for over 15 minutes |
+| ~10:42 | ping answered in 0.3 ms; Jupyter's login page and the port-80 redirect answered at once |
+| ~10:43 | after login, Jupyter's file page returned HTTP 500 |
+
+- sshd stalling before its greeting, and a file listing failing, together
+  suggest the SD card or the filesystem: full, read-only, or very slow. I
+  could not check.
+- It is worth a glance at whether the PYNQ's power or network cable moved at
+  10:40.
+- The overnight watch was due to end at about 13:20 today. Every minute
+  before the trouble is in `~/gpsdo-dmtd/logs/watch_before_20260930T2349Z.log`,
+  on that card.
+
+**Please**:
+
+- On its console (HDMI, or the serial port at 115200), look at:
+
+  ```sh
+  df -h /
+  dmesg | tail -30
+  uptime
+  ```
+- If nothing explains it, reboot it.
+- **After any reboot, run `./pynq-run bringup.py --inputs 1,2,11,12` first.**
+  It reloads the FPGA image. `beats.py`, `unplugged.py` and `si_watch.py`
+  open the overlay without loading it, and would otherwise talk to whatever
+  the board booted with.
+
+### 43.6 Ready to run once both are back
+
+`gateware/board/xcheck.py`, from the laptop. Each experiment makes **one**
+PYNQ recording of units 1 and 2 while it changes output 2 at logged times,
+then puts the generator back exactly.
+
+- **`xcheck.py steps --scope`**: output 2's phase through 0, ±20, ±40, ±60°,
+  3 s each.
+  - A step of φ is φ/360 × 100 ns of input time.
+  - Unit 1 − unit 2 must move by exactly that. This checks the scale and the
+    sign (rev B item 17).
+  - The scope's CH2 − CH1, fitted at each step, must move by the same
+    amount: three independent readings of one change.
+- **`xcheck.py ramp 0.05`**: output 2 at 10 MHz + 0.05 Hz for 45 s, sliding
+  unit 2 through the whole 100 ns more than twice.
+  - The slope should be −0.05/10⁷ to a few ppm.
+  - The residual shows any non-linearity across the range.
+  - A tone at 0.05 Hz in it is the crosstalk between units 1 and 2: round
+    41's method, now on adjacent channels.
+- **`xcheck.py amp`**: output 2 from 3.3 V down to 1.25 V and back. Any shift
+  of unit 2's timing is the squarer's AM-to-PM, in ps per dB. The
+  self-biased design is meant to keep it small.
+
+**The analysis no longer depends on a ps-per-cycle constant.** It counts each
+unit's beat cycles and interpolates one unit's count at the other's
+transitions. One beat cycle of relative movement is one 10 MHz cycle, exactly
+100 ns.
+
+- So it needs no wrap-around, and the generator's wander against the helper
+  (round 40: ~15 % of a beat period in 0.2 s) cancels.
+- On round 40's recording of units 1 and 2 from one generator output, it
+  gives a flat **−572 ps, 30 ps rms, drift 0.03 ps/s** over 25 000 pairs.
+  `beats.py` reads −544 ps, 45 ps rms, on all transitions.
+- The record also prints the ps per helper cycle that today's beat period
+  implies, against the design's fixed 12.34. They differ by as much as the
+  inputs' ppm, which is item 17's point.
+
+**Not yet run on the hardware**: `xcheck.py` end to end, and every scope
+capture after 43.4.
+
+**Then 42.4, the bench list.** With the scope under remote control, its
+readings for 42.4's tests 3 and 4 (unit 4's nodes; `X` and the TCXO on CH3
+and CH4) can be captured and time-stamped from here. That also gives test 4's
+probe-on and probe-off times for free.
+
+### 43.7 Changes this round
+
+- **`gateware/board/siglent.py`**: new.
+  - Both instruments over VXI-11, raw socket or USB;
+  - settings, waveforms and screenshots;
+  - the safety rules and the exact restore.
+- **`gateware/board/xcheck.py`**: new. The steps, ramp and amp experiments,
+  and their analysis.
+- **`gateware/board/beats.py`**: recordings carry a wall-clock anchor (`wall0`,
+  `mono0`).
+- **`gateware/board/README.md`**: the laptop instrument tools.
+- **The PYNQ**: not reached since 10:40. The new `beats.py` is not on it
+  yet; `xcheck.py` needs it there.
+- **Host tests**: 71 pass. Nothing committed.
+
+### 43.8 After the reboots: what had gone wrong
+
+**The PYNQ came back at a new address, 192.168.8.156.**
+
+- It also came back with a new MAC address, xx:xx:xx:xx:xx:xx. It makes a
+  random one at every boot, so DHCP hands it a new address each time.
+- `/etc/network/interfaces.d/eth0` asks for DHCP with no fixed hardware
+  address. One added line pins it, and then a reservation in the router can
+  give it a permanent address:
+
+  ```
+  auto eth0
+  iface eth0 inet dhcp
+      hwaddress ether xx:xx:xx:xx:xx:xx
+  ```
+
+  I have not changed it; that is yours to do.
+
+**Its trouble began at 09:31 PDT, not 10:40.**
+
+- The previous boot's journal ends at 16:31:33 UTC (09:31:33 PDT), one minute
+  after the overnight watch's last log line.
+- From then on nothing new was written to its SD card: no journal, no log,
+  and no new sshd processes. Ping and the already-running Jupyter kept
+  answering, which is all I could see.
+- The card is 46 % full, so it was not full.
+- Your first reboot ran for 5 seconds (18:03:14-18:03:19 UTC) before the
+  second, good one: the hiccup you saw.
+- **What happened at the bench around 09:31?** A supply being connected, or a
+  USB cable, would fit.
+- Now that the board draws its ~230 mA from the PYNQ's header, the PYNQ is
+  better on its barrel jack than on USB power, if it is not already.
+
+**The overnight watch, up to the hang: 780 of 780 chunks clean.**
+
+- 23:50 UTC to 16:30 UTC is 13 h of polling over 16.7 h.
+- 0 PLLA slips, 0 other steps, 0 HO-beat jumps.
+- No latched LOL or LOS flag.
+
+**The scope** was left stopped by me. On this scope `:RUN` is not a command;
+the pair is `:TRIGger:RUN` and `:TRIGger:STOP`. A bare `:STOP` was accepted,
+so it stopped and was never restarted, and my first captures today re-read
+one frozen frame. Fixed.
+
+### 43.9 Generator, scope and DDMTD agree
+
+**Phase steps** (`xcheck.py steps --scope`). Output 2 was stepped through 0,
+±20, ±40 and ±60°, 3 s each, while the PYNQ recorded units 1 and 2 and the
+scope fitted CH2 − CH1 at each step:
+
+| | slope vs the setting | residual | repeats of one setting |
+|---|---|---|---|
+| **DDMTD**, unit 1 − unit 2 | **−1.00013** | 3.1 ps rms, 5.0 max | 0.3012, 0.3013, 0.3018 ns |
+| scope, CH2 − CH1 | −0.99967 | 7.3 ps rms, 14.6 max | 6.144, 6.148, 6.141 ns |
+| **scope against DDMTD** | **+0.99954** | **7.8 ps rms** | offset 5.85 ns: cable lengths |
+
+- A positive phase advances the output, and the DDMTD reads a delay of unit
+  2 as a rise in unit 1 − unit 2, as derived.
+- The board resolves the generator's 0.1° steps and repeats to about 1 ps.
+  The scope, fitting 20 cycles at 1 GSa/s, repeats to about 10 ps. **The
+  DDMTD is the better of the two instruments here.**
+- Per-edge noise was 27 ps rms with the inputs in phase, and 62-92 ps with
+  them apart (see the ramp).
+
+**A frequency ramp** (`xcheck.py ramp 0.05`). Output 2 ran at 10 MHz + 0.05 Hz
+for 45 s, sliding unit 2 through the full 100 ns 2.2 times:
+
+| | |
+|---|---|
+| slope | −4999.989 ps/s against −5000.000: **2 ppm** |
+| non-linearity, 5 ns bins across ±50 ns | within **±5.4 ps** |
+| a tone at 0.05 Hz (crosstalk between units 1 and 2, with the generator's own) | **2.0 ps**; 2.4 ps at 0.10 Hz |
+| per-edge noise, inputs in phase | 57 ps rms |
+| per-edge noise, inputs 50 ns apart | 113 ps rms, rising steadily in between |
+
+**The noise depends on the offset because of the helper.**
+
+- Two inputs in phase are sampled by the same helper edges, so the helper's
+  jitter is common to both and cancels.
+- 50 ns apart, their beat transitions are 8101 × 50 ns ≈ 400 µs apart in
+  real time. The Si5351's phase noise over 400 µs then does not cancel.
+- So comparing two sources far apart in phase costs about twice the per-edge
+  noise. Averaging over a second still takes it to the few-ps level.
+
+**Frequencies, three ways.**
+
+- The generator's 10 MHz is about 1 ppm below the TCXO (0.95-1.08 ppm across
+  today's runs, from the beat).
+- It is 0.8 ppm below the scope's timebase (the scope's counter).
+- The PYNQ's PS clock is the outlier: timed against it, the helper reads
+  6.7 ppm high.
+
+### 43.10 Two findings: the generator's ranges, and the squarer's AM-to-PM
+
+**The SDG1032X's delay changes with its amplitude range.**
+
+- Going from 2.0 V to 1.6 V, output 2 moved 1.56 ns earlier, and output 1
+  1.52 ns earlier.
+- The scope saw this, so it is the generator, not the board.
+- Keep its amplitude on one side of that boundary in any phase test.
+
+**The board's squarers convert amplitude into delay.** With the generator's
+part subtracted (the scope's reading), each unit's own delay:
+
+| unit | its input | its delay | fit: delay = K / A_peak |
+|---|---|---|---|
+| 1, 50R fitted | 1.70 → 0.82 Vpp | **+1.36 ns** | K = 1085 ps·V, residual 34 ps rms |
+| 2, unterminated | 2.83 → 1.06 Vpp | **+1.35 ns** | K = 1125 ps·V, residual 22 ps rms |
+
+- Both squarers behave as if their crossing sat about **70 mV off the sine's
+  midpoint**. The delay then goes as 1/amplitude: **~250 ps per dB at
+  1 Vpp**, and ~125 at 2 Vpp.
+- A GPSDO whose output drifts 0.1 dB in amplitude would appear to move
+  13-25 ps in phase. That is more than anything else measured today.
+- The cause is the self-bias. The 1 MΩ from each gate's output to its input
+  centres the input where the output's *average* equals the input's DC level.
+  That is the threshold only if the threshold is exactly VCC/2 and the
+  output symmetric, and rev A's S nodes sit near 1.4 V.
+- The fix is **rev B item 18**, new: bias each squarer from a replica gate on
+  the same die (a 74LVC2GU04, one half with its input tied to its output, at
+  exactly its own threshold). That should cut the effect about ten times.
+  `xcheck.py amp --scope` measures it before and after.
+
+### 43.11 Now 42.4: what is running, and what to do
+
+**Running now**, both passive:
+
+| | where | until | stop it with |
+|---|---|---|---|
+| slip watch, standard image | PYNQ, `logs/watch_probe_20261001T1828Z.log` | ~13:00 PDT | `sudo pkill -f 'si_watch.py watch'` |
+| scope logger, CH3 and CH4 | laptop, `gateware/board/scope_log_20261001T182813Z/` | ~13:58 PDT | `pkill -f scope_log.py` |
+
+The logger reads the scope's own measurements of CH3 and CH4 once a second,
+whenever either is switched on, and saves a screenshot every 20 s. It never
+changes a setting. So **switch the channel on and set its probe to 10× on the
+scope yourself**.
+
+Every time you probe a node it is logged with the time, and that gives test
+4 its probe-on and probe-off times without you writing them down.
+
+1. **Rail drops**, with the DMM, exactly as 42.4 test 1.
+2. **Bench current: skip it for now.** It needs the bench supply's ammeter,
+   and the board now runs from the header.
+3. **Unit 4's oscillation**, with the probe on CH3. Set CH3 on, 10×, AC, 20 MHz
+   bandwidth limit, about 1 µs/div. Hold about 30 s on each of these, in
+   this order:
+   - U401 pin 4;
+   - C402 pad 1;
+   - FB401's rail pad;
+   - `S` (TP402);
+   - then the same nodes on unit 10.
+
+   The logger gets frequency and amplitude, so just tell me if you change
+   the order.
+4. **`X`, then the TCXO**, with the watch running. Set CH3 DC coupled, no
+   bandwidth limit, about 20 ns/div; 100 mV/div for `X`, 1 V/div for the
+   TCXO. **Hold each for at least 2 minutes**: the watch logs in ~77 s
+   chunks, and a slip must be pinned to probe-on.
+5. **Stop the watch, then `./bench.sh before`** (12 minutes; it asks for one
+   cable move and back).
+
+**Before 5, fit unit 2's 50R jumper.** Unit 2 now gets 3.4-3.5 Vpp, above its
+3.3 Vpp rating, and `bench.sh` should run with the inputs as they will stay.
+
+### 43.12 Changes since 43.7
+
+- **`gateware/board/xcheck.py`**:
+  - events placed by NTP time, with the recording announcing when it really
+    starts (a fixed lead lost the first two settings);
+  - segments end before the next change can land;
+  - `:TRIGger:RUN` and `:TRIGger:STOP`;
+  - `--ch1`;
+  - the amplitude analysis subtracts the generator's own delay;
+  - the restore loop no longer overwrites the experiment's channel.
+- **`gateware/board/beats.py`**: prints `recording from <time>` when polling
+  starts.
+- **`gateware/board/siglent.py`**: 30 codes per division. The preamble's field
+  reads 127 on this firmware; the scope's own MAX/MIN show 30.
+- **`gateware/board/scope_log.py`**: new.
+- **`REVB_CHANGES.md`**: item 17 with today's measurement; item 18 (AM-to-PM)
+  new, with the bench note about the generator's ranges.
+- **The PYNQ**: reached at 192.168.8.156; `beats.py` synced; the watch
+  running.
+- **Results** are saved under `gateware/board/xcheck_*`:
+  - steps: `xcheck_steps_20261001T181555Z`;
+  - ramp: `xcheck_ramp_20261001T181835Z`;
+  - amplitude, unit 2: `xcheck_amp_20261001T182040Z`;
+  - amplitude, unit 1: `xcheck_amp_20261001T182333Z`.
+- **Host tests**: 71 pass. Nothing committed.

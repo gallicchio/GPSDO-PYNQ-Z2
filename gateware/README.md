@@ -225,18 +225,40 @@ Verified on a real PYNQ-Z2 (PYNQ 3.0.1, kernel 5.15.19-xilinx-v2022.1):
 * the AXI write path, the address map and `axi_iic` were checked over JTAG
   before that (`bringup.tcl`, 13/13).
 
+**Round 39: the first fabricated board**, on a second PYNQ-Z2 running PYNQ
+3.1.1 (kernel 6.6.10-xilinx-v2024.1) with the same Vivado 2022.1 bitstream,
+unchanged: all eleven I²C devices answer, the DAC is made safe, the Si5351
+locks, the eight thermometers and the 1-Wire bridge read, and a function
+generator on unit 11 gives a clean 1243 Hz beat at ~45 ps rms per edge
+(`board/beats.py`).  Two things found there, both now in the driver:
+
+* **The helper output runs at 2 mA** (`i2c_devices.IDRV_HELPER`).  At 8 mA,
+  fractional PLLA cycle-slipped ~650 times a second, 40 ns each, with LOL
+  clear -- 0 clean starts in 10.  Round 39 chose 4 mA; round 40, with HO
+  driving a 50 ohm cable, found 4 mA slipping 900-1400/s whenever CLK1 ran
+  at 4 mA or more, and 2 mA clean in every CLK1 setting and for 600 s
+  straight.  `helper_slips()` counts slips on the pair register;
+  `selftest()` and `bringup.py` check it; `board/si_watch.py` watches both
+  PLLs for as long as you like.
+* **An unplugged squarer is not quiet.**  It sits still, chatters, or
+  oscillates at ~0.57 MHz (1.0 MHz once), and `channel()`'s consistent-read
+  retry gave up on it and killed the selftest.  `selftest()` now counts with
+  single reads, `snapshot()` returns a None timestamp for such a slot, and
+  `classify_beat_rate()` says what a rate means.
+
 ## Not done yet
 
-* **I²C device drivers.** `axi_iic` is in the overlay at `0x4160_0000` and
-  answers, and pynq binds its own `pynq.lib.iic.AxiIIC` to it, so the
-  controller driver is already written — but nothing drives the Si5351, the
-  eight thermometers, the DAC or the 1-Wire bridge. **The Si5351 is the
-  blocker**: it generates the helper, and until it is programmed to
-  10.0012344 MHz there are no beats at all and every channel reads zero.
-  Note the Si5351A in 10-MSOP is permanently at I²C address `0x60` (no A0
-  pin), and the heater DAC was moved to `0x61` to avoid it.
-* **No measurement has been taken.** Nothing has ever been plugged into the
-  front-end header, so nothing here has seen a real beat.
+* **A deglitcher in `dmtd_capture.v`.**  Round 39's first real beats chatter:
+  2-6 rising edges per transition while the input's phase slides through the
+  helper's sampling instant.  The core timestamps every rising edge and keeps
+  the last, so a slot's timestamp can come from the FALLING transition's
+  chatter, half a beat period (~50 ns of input phase) away from the rising
+  one, and `phases_ps()` can jump by that much.  Section 10 of the design log
+  planned a K-of-K deglitcher and first/last edge sums; v1.1 has neither.
+  Until it does, judge beats with `board/beats.py`, not with the counts.
+* **The beat's scale factor is nominal.**  `T_RES_PS` assumes the design beat;
+  a helper `x` ppm off moves the beat by ~10 Hz per ppm and the ps-per-cycle
+  with it (2 % for the TCXO's 2.5 ppm).  Use the measured beat period.
 * **Consider packaging the RTL as a proper IP** (`ipx::package_project`)
   rather than a module reference, which is the candidate permanent fix for the
   `attach()` workaround above. Test it against that symptom rather than

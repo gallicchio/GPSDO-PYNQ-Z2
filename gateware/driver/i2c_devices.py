@@ -228,7 +228,27 @@ CLK_INT   = 0x40
 CLK_PLLB  = 0x20
 CLK_INV   = 0x10
 CLK_SRC_MS = 0x0C
-CLK_IDRV_8MA = 0x03
+CLK_IDRV_2MA, CLK_IDRV_4MA, CLK_IDRV_6MA, CLK_IDRV_8MA = 0x00, 0x01, 0x02, 0x03
+
+# THE HELPER OUTPUT RUNS AT 2 mA, NOT 8.  ROUND 39, the first board.  With
+# CLK0 at 8 mA, fractional PLLA slipped a whole 25 MHz reference cycle ~650
+# times a second -- every slip a 40 ns step in the helper, i.e. ~324 us of
+# every beat -- and the helper averaged ~19 ppm fast.  PLLA in INTEGER mode,
+# and PLLB, never slipped, and the slip rate rose as the internal XA load fell
+# (XTAL_CL 10/8/6 pF: 650/2000/3200 per second), so the reading is that the
+# outputs' own switching reaches the reference path (VDD and VDDO share one
+# bead-fed node on this board) and only a PLL whose phase detector is not
+# synchronous with that disturbance -- a fractional one -- cycle-slips on it.
+# Round 39 settled on 4 mA with HO open.  ROUND 40, HO cabled into a 50 ohm
+# input: at 4 mA PLLA slipped 900-1400 times a second whenever CLK1 ran at
+# 4 mA or more, and at 8 mA 930-2200 whatever CLK1 did -- but at 2 mA, 0 in
+# every CLK1 setting, 10 fresh starts in 10 with CLK1 at 8 mA, and none in
+# long runs.  The Si5351's own sticky LOL bits never saw any of it.  CLK1
+# stays at 8 mA to drive the null channel's 50 ohm cable; PLLB never slipped.
+# bringup.py counts slips after programming.  This is a register setting,
+# rewritten at every power-up; the board's parts do not set it.
+IDRV_HELPER = CLK_IDRV_2MA
+IDRV_NULL = CLK_IDRV_8MA
 
 XTAL_CL_6PF, XTAL_CL_8PF, XTAL_CL_10PF = 0x40, 0x80, 0xC0
 XTAL_CL_RESERVED_BITS = 0x12          # AN619 reg 183 bits 5:0 "should be 010010b"
@@ -358,8 +378,10 @@ class Si5351Config(object):
         r.update(ms_registers(REG_MSNB, *ms_params(self.mult_b, 0, 1)))
         r.update(ms_registers(REG_MS0, *ms_params(self.div, 0, 1), rdiv=0))
         r.update(ms_registers(REG_MS1, *ms_params(self.div, 0, 1), rdiv=0))
-        r[REG_CLK_CTRL + 0] = CLK_INT | CLK_SRC_MS | CLK_IDRV_8MA              # PLLA
-        r[REG_CLK_CTRL + 1] = CLK_INT | CLK_PLLB | CLK_SRC_MS | CLK_IDRV_8MA   # PLLB
+        # Drive strengths: see IDRV_HELPER above -- 8 mA on the helper made
+        # PLLA cycle-slip on the first board.
+        r[REG_CLK_CTRL + 0] = CLK_INT | CLK_SRC_MS | IDRV_HELPER               # PLLA
+        r[REG_CLK_CTRL + 1] = CLK_INT | CLK_PLLB | CLK_SRC_MS | IDRV_NULL      # PLLB
         if self.clk2 == 'off':
             r[REG_CLK_CTRL + 2] = CLK_PDN                                      # not routed
         else:
@@ -368,8 +390,9 @@ class Si5351Config(object):
             # for both -- the fraction that makes the helper is in PLLA's
             # feedback, not here.
             r.update(ms_registers(REG_MS2, *ms_params(self.div, 0, 1), rdiv=0))
-            r[REG_CLK_CTRL + 2] = (CLK_INT | CLK_SRC_MS | CLK_IDRV_8MA
-                                   | (CLK_PLLB if self.clk2 == 'null' else 0))
+            r[REG_CLK_CTRL + 2] = (CLK_INT | CLK_SRC_MS
+                                   | (CLK_PLLB | IDRV_NULL if self.clk2 == 'null'
+                                      else IDRV_HELPER))
         r[REG_SS_EN] = 0x00                            # spread spectrum off
         return r
 
@@ -449,6 +472,23 @@ class Si5351(object):
     def lock_status(self):
         s = self.status
         return (not s['lol_a']) and (not s['lol_b']) and not s['los_xtal']
+
+    # Register 1 latches each status flag until it is written back to 0, so a
+    # loss of lock between two reads is not lost -- which is what a multi-day
+    # log wants (round 41).  Round 40's caveat stands: these bits NEVER saw the
+    # cycle slips; only the core's pair register does (DmtdRegisters.
+    # helper_slips()).  Log both.
+    REG_STICKY = 1
+
+    def sticky(self):
+        """dict of the latched status flags since the last clear_sticky()."""
+        s = self.read_reg(self.REG_STICKY)
+        return dict(sys_init=bool(s & 0x80), lol_b=bool(s & 0x40),
+                    lol_a=bool(s & 0x20), los_clkin=bool(s & 0x10),
+                    los_xtal=bool(s & 0x08), raw=s)
+
+    def clear_sticky(self):
+        self.write_reg(self.REG_STICKY, 0x00)
 
 
 # ===========================================================================
