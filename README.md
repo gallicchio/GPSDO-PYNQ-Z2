@@ -14861,3 +14861,81 @@ modelled.
 3. Then the solder jobs: T7 and T5 first (one resistor, one bridge), then
    T6, each followed by its `bench.sh` stage against
    `before_20261006T2325Z`.
+
+### 45.13 T2 and T3, and everything to change on the board for the next night
+
+**T2: crosstalk, read as phase.**
+
+- `gateware/board/crosstalk.py`, 19:14-19:33 UTC; recordings and
+  `results.json` in `crosstalk_20261007T1914Z/` and `…1916Z/`.
+- Each recording is 40-60 s of units 1, 2, 4, 9, 11 and 12.
+- Each tone is a least-squares sinusoid at the aggressor's exact offset,
+  measured from the same recording. Its floor is the same fit at ten
+  neighbouring frequencies.
+
+| aggressor | offset from the SDG | tone in **unit 2 − unit 1** (floor) | tone in unit 11 − unit 1 (floor) |
+|---|---|---|---|
+| the 33220A on unit 4, unit 2's neighbour | −183.5 Hz | 0.07-0.41 ps (0.21-0.37): **none** | 0.1-1.4 ps (0.5-0.8) |
+| the HP on unit 11, +0.5 Hz | exact | 0.09 ps (0.20): **none** | 6.5 ps (3.2): weak |
+| the HP on unit 11, +5 Hz | exact | 0.03 ps (0.16): **none** | 5.6 ps (18.8) |
+| HO (CLK1), at 2, 4, 6 and 8 mA | +7.1-7.9 Hz | 0.05-1.31 ps (0.26-0.95): ~1 ps at most, at 6-8 mA | 17-39 ps (26-34): above the floor only at 8 mA |
+| CG-2's 10 MHz, 2.8 Vpp, on unit 9 | +17.55 Hz | 0.38 ps (0.23) | 45 ps (25) |
+| units 1 and 2 on each other (`xcheck.py ramp 0.5 30`) | +0.5 Hz | **2.3 ps**, both ways, including the SDG's own coupling | |
+
+**The per-transition rms of unit 2 − unit 1 rises with HO's drive:**
+
+| HO (CLK1) | off | 2 mA | 4 mA | 6 mA | 8 mA (standard) |
+|---|---|---|---|---|---|
+| rms | **28.3 ps** | 29.5 ps | 29.9 ps | 31.1 ps | **32.7 ps** |
+
+CG-2's 1 kHz tone on unit 9 raised it to 37.9 ps.
+
+What T2 says for rev B:
+
+- **Ten-megahertz neighbours at other frequencies are not the problem.** No
+  aggressor put a coherent tone above ~0.4 ps on the unit 1-unit 2 pair, not
+  even unit 4 right beside unit 2. **State changes** (T1, 1.9 ps) and
+  **strong edges** are.
+- **HO at 8 mA adds about 16 ps rms of jitter** (in quadrature) to a pair it
+  isn't even connected to. A squarer toggling at 1 kHz adds about 19 ps.
+  - That supports item 10: isolate HO, and drive it at 2-4 mA.
+  - On rev A, firmware could set CLK1 to 4 mA today (29.9 ps); unit 12
+    still beat cleanly at 2 mA.
+- The weak tones in unit 11's pair (6.5 ps at the HP's own offset, ~40 ps
+  from HO at 8 mA) sit near the floor that the HP's own 600 ps wander sets.
+  A locked, quieter source on unit 11 would resolve them.
+
+**T3: AM-to-PM** (`xcheck.py amp --scope`, and `--ch1`; `xcheck_amp_*`
+from 19:3x UTC):
+
+| unit | its input | AM-to-PM | K, delay = K / A_peak | round 43 |
+|---|---|---|---|---|
+| 1, 50R fitted | 1.65 → 0.63 Vpp | **−231 ps/dB** | ≈ 1.0 ns·V | −212 ps/dB, 1.09 ns·V |
+| 2, unterminated | 2.98 → 1.12 Vpp | **−147 ps/dB** | ≈ 1.16 ns·V | −156 ps/dB, 1.13 ns·V |
+
+- That confirms item 18 to within ~10%.
+- Unit 4 can't be measured this way. Its free-running 33220A wanders
+  20-55 ns, a thousand times the effect, so it needs a locked source.
+
+**Everything to change on the board, all at once:** see the list in the
+chat reply of this date, repeated here so it survives the chat.
+
+| # | change | where (board mm) | decides |
+|---|---|---|---|
+| **M1** | **Bridge FB401**: solder across both pads of the 0805 bead | (142.8, 78.2): pads at y = 77.14 and 79.26, 2.5 mm below U401 (74LVC1GU04, unit 4's squarer). Rev A prints its label in unit 6's box, so go by position. | item 12 |
+| **M2** | **Park unit 5**: a 100 kΩ (leaded is easiest) from **TP502** to **JP501 pin 2** | TP502 is unit 5's `S` test pad, 1.5 mm round, at (60.30, 77.50). JP501 pin 2 is GND at (56.64, 83.90): the pin nearer the board's centre. Check it reads 0 Ω to ground first, and leave JP501 without a shunt. | item 11 |
+| **M3** | **15 V to the heater**: 15 V DC, ≥ 1 A, 5.5 × 2.1 mm plug, **centre positive**, into J2003 | top edge, right (184, 16), labelled `15 V DC, 1 A MIN - HEATER ONLY - CENTRE +`. The heater DAC reads safe (code 0, EEPROM 0), so it stays off until the PYNQ turns it on. | T4 |
+| M4 *(optional; you said tomorrow)* | **R3001 3k3 → 1k and R3002 1k → 330 Ω**, both 0805 | R3001 at (101.25, 47.0), vertical, pads at y = 46.09 and 47.91; R3002 at (98.1, 49.4), horizontal, pads at x = 97.19 (GND) and 99.01. Both are beside the Si5351 and the TCXO X3001, top centre. | item 9 |
+
+- **Cabling: change nothing.** The heater warms the board but not the SDG,
+  so a heater step measures the board's own temperature coefficient
+  without the tee T4 first asked for.
+- Leave CG-2's generator off, and the 33220A on unit 4.
+- **Then tell me, and I run `gateware/board/night.sh mods 13`**:
+  1. `bench.sh mods`, against `before_20261006T2325Z`: does unit 4 still
+     oscillate (M1), is unit 5 quiet (M2), and with M4 done, is CLK0 at
+     4 mA clean?
+  2. T1 again: does unit 4's state still move unit 2?
+  3. The overnight log with the heater off 1 h, on 3 h, off 3 h, on 3 h,
+     then off. About 9.6 W should warm the board roughly 10 K, while the
+     SDG stays at room temperature.

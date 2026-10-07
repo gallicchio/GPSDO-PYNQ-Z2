@@ -437,6 +437,22 @@ chatter at all and 24 ps rms per edge; with HO on, 51 ps and 2.7× the edges.
   bank, VDDOC, with its own decoupling, on the far side of the package from
   the helper.
 
+**Round 45 (T2, README 45.13) adds a second effect.** HO's drive level
+raises the jitter of a pair it isn't even connected to. Unit 2 − unit 1,
+per transition:
+
+| HO (CLK1) | off | 2 mA | 4 mA | 6 mA | 8 mA (standard) |
+|---|---|---|---|---|---|
+| rms | 28.3 ps | 29.5 ps | 29.9 ps | 31.1 ps | 32.7 ps |
+
+- At 8 mA that is ~16 ps rms added, in quadrature. Unit 12 still beat
+  cleanly at 2 mA.
+- So, besides the isolation above: drive HO at 2-4 mA. On rev A that is a
+  firmware change (`IDRV_NULL`) that can be made now.
+- Its coherent tone on unit 11, round 41's 58 ps, showed again only weakly
+  (~40 ps at 8 mA, against a 26-34 ps floor). The HP on unit 11 wanders too
+  much to resolve it better.
+
 ---
 
 ## The channels
@@ -536,6 +552,21 @@ out not to measure crosstalk.
 - `top` dips by itself, so it cannot show crosstalk either way (README 45.11).
 - The matrix above, read as phase, is still the test (45.12's T2).
 
+**T2 ran (README 45.13).**
+
+- No aggressor put a coherent tone above ~0.4 ps on the unit 1-unit 2
+  pair: not the 33220A on unit 4 (unit 2's neighbour, −183.5 Hz), not the
+  HP on unit 11 (+0.5 and +5 Hz, exact), not HO at any drive, not a
+  CircuitGear's 10 MHz on unit 9.
+- Units 1 and 2 couple to each other at 2.3 ps, both ways, including the
+  SDG's own (`xcheck.py ramp 0.5 30`).
+- **What does move a channel** is a neighbour's change of state (T1:
+  +1.9 ps when unit 4 starts oscillating) and strong edges. HO at 8 mA adds
+  ~16 ps rms of jitter (item 10), and a squarer toggling at 1 kHz on unit 9
+  added ~19 ps rms.
+- So for rev B, the rules about supplies (item 5), parking (11), filters
+  (12) and HO's drive (10) matter more than the 10 MHz isolation rules.
+
 ---
 
 ## Build environment
@@ -627,6 +658,10 @@ sees, leaves the board's:
 **Bench note**: the SDG1032X's own output delay changes by about 1.5 ns at its
 amplitude-range boundary, between 2.0 V and 1.6 V. Keep the generator's
 amplitude on one side of that during any phase measurement.
+
+**Re-measured, round 45 (T3).** Unit 1 (50R fitted) −231 ps/dB, K ≈
+1.0 ns·V; unit 2 (unterminated) −147 ps/dB, K ≈ 1.16 ns·V. That is within
+~10% of round 43.
 
 **Temperature, round 45's night.** Unit 2 − unit 1 drifted +4.3 to
 +5.0 ps/K over a 2.5 K room cycle.

@@ -2,6 +2,7 @@
 """G7, the overnight log -- round 45.  Runs on the LAPTOP.
 
     python3 overnight.py HOURS [--period SECONDS]      # default one row per 90 s
+    python3 overnight.py 13 --period 120 --heater 0:off,60:on,240:off,420:on,600:off
 
 One row per period into overnight_<UTC time>/log.csv beside this file:
 
@@ -19,6 +20,12 @@ One row per period into overnight_<UTC time>/log.csv beside this file:
   * the scope's PKPK and MEAN on CH1-CH4.
 
 Every hour that period's beats file is kept too, as beats_<time>.npz.
+
+--heater MIN:STATE,...  switches the board heater (heater.py on the PYNQ: all
+three banks, ~9.6 W from the 15 V jack) at those minutes after the start,
+between rows, so its I2C writes never overlap temps.py's reads.  The state is
+logged in the `heater` column, and the heater is turned OFF when the run ends,
+however it ends.
 
 Round 45's first analysis changed four things (the first 5.4 h were logged
 without them):
@@ -181,6 +188,21 @@ def scope(row):
             row['ch%d_mean' % c] = s.pava('MEAN', c)
 
 
+def heater(state):
+    out = pynq('./pynq-run heater.py %s' % state, 60)
+    if 'HEATER %s' % state not in out:
+        raise IOError('heater.py %s: %s' % (state, out.strip()[-80:]))
+    return state
+
+
+def schedule_state(plan, minutes):
+    state = None
+    for m, st in plan:
+        if minutes >= m:
+            state = st
+    return state
+
+
 def zero_cg2(out_dir):
     """CG-2 has only its factory calibration, and its zero reads ~+0.13 V
     (round 45): measure the zero once with AC coupling and keep it."""
@@ -202,7 +224,7 @@ COLUMNS = (['utc', 'unix'] + ['T' + a[2:] for a in THERMS] + ['probe', 'helper_h
               'helper_ps_hz',
               'v5_hdr', 'v3a_far', 'v3d']
            + ['ch%d_%s' % (c, k) for c in (1, 2, 3, 4) for k in ('pkpk', 'mean')]
-           + ['errors'])
+           + ['heater', 'errors'])
 
 
 def main():
@@ -211,6 +233,16 @@ def main():
     if '--period' in args:
         i = args.index('--period')
         period = float(args[i + 1])
+        del args[i:i + 2]
+    plan = []
+    if '--heater' in args:
+        i = args.index('--heater')
+        for item in args[i + 1].split(','):
+            m, st = item.split(':')
+            if st not in ('on', 'off'):
+                raise SystemExit('--heater: state must be on or off, not %r' % st)
+            plan.append((float(m), st))
+        plan.sort()
         del args[i:i + 2]
     if len(args) != 1:
         print(__doc__)
@@ -222,6 +254,8 @@ def main():
     print('logging to %s until %s' % (out_dir, time.strftime('%Y-%m-%d %H:%M %Z',
                                                              time.localtime(t_end))), flush=True)
     last_keep = 0.0
+    t_start = time.time()
+    h_state = None
     with open(os.path.join(out_dir, 'log.csv'), 'w', newline='') as f:
         w = csv.DictWriter(f, COLUMNS)
         w.writeheader()
@@ -231,6 +265,15 @@ def main():
                 row = {'utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(t0)),
                        'unix': round(t0, 1)}
                 errors = []
+                if plan:
+                    want = schedule_state(plan, (t0 - t_start) / 60.0)
+                    if want and want != h_state:
+                        try:
+                            h_state = heater(want)
+                            print('%s  heater %s' % (row['utc'], want), flush=True)
+                        except Exception as e:
+                            errors.append('heater: %s' % str(e)[:100])
+                    row['heater'] = h_state
                 keep = t0 - last_keep >= 3600
                 for name, fn in (('temps', lambda: temps(row)),
                                  ('beats', lambda: beats(row, out_dir, keep)),
@@ -254,6 +297,13 @@ def main():
                 time.sleep(max(0.0, period - (time.time() - t0)))
         except KeyboardInterrupt:
             pass
+        finally:
+            if plan:
+                try:
+                    heater('off')
+                    print('heater off at the end', flush=True)
+                except Exception as e:
+                    print('COULD NOT TURN THE HEATER OFF: %s' % e, flush=True)
     print('done:', out_dir)
     return 0
 

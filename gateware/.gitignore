@@ -18,3 +18,9 @@ NA/
 board/overnight_*/
 board/overnight_console_*.log
 board/toggle_console*.log
+# T2's recordings (crosstalk.py, round 45): 10-15 MB each.  results.json beside
+# them is the record; `crosstalk.py analyse DIR` re-reads the recordings while
+# they exist.
+board/crosstalk_*/*.npz
+# The bench scripts' console logs: each run's own files hold its results.
+board/*console*.log

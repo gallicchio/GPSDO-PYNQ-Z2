@@ -52,12 +52,12 @@ def load(paths):
         for r in rows:
             for k in keys:
                 v = r.get(k, '')
-                if k in ('utc', 'errors'):
+                if k in ('utc', 'errors', 'heater'):
                     cols[k].append(v)
                 else:
                     x = float(v) if v not in ('', 'None') else np.nan
                     cols[k].append(x * scale.get(k, 1.0))
-    return {k: (v if k in ('utc', 'errors') else np.array(v)) for k, v in cols.items()}
+    return {k: (v if k in ('utc', 'errors', 'heater') else np.array(v)) for k, v in cols.items()}
 
 
 def fit(y, *xs):
@@ -189,6 +189,13 @@ def main():
     ax[7].set_xlabel('local time (start %s UTC)' % c['utc'][0])
     for a in ax:
         a.grid(alpha=0.3)
+    if 'heater' in c:                                # shade the heater-on spans
+        on = np.array([x == 'on' for x in c['heater']])
+        edges = np.flatnonzero(np.diff(np.concatenate(([0], on.astype(int), [0]))))
+        for s0, s1 in zip(edges[::2], edges[1::2]):
+            for a in ax:
+                a.axvspan(h[s0], h[min(s1, len(h) - 1)], color='orange', alpha=0.12, lw=0)
+        ax[0].set_title('orange: heater on', fontsize=8, loc='right')
     fig.tight_layout()
     out = os.path.join(d, 'overnight.png')
     fig.savefig(out, dpi=90)
