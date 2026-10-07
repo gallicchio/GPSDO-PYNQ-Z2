@@ -124,7 +124,11 @@ def watch(core, seconds, unit=12, verbose=True):
     res = dict(seconds=span, plla_slips=n_a, plla_rate=n_a / span,
                other_steps=int(other.sum()), beat_jumps=len(jumps),
                jumps_with_plla=j_a, jumps_pllb=len(jumps) - j_a, beat_updates=nbeat,
-               beat_clustered=float(np.median(fracs)) if fracs else 0.0)
+               beat_clustered=float(np.median(fracs)) if fracs else 0.0,
+               # Round 45: the helper's frequency against the PS clock, from the
+               # same clean pairs -- the board's TCXO (through PLLA) against the
+               # PYNQ's own crystal, which tells a TCXO hop from a PLLB one.
+               helper_hz_ps=core.ps_clk_hz / r if np.isfinite(r) and r > 0 else float('nan'))
     if verbose:
         print('  %.1f s: PLLA %d slips (%.2f/s), %d other steps; HO beat on unit %d: '
               '%d updates, %.0f%% clustered per %.0f ms, %d jumps (%d with a PLLA '
@@ -205,6 +209,7 @@ def main():
         si.write_reg(1, 0x00)
         tot = [0.0, 0, 0, 0, 0]
         lol_events = 0
+        helper_ps = []
         left = seconds
         while left > 0:
             # Round 41: a UTC stamp and the chip's latched flags on EVERY
@@ -222,9 +227,13 @@ def main():
             for i, key in enumerate(('seconds', 'plla_slips', 'other_steps',
                                      'beat_jumps', 'jumps_pllb')):
                 tot[i] += r[key]
+            helper_ps.append(r['helper_hz_ps'])
         print('TOTAL %.0f s: PLLA slips %d, other steps %d, HO-beat jumps %d '
               '(PLLB-only %d); chunks with a latched LOL/LOS flag: %d'
               % (tuple(tot) + (lol_events,)), flush=True)
+        # its own line, after TOTAL, so that nothing parsing TOTAL changes
+        print('HELPER %.4f Hz against the PS clock (mean of %d chunks)'
+              % (float(np.nanmean(helper_ps)), len(helper_ps)), flush=True)
         if opts:
             restore(si)
     elif mode == 'matrix' and len(args) >= 2:

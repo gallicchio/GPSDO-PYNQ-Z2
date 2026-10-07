@@ -14290,10 +14290,11 @@ answers this prompt.*
   - CG-1 drove `P2`, and unit 2 counted the first real pulses any pps
     input on this board has seen, with their 10 ns time stamps.
   - The Schmitt switches at **1.93 V rising and 1.32 V falling**, at the jack.
-- **CG-2 on unit 9 is an aggressor, not a channel** (45.4).
-  - Its 10 MHz doesn't square cleanly.
-  - While it runs, every other unit's beat chatters more. That is common
-    mode, so the pair differences stay clean.
+- **CG-2 on unit 9 is not a usable channel** (45.4): its 10 MHz doesn't
+  square cleanly.
+  - *Corrected overnight (45.11):* it did **not** make the other units
+    chatter. What I read as chatter was short-term phase wander, which comes
+    and goes by itself. The chatter itself never changed.
 - **This 33220A has no Option 001.** Unit 4 free-runs **18.1 ppm** low
   (45.2).
 - **The before-rework battery (G2) ran** (45.5), and the board is where it
@@ -14301,10 +14302,9 @@ answers this prompt.*
   - CLK0 at 2 mA is slip-free at every CLK1 drive.
   - Unit 4 oscillates 30 times in 30 undriven: the FB401 rework's
     baseline, in this wiring.
-  - New: channels on **different** frequencies make one another chatter.
-    Moving one SDG output 5 Hz off took unit 4 from a perfectly clean
-    beat to 46%. So far that costs edges, not phase, but G6 must check
-    phase on off-frequency victims.
+  - ~~New: channels on different frequencies make one another
+    chatter.~~ **Withdrawn (45.11).** The overnight log shows the same
+    drops with nothing changed, and edges per transition never moved.
 - **Rev B, logged only, as you asked** (45.6). Nothing in the generator
   changed.
   - Item 3 is rewritten to your J6001 layout, with rev A's measured label
@@ -14405,6 +14405,11 @@ So the 1k/10k divider and the Schmitt behave as designed:
 bins. A clean beat scores high; chatter spreads edges and lowers it.
 `beats.py` calls a unit a beat above 60%.
 
+*Corrected in 45.11:* `top` is computed in 0.1 s windows, so it measures
+short-term phase wander of the source against the helper as much as chatter.
+It also dips by itself, so the readings below are **not** evidence of
+crosstalk. Read the next list with that in mind.
+
 | CG-2 into unit 9 (no 50R) | unit 1 | unit 2 | unit 4 | unit 11 | unit 9 |
 |---|---|---|---|---|---|
 | off (23:06 UTC) | 81% | 81% | 100% | 78% | - |
@@ -14418,9 +14423,10 @@ bins. A clean beat scores high; chatter spreads edges and lowers it.
 - **Unit 9 never becomes a clean beat from it** (13-35%). A 10 MHz from a
   DDS with a low clock carries spurs that move its zero crossings. The DDMTD
   multiplies that by ~8000.
-- **Every other unit chatters more while it runs.** The effect is strongest
-  for a tone whose rate is near the 1.24 kHz beat, which suggests disturbance
-  through the shared supply or helper.
+- ~~Every other unit chatters more while it runs.~~ *Withdrawn (45.11):*
+  edges per transition were the same with it on and off. Only the 1 kHz row,
+  where units 2 and 11 dropped and unit 1 didn't, is unlike a spontaneous
+  dip; G6 should test it by pair phase.
 - **The unit-to-unit differences don't move:** unit 2 − unit 1 stays at
   32 ps rms, and unit 11 − unit 1 at ~600 ps, with it on or off. So it is
   **common mode**: it costs edges, not phase.
@@ -14510,15 +14516,13 @@ of two 8 s runs):
 | unit 2 moved +200 Hz | 66% | 63% | **35%** | 65% |
 | back on 10 MHz | 80% | 81% | 100% | 80% |
 
-  - **Separating one channel made every channel chatter more**, unit 4 most
-    of all. Channels on *different* frequencies disturb one another; a group
-    sharing a clock coexists. 45.4's CircuitGear did the same from outside.
-  - **That matters for the board's real use**: thirteen GPSDOs, every one
-    slightly off every other.
-  - What the tests so far show is extra edges, not phase error. Unit 2 −
-    unit 1 stayed at 32 ps rms whenever the two shared a frequency.
-  - **G6 must measure phase on off-frequency victims**, as item 13's
-    crosstalk matrix says, and not only edge counts.
+  - ~~Separating one channel made every channel chatter more.~~
+    **Withdrawn (45.11).** Edges per transition did not change (unit 1:
+    1.62 in all four rows). `top` fell in the middle two rows by an amount
+    the overnight log matches with nothing changed: unit 4 34%, units 1, 2
+    and 11 51-55% at 03:51 UTC.
+  - **G6 must still measure phase on off-frequency victims**, as item 13's
+    crosstalk matrix says. That was always the right measure; `top` is not.
 - **Unit 4 − unit 1 wanders 20-55 ns rms, and that is the 33220A, not the
   board.** A quadratic fit barely touches it, and successive points differ
   by only 0.6 ns: slow wander of a free-running crystal. **A free-running
@@ -14703,3 +14707,87 @@ row every 2 minutes. It runs as `gateware/board/overnight.py` on the laptop.
     offset, with units 1 and 2 as the victims (round 41's method).
   - The free-running 33220A on unit 4 adds a second aggressor at 18 ppm.
   - Option 001 would only make unit 4 itself a phase reference.
+
+### 45.11 The first 5.6 hours of the night, and four changes to the method
+
+You asked for a first pass at 22:15. `gateware/board/overnight_plot.py`
+makes the figure and the fits:
+
+```sh
+python3 overnight_plot.py overnight_20261006T2350Z overnight_20261007T0529Z
+```
+
+**The first segment**, 23:50-05:24 UTC: 168 rows, no errors.
+
+- **No slips:** PLLA 0 and HO-beat jumps 0 in 5.6 h, with no latched
+  LOL/LOS. CLK0 at 2 mA holds through a night.
+- **The room cooled the board 2.0 K, evenly.** All eight thermometers moved
+  together, within 0.2 K. The helper's (U5007, top centre) runs 2 K warmer
+  than the rest, and the probe on J6001 about 1 K cooler (air).
+
+| | start → end | against the board's mean temperature |
+|---|---|---|
+| **unit 2 − unit 1** (one SDG, opposite edges) | 628.5 → 619.1 ps | **+6.1 ps/K, residual 1.5 ps**; row to row 1.2 ps |
+| unit 11 − unit 1 (the HP, locked) | −18.05 → −17.70 ns | −183 ps/K, residual 9 ps |
+| board TCXO − SDG | +913 → +960 ppb | wanders ~50 ppb rms between rows (below) |
+| 33220A − SDG | −18,427 → −18,006 ppb | a smooth +420 ppb: its own crystal, ~200 ppb/K |
+
+- **+6.1 ps/K is the temperature coefficient of the unit 1-unit 2 pair, SDG
+  included.** The fit is a straight line, 1.5 ps rms about it.
+  - It mixes the board's two channels with the SDG's two outputs.
+  - **To split them**, feed units 1 and 2 from one SDG output through a
+    tee for a night. Then the pair is the board alone.
+- **−183 ps/K on unit 11 is the bench, not the board.** It is 30 times the
+  pair above, for two units on the same edge, so it is almost certainly the
+  HP's phase lock, or the SDG's rear output against its main ones.
+- **The board's TCXO wanders about 50 ppb rms from one 20 s window to the
+  next.**
+  - The TCXO-minus-33220A difference, from which the SDG cancels, shows it
+    at 49 ppb; the 33220A − SDG pair shows only 19 ppb.
+  - So it is the TCXO, or HO's PLL.
+  - It is common to every unit, so it cancels in every pair. It matters only
+    when one unit is read against the helper alone.
+  - Tonight's new column (below) says which.
+- **The rails on CG-1 fell ~30 mV as the room cooled**, both channels
+  together, while CG-2's stayed put. That was CG-1's zero drifting; per-row
+  zeroing (below) also showed CG-2's zero moving ~30 mV over the night.
+- **The scope's amplitudes are useless at 0.5 V/div.** They step in 1-4%
+  quanta, against the ~0.1% that would matter for AM-to-PM. Unchanged.
+- **`top`, the fold concentration, is not a chatter measure.**
+  - Units 1, 2 and 11 sit near 80% and dip to 45-65% in about 15% of rows;
+    unit 4 dips to ~35% in about 5%; unit 12 never leaves 100%.
+  - `beats.py` computes it in 0.1 s windows. So it measures the source's
+    short-term wander against the helper (round 40: the SDG wanders ~15% of
+    a beat in 0.2 s). HO and the helper come from one chip and cannot.
+  - **Chatter itself, the rising edges per transition, never moved**, in
+    any recording tonight or this afternoon:
+
+| unit | edges per transition | transitions with extra edges |
+|---|---|---|
+| 1 (SDG) | 1.61-1.64 | 28% |
+| 2 (SDG) | 1.70-1.72 | 32% |
+| 4 (33220A) | 1.45-1.47 | 26% |
+| 11 (HP) | 1.54-1.57 | 28% |
+| 12 (HO) | 1.00 | 0% |
+
+  The only exception is unit 2 at +200 Hz (1.92), and that is its own beat
+  slowed to 1043 Hz. **So 45.4's and 45.5's "aggressors make every channel
+  chatter" is withdrawn**, and marked so where it was written.
+
+**Four changes, from 05:29 UTC** (`overnight_20261007T0529Z/`, until about
+15:00 UTC):
+
+1. **Pairs are computed whatever `top` says.** The 03:51 file, rejected by
+   the old test, gives unit 2 − unit 1 at 32.7 ps rms when forced.
+   `beats.analyse_unit()` and `xcheck.unit()` gained a `force` option; their
+   defaults are unchanged.
+2. **Chatter is logged directly**: edges per transition, per unit.
+3. **Both CircuitGears are zeroed every row.** Their zeros drift ~15 mV/K.
+4. **The helper against the PYNQ's PS clock.** `si_watch.py watch` now
+   prints a `HELPER` line after its `TOTAL` line, so nothing that parses
+   `TOTAL` changes. Synced to the PYNQ. This separates TCXO hops from PLL
+   noise.
+
+**Optional, if you are still up:** one more DMM reading of +3V3_A and
++3V3_D (J5001 pins 5 and 7). The board is now 2.3 K cooler than at the
+first, so it would separate the CircuitGears' gain drift from the rails'.

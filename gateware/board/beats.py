@@ -141,7 +141,11 @@ def find_period(x, lo=6000.0, hi=11000.0):
     return bp, best
 
 
-def analyse_unit(name, rows, helper):
+def analyse_unit(name, rows, helper, force=False):
+    """force=True carries on past the 60 % test, for callers that judge a
+    unit by its pairs (overnight.py, round 45): `top` is measured in 0.1 s
+    windows, so a source wandering fast against the helper fails it while
+    still being a perfectly good beat."""
     last, edges, t = bursts(rows)
     span_s = (rows[-1, 0] - rows[0, 0]) / 1e9
     rate = (rows[-1, 1] - rows[0, 1]) / span_s if span_s > 0 else 0.0
@@ -170,7 +174,8 @@ def analyse_unit(name, rows, helper):
         print('   NOT A BEAT: the best fold (P = %.1f) puts only %.0f%% of the '
               'transitions in its two densest bins -- edges at every phase, '
               'which is chatter, not a squared 10 MHz' % (P, 100 * top2))
-        return out
+        if not force:
+            return out
     f_beat = helper / P
     print('   beat %.4f Hz (period %.3f helper cycles; %.0f%% of transitions in '
           'the two clusters) -> input %.4f Hz = 10 MHz %+.3f ppm, in the same '

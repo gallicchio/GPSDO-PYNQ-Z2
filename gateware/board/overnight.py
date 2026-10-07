@@ -20,6 +20,18 @@ One row per period into overnight_<UTC time>/log.csv beside this file:
 
 Every hour that period's beats file is kept too, as beats_<time>.npz.
 
+Round 45's first analysis changed four things (the first 5.4 h were logged
+without them):
+
+  * pairs are computed even when a unit fails beats.py's 60 % `top` test.
+    That test is made in 0.1 s windows and fails during the source's own
+    short-term wander; such rows have perfectly good pairs (unit 2 - unit 1
+    at 32.7 ps rms in one);
+  * each unit's chatter is logged directly: rising edges per transition;
+  * both CircuitGears are zeroed (auto_zero, high range) before every
+    reading.  CG-1's zero drifted ~30 mV as the room cooled 2 K;
+  * the helper's frequency against the PYNQ's PS clock, from si_watch.
+
 Changes nothing on the board or the generators.  The CircuitGears are opened
 with their reset, which leaves both generators off, as they should be
 overnight (BENCH_WIRING.md E2).  Each step has its own timeout, and a failure
@@ -104,11 +116,13 @@ def beats(row, out_dir, keep):
         U = {}
         for u in UNITS:
             with contextlib.redirect_stdout(io.StringIO()):
-                a = B.analyse_unit('unit%d' % u, z['unit%d' % u], h)
+                a = B.analyse_unit('unit%d' % u, z['unit%d' % u], h, force=True)
             row['u%d_top' % u] = round(100 * a['top'], 1)
             row['u%d_beat_hz' % u] = round(h / a['P'], 3)
-            if a['beat']:
-                U[u] = X.unit(z, 'unit%d' % u, h)
+            _, edges, _ = B.bursts(z['unit%d' % u])
+            row['u%d_ept' % u] = round(float(edges.mean()), 4)     # chatter
+            if 'sel' in a:
+                U[u] = X.unit(z, 'unit%d' % u, h, force=True)
         if 1 in U:
             for u in SAME_CLOCK + OTHER_CLOCK:
                 if u not in U:
@@ -135,6 +149,9 @@ def slips(row):
     for k, v in zip(('slip_s', 'plla_slips', 'other_steps', 'ho_jumps', 'pllb_jumps',
                      'lol_chunks'), m.groups()):
         row[k] = int(v)
+    m = re.search(r'HELPER ([\d.]+) Hz against the PS clock', out)
+    if m:
+        row['helper_ps_hz'] = float(m.group(1))
 
 
 def rails(row, cg2_zero):
@@ -144,6 +161,7 @@ def rails(row, cg2_zero):
                                    (CG2, cg2_zero, (('A', 'v3d'),))):
             with CircuitGear(serial_number=serial, calibration_file=cal) as cg:
                 sc = cg.scope
+                sc.auto_zero(''.join(ch for ch, _ in chans), ranges=('high',))
                 for ch, _ in chans:
                     sc.set_range(ch, 'high')
                     sc.set_coupling(ch, 'DC')
@@ -174,10 +192,11 @@ def zero_cg2(out_dir):
 
 
 COLUMNS = (['utc', 'unix'] + ['T' + a[2:] for a in THERMS] + ['probe', 'helper_hz']
-           + ['u%d_%s' % (u, k) for u in UNITS for k in ('top', 'beat_hz')]
+           + ['u%d_%s' % (u, k) for u in UNITS for k in ('top', 'beat_hz', 'ept')]
            + ['p%d_1_%s' % (u, k) for u in SAME_CLOCK for k in ('ps', 'rms_ps')]
            + ['f%d_1_ppb' % u for u in OTHER_CLOCK]
            + ['slip_s', 'plla_slips', 'other_steps', 'ho_jumps', 'pllb_jumps', 'lol_chunks',
+              'helper_ps_hz',
               'v5_hdr', 'v3a_far', 'v3d']
            + ['ch%d_%s' % (c, k) for c in (1, 2, 3, 4) for k in ('pkpk', 'mean')]
            + ['errors'])

@@ -248,10 +248,10 @@ def scope_phase(sds):
 
 
 # ---------------------------------------------------------------------------
-def unit(z, name, helper):
+def unit(z, name, helper, force=False):
     with contextlib.redirect_stdout(io.StringIO()):
-        a = B.analyse_unit(name, z[name], helper)
-    if not a.get('beat'):
+        a = B.analyse_unit(name, z[name], helper, force=force)
+    if not a.get('beat') and not (force and 'sel' in a):
         raise ValueError('%s is not a beat in this recording' % name)
     last, _, host = B.bursts(z[name])
     sel = a['sel']
