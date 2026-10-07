@@ -15006,3 +15006,21 @@ whose temperatures cannot be read, until a later row can read them.
    driven-against-quiet still moves unit 2.
 3. 15 h of `overnight.py`, with the heater off 1 h, on 3 h, off 3 h, on
    3 h, then off.
+
+**T1 again, after the FB401 bridge** (`toggle_20261007T2146Z/`, 16 rows, no
+errors). Unit 4 undriven is now quiet: edges per transition 1.03, against
+1.47 driven.
+
+| when unit 4 goes from driven to undriven | before the bridge (oscillating) | after (quiet) |
+|---|---|---|
+| unit 2 − unit 1 | +1.90 ± 0.34 ps | **+1.39 ± 0.38 ps** |
+| +3V3_A at J5001 | −2.6 ± 1.3 mV | −3.4 ± 1.5 mV |
+
+**So stopping the oscillation does not stop the coupling.** A squarer
+switching at 10 MHz draws a different supply current from one sitting idle
+at its threshold, and its neighbour feels the difference through +3V3_A.
+
+- That is the case for rev B's supply items as a set: the plane (5), RC
+  filters on every gate (12), and parking unused channels in a defined
+  low-current state (11).
+- Bridging beads alone is not enough.
