@@ -102,9 +102,30 @@ The routed rev B build must still pass the same check.
 - That is above the jumper on the right-hand (even) units and below it on the
   left, the mirror image, as everything else on that side is.
 
-### 3. 1-Wire colour labels at the screw terminals: PLANNED
+### 3. 1-Wire colour labels at each screw, just under the terminal: PLANNED
 
-Each terminal is wired as follows:
+**Why.** Rev A prints the wire colours, but not next to the pins they name.
+Jason, round 45: "not right next to their pins".
+
+- Each terminal's `blk red yel` is printed turned 90°, at y = 18.2. That is
+  7 mm below the terminal's outline, which ends at y = 11.22.
+- The two 47 Ω resistors sit under pins 2 and 1. Round 31's placer slid
+  those two tags sideways around them, by these amounts (W1, J6001):
+
+| pin | signal | DROK wire | pin x | tag x | how it reads |
+|---|---|---|---|---|---|
+| 1 | DAT | yellow | 16.0 | 17.5 | 1.5 mm outside the row |
+| 2 | VCC | red | 12.5 | 10.5 | nearer pin 3, GND, than its own pin |
+| 3 | GND | black | 9.0 | 9.0 | right |
+
+- All five terminals are the same. On W2-W4 the `red` slides 2 mm the
+  other way, toward the DAT pin.
+- **The strip directly under each outline holds the designator `J600n`.**
+  That is where the eye goes while screwing a wire down.
+- Also on rev A, `R6002` and `R6005` print across their own resistors'
+  outline marks. `pcb/silk_region.sh GPSDO-PYNQ-Z2.kicad_pcb 4 1 36 25 out.png`
+  renders this corner as printed.
+- The pin-to-signal map is unchanged:
 
 | pin | signal | DROK probe wire |
 |---|---|---|
@@ -112,15 +133,37 @@ Each terminal is wired as follows:
 | 2 | VCC | red |
 | 3 | GND | black |
 
-The colours were confirmed from photographs of the DROK 5-pack, but they are
-printed only on the schematic. Print `YEL RED BLK` beside each terminal's
-three screws, with `DAT 3V3 GND` under them. This is silkscreen only.
+**What** (Jason's layout, round 45):
 
-### 4. A test point at a squarer's output: PLANNED (optional)
+- **Two lines centred on each pin, directly under the terminal's outline:**
+  - the colour, `YEL RED BLK`, in capitals so no descender reaches the next
+    line;
+  - under it, the signal: `DAT VCC GND`.
+  - At 1.0 mm a three-letter word is about 2.7 mm wide. The 3.5 mm pitch
+    fits it with about 0.8 mm between words.
+- **Move `J6001`-`J6005` off that strip.** Either put each inside its
+  terminal's outline below the screws (y ≈ 10.2, hidden under the body
+  once fitted), or put it on F.Fab. The W1-W5 tags above already name the
+  terminals.
+- **Move the VCC resistors down about 2 mm** (R6002, R6004, R6006, R6008,
+  R6010: 1206, centre y 14.6 → 16.6).
+  - Their top pad now starts at y = 12.58, 1.36 mm under the outline: room
+    for one line of text, not two.
+  - Moved, the bottom pad ends at 18.6, 0.7 mm above FB6001.
+  - The pin spurs and the +3V3_D bus height move with them. Both are
+    written from `G.PROBE_X` in `pcb/build_pcb.py`.
+- **The legend line** `yel = DATA   red = VCC   blk = GND` then only repeats
+  what every screw says. Keep it only if it still fits without crowding.
+- **Check it in code**, as item 1 does for boxes:
+  - each word's centre within 0.3 mm of its pin's x;
+  - its top within 0.5 mm of the outline;
+  - no silk on any pad.
+
+### 4. A test point at a squarer's output: PLANNED (optional), now part of item 19
 
 `S` is the squarer's *input*, so it shows a sine or triangle. There is nowhere
 to see the squared 10 MHz. One pad on one unit's GU04 output (its flip-flop's
-D) would do.
+D) would do. Item 19 makes it a plug-in tap on two or three units.
 
 ---
 
@@ -294,6 +337,17 @@ already listed `SI5351C-B-GM` (94 in stock on 2026-09-08). Queried through
   further (8). Leave CLK2/CLK3 unused, and tie OEB to GND.
 - **INTR** (pin 3; open drain, pull-up > 4.7 kΩ), optional: to a test point
   or a spare FPGA pin, a hardware record of LOL and LOS (item 16).
+- **An external 10 MHz reference in**, optional. Round 44 asked how to lock
+  the bench's generators to the board, and rev A cannot take a reference at
+  all: the Si5351A reads only the TCXO, through XA.
+  - CLKIN takes 10-100 MHz CMOS, and either PLL can be pointed at it.
+  - A jumper (or a 2:1 buffer) choosing between the TCXO and an `EXT REF`
+    SMA, squared like a 10 MHz input, would run the helper and `HO` from a
+    house reference or a GPSDO.
+  - `HO` would then be a disciplined 10 MHz to lock the bench to, and the
+    helper's frequency would be known absolutely.
+  - The PLL plan changes with a 10 MHz reference, which is inside the 10-40 MHz
+    the PLL accepts.
 - **Package**: QFN-20, 0.5 mm pitch, with an exposed pad and vias. JLCPCB
   places it; hand rework needs hot air. Round 8 kept the MSOP for its stock
   and its hand-solderable package. A reference with margin now outweighs
@@ -527,3 +581,80 @@ sees, leaves the board's:
 **Bench note**: the SDG1032X's own output delay changes by about 1.5 ns at its
 amplitude-range boundary, between 2.0 V and 1.6 V. Keep the generator's
 amplitude on one side of that during any phase measurement.
+
+---
+
+## Probing without holding a probe
+
+### 19. U.FL or MMCX monitor taps on every analog node worth a look: PLANNED
+
+**Why.** Jason, round 45:
+
+> Lots of MMCX or U.FL test points on any analog signal you might want to
+> investigate. This way I can plug in one of my many USB controlled scopes
+> and just walk away rather than hold a probe as students walk in and ask
+> for my time.
+
+Rev A's open questions each needed a probe held in place for minutes:
+
+- a squarer's input (round 41's 300-520 mV, with the probe's ~20 pF part of
+  the reading);
+- unit 4's supply after FB401, for the 557 kHz (42.4, F4);
+- the TCXO (F2);
+- the rails (F1, and today the CircuitGear leads on J5001).
+
+ECP5-2ADC-2DAC already does this (its review item R17): four Hirose
+U.FL-R-SMT-1 (LCSC C88374), each fed through 49.9 Ω.
+
+**What.** A tap is a series part whose pad touches the node, then the jack a
+few millimetres away, its ground pads stitched to the plane. Unplugged, it
+adds well under 1 pF.
+
+**The series resistor is the "divider built into the connector."** It sets
+both the ratio and what the node feels:
+
+| series part | into a 50 Ω scope | into 1 MΩ (CircuitGear, ADALM2000) | load on the node |
+|---|---|---|---|
+| 450 Ω | ÷10: the "10× probe" | ×1, but a ~45 pF pigtail rolls it off above ~8 MHz | 500 Ω |
+| 1 kΩ | ÷21 | ×1 up to ~3.5 MHz | 1.05 kΩ |
+| either, plus a series cap | the same, AC only | the same, AC only | nothing at DC |
+
+**Where, and with what:**
+
+| node | how many | series part | why |
+|---|---|---|---|
+| each unit's input after the 10 nF, **before the 330 Ω** | 13 | 1 kΩ | the amplitude and shape each squarer gets: items 12 and 18 per unit |
+| each squarer's supply, after its filter | 13 if they fit, or units 1, 4 and 13 | 1 kΩ + 100 nF | the 557 kHz oscillation (item 12) and supply pushing |
+| a squarer's output (item 4) | units 1 and 4 | 1 kΩ | the squared 10 MHz, its duty cycle |
+| the helper, at the Si5351 and at the far end of its tree | 2 | 450 Ω | CLK0's amplitude and ringing at 2 vs 4 mA (rounds 40-44) |
+| the TCXO's output | 1 | 450 Ω | the reference itself (F2) |
+| +3V3_A at the LDO and at the far end, +3V3_D, +5V | 4 | 1 kΩ | DC to a 1 MΩ scope; ripple to either |
+
+That is 25-35 taps.
+
+**Three traps:**
+
+- **Never tap the squarer side of the 330 Ω** (`S`, TP_SQ).
+  - That node's 10 MHz source impedance is the 330 Ω. A 500 Ω tap into a
+    50 Ω scope would cut its amplitude by about 40%.
+  - Through item 18's AM-to-PM (~250 ps per dB at 1 Vpp), plugging the
+    scope in would move that unit's phase by about a nanosecond.
+  - On the source side of the 330 Ω, a 1 kΩ tap costs 2-5% of the amplitude:
+    50-100 ps while plugged in. Measure that once, plugged and unplugged.
+- **A rail tap into a 50 Ω scope draws current:** 3 mA through 1 kΩ, which
+  is acceptable. Through 49.9 Ω it would be 33 mA, which is not.
+- **U.FL is rated for 30 matings; MMCX for about 500.**
+  - Use U.FL where space is tight (the tile taps).
+  - Use MMCX for the half-dozen board-level taps that will be plugged most:
+    rails, helper and TCXO.
+  - Check stock with `jlc_api.py` when applying this; only C88374 has been
+    used before.
+
+**Silkscreen:** each tap named, with its ratio and the expected reading, as
+the test points are: `S4 ÷21 into 50R`, `+3V3_A far ÷21`.
+
+**Probe boards** (Jason: "a lot of 10x probe PCBs, with BNC to U.FL, though
+this is maybe overkill"): with the ratio built into the board's own resistor,
+a stock U.FL-to-BNC pigtail does the job. A separate probe board would only
+earn its keep on a high-impedance node at high frequency, and none of the
+taps above is one.

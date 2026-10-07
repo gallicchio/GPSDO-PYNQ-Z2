@@ -14075,3 +14075,631 @@ Every time you probe a node it is logged with the time, and that gives test
   - amplitude, unit 2: `xcheck_amp_20261001T182040Z`;
   - amplitude, unit 1: `xcheck_amp_20261001T182333Z`.
 - **Host tests**: 71 pass. Nothing committed.
+
+## Prompt 44
+
+I spent time with a different agent extracting all of your instrument control code into what is now ~/lab-instrument-control​. Remove all of your instrument-specific control and use that instead. In fact, that is still in developmental flux and you are the only user. So feel free to either develop in that directory (if allowed) or clone it and develop yourself, but always with the intention of pushing it back right away so that two copies on this computer don't diverge.
+
+Then, be very explicit about listing tests I should run, explicitly mapping out what I should hook up to what. I have been away from this board for a while, and everything got unplugged to develop lab-instrument-control​. I can use scope inputs from Siglent and my 10 idle Syscomp devices to probe more channels and to probe DC voltages (like various supplies), so that you can do experiments on your own while I teach and go to boring professor meetings.
+
+
+## Round 44
+
+- **My instrument code has left this repository.** Everything goes through
+  `~/lab-instrument-control` now. I developed in that directory itself (it is
+  writable), so there is one copy, and pushed each change to GitHub at once:
+  two commits.
+- **The bench is mapped cable by cable** in `gateware/board/BENCH_WIRING.md`,
+  with a machine-readable copy in `bench_wiring.csv`.
+  - Your list is its section F, about 15 minutes, plus the wiring.
+  - What I then run on my own is section G.
+- **One constraint shaped the map.** Rev A has SMA jacks on units 1, 2, 11 and
+  12 only, plus `HO` and `HIN`. Round 42's `bench.sh` asked you to move a cable
+  to unit 4, which has no jack. That step now runs only with `--u4`.
+
+### 44.1 lab-instrument-control
+
+**What moved.**
+
+- `gateware/board/siglent.py` is gone; `xcheck.py` uses the library's
+  `siglent_SDG1032X` and `siglent_SDS2104X` instead. It finds the library at
+  `$LAB_INSTRUMENT_CONTROL`, or `~/lab-instrument-control`.
+- `scope_log.py` became the library's `siglent/sds_log.py`.
+- The board's own limits stay in `xcheck.py`, on top of the driver:
+  - **3.3 Vpp open circuit** at most, which is the driver's
+    `vlimit = 1.65 V` peak;
+  - only a running sine's frequency (within 0.1 % of 10 MHz), amplitude and
+    phase are changed;
+  - never an output's LOAD, waveform or on/off state;
+  - everything is put back as found, the scope's run state included.
+- **All four of round 43's runs re-analyse to the same numbers**: slope
+  −1.000128, ramp ratio 0.999998, and AM-to-PM of −156.0 and −211.7 ps/dB.
+
+**What I added to the library**, pushed to `QuantumQuasars/lab-instrument-control`:
+
+1. **`0101408`: `pava()` and `sds_log.py`.**
+   - `measure()` switches its item on on the scope's screen and waits 0.3 s.
+     `pava()` asks the same of the current record with Siglent's older
+     per-channel query (`C1:PAVA? FREQ`), leaves the screen alone, and took
+     15-22 ms per query.
+   - The logger polls it once a second, with a screenshot every 20 s.
+   - An offline test parses replies captured from the scope.
+2. **`77b877d`: a scope with no record.** This bit as soon as `xcheck.py`'s
+   capture first ran on the library.
+   - The library's own tests had left the scope at 500 µs/div and 100k
+     points. Running 0.3 s and then stopping left it with **no complete
+     record**, 3 times in 3.
+   - It then answers the waveform queries in its *old* format (`C1:WF DESC`,
+     or `C1:WF DAT2` with no data), **and sends the reply twice**. The copy
+     arrives glued to the front of the reply to the next SCPI query.
+   - That happens even on a new connection, after a device clear, and after
+     any wait. `*IDN?` doesn't take it; a SCPI query does.
+   - `waveform()` now recognizes the old format, absorbs the copy with a
+     throw-away `:TRIGger:STATus?`, and raises "take a record first". Before,
+     it raised "0 bytes" and the next query came back garbled.
+   - The offline and hardware tests both pass, and the instruments were put
+     back as found.
+   - `xcheck.py` now captures with `acquire_now()`, one forced, complete
+     record.
+
+**Not yet run**: `xcheck.py` end to end, since nothing is wired, and
+anything on the CircuitGears, since none are plugged in.
+
+The scope log that ran on Oct 1 (20:13-20:47 UTC) recorded only the library's
+development session, not 42.4's tests. Those are still to do.
+
+### 44.2 What connects to what
+
+*Superseded by 44.5, after your reply: two solder jobs, and the 33220A on unit
+4.*  The first version, in short:
+
+| | |
+|---|---|
+| **Sources** (B) | the SDG's outputs 1 and 2 → units 1 and 2; the 33220A → unit 11 (or the HP 33120A, as before); `HO` → unit 12. Each through a BNC tee on a scope input (CH1, CH2, CH4, CH3). |
+| **Amplitudes** | every source at **3.3 Vpp open circuit**, set by `bench_setup.py on`, so no jumper state can overdrive an input. Rounds 39-43 used 4 Vpp. |
+| **Jumpers** | JP101, JP1101 and JP1201 fitted; JP201 off, as now. Units 3-10 and 13 have no jacks and stay unplugged. |
+| **CircuitGears, no soldering** (D, tier 1) | +5V_HDR, +3V3_A at its far end, and +3V3_D, all at the debug header J5001 |
+| **CircuitGears, with soldered leads** (tier 2) | +3V3_A at the LDO (`A`) and at four bead pads (units 1, 2, 10, 11). Unit 4's squarer supply, its bead's rail side and its output, and unit 10's supply and output as the control. 10× probes on the squarer nodes. |
+| **Options** | B5 locks the 33220A to the SDG, if it has Option 001. An SMA on unit 4. `HIN` (an external helper) is a rework for later: R3004 in, R3005 out. |
+
+The positions of all ten soldering points are in the table, in board
+millimetres.
+
+### 44.3 Your list
+
+*Superseded by 44.5 and `BENCH_WIRING.md` section F.*
+
+1. **Wire A-C**, and D as far as you choose: tier 1 alone, or tier 2 with the
+   soldered leads.
+2. **F1**: one DMM reading at each DC node you wired, with the time. Without
+   tier 2, read the four bead pads anyway: that is round 42's test 1.
+3. **F2**: `X`, then the TCXO output, with the PP215 on scope CH3, two
+   minutes each.
+4. **F3**: tell me what you did:
+   - B5;
+   - tier 2;
+   - the unit-4 SMA;
+   - the CircuitGear serials, or the order you plugged them in.
+
+**Then I run G0-G7 on my own:**
+
+- the wiring check;
+- the standard state;
+- the before-rework battery;
+- rails against each source;
+- unit 4's oscillation at its own nodes;
+- AM-to-PM per unit;
+- crosstalk;
+- an overnight run of phases, slips, temperatures and rails.
+
+The reworks come after that, each followed by the same tests.
+
+### 44.4 Changes this round
+
+- **lab-instrument-control**: `0101408` and `77b877d`, both pushed; the local
+  copy and GitHub agree.
+- **This repository**:
+  - `siglent.py` and `scope_log.py` removed;
+  - `xcheck.py` ported to the library;
+  - `bench_setup.py` new: `status` reads only; `on`, `off` and `unit11 on|off`
+    change things;
+  - `BENCH_WIRING.md` and `bench_wiring.csv` new;
+  - `bench.sh`: the unit-4 step only with `--u4`;
+  - `gateware/board/README.md` updated.
+- **The PYNQ**: still at 192.168.8.156, up 5 days; `bench.sh` synced.
+- **Nothing committed** in this repository.
+
+### 44.5 After your reply: two solder jobs, and the 10 MHz question
+
+**Soldering: an SMA on unit 4, and the J6001 terminal block. Nothing else.**
+
+- **Unit 4's SMA (J401, the jack marked `4`).** Unit 4 is the squarer that
+  oscillates undriven, and the subject of the FB401 rework.
+  - With a jack, the 33220A drives it, and I can switch it off from here.
+  - The rework then gets both of its measurements without a cable moved: does
+    unit 4 still oscillate undriven, and is a squarer without its bead
+    noisier when driven? The second is rev B item 12's downside, and nothing
+    else measures it.
+  - The HP 33120A goes back on unit 11, as in rounds 40-43.
+- **J6001, "PROBE 1"**, for the DROK probe:
+  - pin 1, the rounded-square pad: DAT, **yellow**;
+  - pin 2: VCC (+3V3_D through 47 Ω), **red**;
+  - pin 3: GND, **black**.
+
+  With the probe in, `bringup.py` should report presence, one probe, its ROM
+  code and its temperature.
+- **Dropped:** the ten soldered test leads of the first version. What they
+  offered comes from the FPGA's own counts, from a one-time DMM reading (F1),
+  or from five minutes with a hand-held probe (F4). The CircuitGears now
+  watch only the three rails at the debug header, with no soldering.
+- **Also dropped:** a CircuitGear as a pps source. Each pps jack ends in 51 Ω,
+  and its ~3 V would arrive at the Schmitt trigger as ~1.4 V, below the
+  threshold.
+
+**10 MHz out of or into the board, to lock the 33220A:**
+
+- **Out:** `HO` (J3001) is the board's only 10 MHz output. It comes from the
+  board's own TCXO, which free-runs (about 0.4 ppm high in round 40). It is not
+  disciplined; the board measures GPSDOs, it is not one.
+  - The SDG's rear `10MHz In/Out` would accept it as a reference: it wants
+    ≥ 1.4 Vpp into 5 kΩ, AC coupled.
+  - That would make the sources coherent with the helper, but it hangs more
+    cable on `HO`, the board's largest aggressor. Not for now.
+- **In:** rev A has none. The Si5351A takes its reference only from the TCXO,
+  and `HIN` replaces the helper, not the reference, and only after its rework.
+  `REVB_CHANGES.md` item 9 now has the option: rev B's Si5351C CLKIN fed from
+  the TCXO *or* an `EXT REF` SMA.
+- **To lock the 33220A:** the SDG's rear `10MHz In/Out`, as an output (I turn
+  it on), into the 33220A's rear `10 MHz In`. That needs **Option 001**: look
+  for `10 MHz In` and `10 MHz Out` on its rear panel. Without them it cannot be
+  locked to anything.
+
+**Changed with this:**
+
+- `BENCH_WIRING.md` rewritten;
+- `bench_wiring.csv` to match;
+- `bench_setup.py`: the 33220A on unit 4 (`unit4 on|off`), the HP on unit 11;
+- `bench.sh`: the `--u4` cable move removed. Unit 4 counts as unplugged while
+  its source is off; the laptop records it driven.
+- `bench.sh` synced to the PYNQ.
+
+## Prompt 45
+
+I hooked up the hardware as suggested. I also gave you two bonus connections: 
+* CG-1 outpt into P2 (2's PPS) and also CG-2's Input B. The PPS inputs are not 50 ohm terminated, so I don't understnd why this would not work.
+* CG-2 output into Ch9 without 50 ohm termintion, which I also happened to have an SMA connector on.
+
+On the new GPSDO silk screen, "blk", "red", nad "yel" are not right next to their pins. I'd rather you move the "J6001" label somewhere else, maybe move R60002 down, and put the labels right up next to the pins, just outside of the silkscreen box for the screw terminal. Actually look at this region. There are a whole new set of suggestions and pointers to tools in OpticsPCBs/CLAUDE_PCB.md, which you should contribute to if you find something useful going forward.
+
+
+## Round 45
+
+**The bench works end to end, the pps path works, and your two rev B items
+are logged, not built.**
+
+*Oct 6, about 13:20-17:00 PDT. 45.1 is the chat after round 44; the rest
+answers this prompt.*
+
+- **Everything you wired checks out** once +3V3_D moved one pin (45.2):
+  - units 1, 2, 4, 11 and 12 beat;
+  - the scope sees all four signals;
+  - the CircuitGears read +5V_HDR 4.90 V, +3V3_A 3.10 V and +3V3_D 3.25 V;
+  - the 1-Wire probe answers.
+- **You were right about the pps inputs, and I was wrong** (45.3).
+  - Their 51 Ω is DNP.
+  - CG-1 drove `P2`, and unit 2 counted the first real pulses any pps
+    input on this board has seen, with their 10 ns time stamps.
+  - The Schmitt switches at **1.93 V rising and 1.32 V falling**, at the jack.
+- **CG-2 on unit 9 is an aggressor, not a channel** (45.4).
+  - Its 10 MHz doesn't square cleanly.
+  - While it runs, every other unit's beat chatters more. That is common
+    mode, so the pair differences stay clean.
+- **This 33220A has no Option 001.** Unit 4 free-runs **18.1 ppm** low
+  (45.2).
+- **The before-rework battery (G2) ran** (45.5), and the board is where it
+  was on Sept 30.
+  - CLK0 at 2 mA is slip-free at every CLK1 drive.
+  - Unit 4 oscillates 30 times in 30 undriven: the FB401 rework's
+    baseline, in this wiring.
+  - New: channels on **different** frequencies make one another chatter.
+    Moving one SDG output 5 Hz off took unit 4 from a perfectly clean
+    beat to 46%. So far that costs edges, not phase, but G6 must check
+    phase on off-frequency victims.
+- **Rev B, logged only, as you asked** (45.6). Nothing in the generator
+  changed.
+  - Item 3 is rewritten to your J6001 layout, with rev A's measured label
+    positions.
+  - Item 19 is new: U.FL/MMCX monitor taps, with the series resistor as the
+    divider you suggested. Item 4 is folded into it.
+- **The SDG's "2.53 ppb" offset is not a constant property** (45.1). It did
+  not come back, and the library now says so.
+- **CLAUDE_PCB.md**: four additions (45.7).
+
+### 45.1 After round 44: the chat in brief
+
+| about (PDT) | you | what came of it |
+|---|---|---|
+| 13:20-13:50 | Temporary cabling: the SDG's rear 10 MHz into the HP 33120A's. Does it lock, and do I need GPIB? | **It locks**, once the SDG's 10 MHz output is enabled on the panel (pressed remotely). `ROSC 10MOUT,ON` is accepted and ignored. Free-running, the HP was 0.24 ppm off; locked, it followed to 0.006 ppb, with ~0.5 ns rms of phase wander. **Keep GPIB** (below). Library `3cfd7c6`. |
+| 13:55-14:20 | A tee from the SDG's rear output to CH4: "settle it" | The SDG's outputs ran **2.53 ppb low** against the rear 10 MHz, the same at 10 kHz, 1 MHz and 10 MHz. The HP followed the rear output exactly. Library `a02b003` called the offset a property of the SDG. |
+| 14:30-15:00 | Everything wired except two DC voltages: "check what you can" | The first wiring check (45.2). HO wasn't reaching unit 12, the 33220A wasn't on the network, and those two leads were missing. |
+| 14:40-14:55 | (same) | **The 2.53 ppb did not come back.** I compared unit 1 (the SDG) with unit 11 (the HP, still locked to the rear output) by the DDMTD: ≤ 0.001 ppb, in five settings, including the earlier ones. Cause unknown. `f82e1a2` corrects `a02b003`: measure it, don't assume either way. |
+| 14:50-15:05 | (same) | **Changing an SDG output's load setting keeps the volts and restates the number**: 3.3 Vpp at high-Z became "1.65 Vpp" at 50 Ω, and the scope read 1.667 Vpp throughout. **Every `MODE` command leaves the phase-mode chooser stuck on the SDG's screen**, so `phase_locked()` now sends it only to change the mode (`ad7569e`). |
+
+**GPIB or RS-232 for the HP?** RS-232 could do what this bench uses, at a
+cost:
+
+- The 33120A runs one interface at a time, chosen on its panel.
+- It needs a null-modem cable with DTR/DSR, and an adapter that handshakes
+  (FTDI does).
+- At 9600 baud, a full arbitrary-waveform upload takes 30-40 s.
+- The library has no plain serial link yet.
+
+GPIB answers in ~30 ms. Free the Prologix only if another instrument needs it.
+
+### 45.2 The wiring check (G0), twice
+
+| check | 14:40 (first) | 16:00 (your wiring) |
+|---|---|---|
+| SDG, scope, HP | answer | answer |
+| 33220A | not on the LAN or USB | answers at .240: MY44054664, **no Option 001** |
+| CH1, unit 1 (JP101 on) | 1.667 Vpp ✓ | 1.65 Vpp ✓ |
+| CH2, unit 2 (JP201 off) | 2.98 Vpp ✓ | 2.98 Vpp ✓ |
+| CH3, HO | 0-3.3 V, **unloaded**: not reaching unit 12 | 1.73 Vpp, loaded by unit 12's 50R ✓ |
+| CH4, 33220A | flat (off) | 1.63 Vpp ✓ |
+| units beating | 1, 2, 11 | **1, 2, 4, 11, 12** ✓ |
+| CG-1 (C2BRGBL) A: +5V_HDR | 4.87 V ✓ | 4.90 V ✓ |
+| CG-1 B: +3V3_A, far end | not wired | 3.10 V |
+| CG-2 (C2BKO1A) A: +3V3_D | not wired | 0.13 V; after "one off", **3.25 V** ✓ |
+| DS18B20 on J6001 | ROM 65000000CA223A28, 23.8 °C ✓ | 24.1 °C (`temps.py`) ✓ |
+| HP locked to the SDG | unit 11 − unit 1: 0.0001 ppb | −0.0001 ppb, 604 ps rms |
+
+Notes on that table:
+
+- **Unit 12 is the cleanest channel.** It beats at 1234.9 edges/s with no
+  chatter, because HO comes from the helper's own chip.
+- **CG-2 needs zeroing before its numbers mean anything.** It is the unit
+  with the factory calibration, and its zero reads +0.135 V (A) and
+  +0.035 V (B). `scope.auto_zero()` fixes that for a session; 3.25 V is
+  after it, 3.38 V before.
+- **+3V3_A at J5001 reads 3.10 V**, against round 41's DMM reading of
+  3.177 V at the same pin. *Settled by your DMM (45.10): the rail is
+  3.185 V, and the CircuitGears read about 2% low at DC.*
+- **The 33220A** (you checked: no 10 MHz jacks) runs **18.1 ppm** below the
+  SDG. Unit 4 beats at about 1428 Hz instead of 1243. That is within its
+  ±20 ppm one-year spec. Units 1, 2 and 11 share the SDG's clock; unit 4
+  doesn't.
+
+### 45.3 Unit 2's pps input: the first real pulses
+
+**The correction.** Each pps jack's 51 Ω (R206, R406, ...) is **DNP**. It is
+in `mfg/release/excluded_from_assembly.csv`: "nothing here drives 50 ohm".
+The input is 1 kΩ into 10 kΩ to ground, then a 74LVC1G17 Schmitt. Round 44
+read the drawn resistor as fitted and wrote the CircuitGear off as a pps
+source. BENCH_WIRING.md section E now says what is fitted.
+
+**What CG-1 did on `P2`:**
+
+- **A 0-3.0 V square at 0.9779 Hz** counted one edge per period. The 10 ns
+  PS-domain stamps gave a period of **1.0225951 s**, with 450 ns of spread
+  over 8 edges. (The CircuitGear's DDS can't make exactly 1 Hz; its step
+  is 0.047 Hz.)
+- CG-2's input B, teed onto the same line, read **3.01 V / 0.04 V**.
+- **Thresholds**, measured with a 10 Hz square. The high level was stepped
+  up from a 0 V low, then the low level stepped up under a 3.0 V high;
+  CG-2 B read each level:
+
+| | at the jack | at the gate (×10/11) | 74LVC1G17 datasheet, VCC 3.0-3.3 V |
+|---|---|---|---|
+| rising, VT+ | between 1.88 and 1.98 V | ≈ 1.75 V | 1.48-2.08 V |
+| falling, VT− | between 1.27 and 1.37 V | ≈ 1.20 V | 0.89-1.35 V |
+
+So the 1k/10k divider and the Schmitt behave as designed:
+
+- a 3.3 V pps arrives with 1.25 V of margin;
+- a 5 V pps arrives at 4.55 V, inside the part's 5.5 V;
+- a source that only reaches ~1.9 V at the jack would be marginal.
+
+### 45.4 CG-2 on unit 9: an aggressor, not a channel
+
+`top` below is the share of beat transitions in the densest 4 of 50 phase
+bins. A clean beat scores high; chatter spreads edges and lowers it.
+`beats.py` calls a unit a beat above 60%.
+
+| CG-2 into unit 9 (no 50R) | unit 1 | unit 2 | unit 4 | unit 11 | unit 9 |
+|---|---|---|---|---|---|
+| off (23:06 UTC) | 81% | 81% | 100% | 78% | - |
+| 10 MHz, 2.8 Vpp | **59%** | - | **36%** | **59%** | 13% |
+| off (23:15) | 81% | 80% | 100% | 78% | 14% |
+| 10 MHz, 1 Vpp | 62% | 60% | - | 65% | 18% |
+| 10 MHz, 0.4 Vpp | 75% | 75% | 100% | 73% | 35% |
+| 1 kHz, 2.8 Vpp | 68% | **38%** | 65% | **45%** | 100% |
+| off (23:20) | 72% | 71% | 100% | 69% | 15% |
+
+- **Unit 9 never becomes a clean beat from it** (13-35%). A 10 MHz from a
+  DDS with a low clock carries spurs that move its zero crossings. The DDMTD
+  multiplies that by ~8000.
+- **Every other unit chatters more while it runs.** The effect is strongest
+  for a tone whose rate is near the 1.24 kHz beat, which suggests disturbance
+  through the shared supply or helper.
+- **The unit-to-unit differences don't move:** unit 2 − unit 1 stays at
+  32 ps rms, and unit 11 − unit 1 at ~600 ps, with it on or off. So it is
+  **common mode**: it costs edges, not phase.
+- Unit 4, on its own beat frequency, is the one it hurts most.
+- **The baseline itself drifts** (81% at 23:06, 72% at 23:20, nothing
+  changed), so this table shows a trend, not a calibration.
+- **Unit 8**, which has no jack, did two odd things:
+  - at 14:58 it oscillated at exactly unit 4's rate (559,755 edges/s for
+    both), so the two were locked together;
+  - it went quiet the moment unit 9 was driven.
+
+  G4 is the place for that.
+
+**Use:** CG-2's generator stays **off**. It is G6's ready-made aggressor, at
+any frequency and level from here. The pps on `P2` (CG-1) is off during the
+batteries too, so they match round 42's conditions.
+
+### 45.5 The before-rework battery (G2)
+
+`bench.sh before`, 23:25-23:32 UTC, on the PYNQ: `logs/before_20261006T2325Z/`.
+
+- Units 1, 2, 11 and 12 were driven, and unit 4 undriven (33220A off).
+- CG-1 and CG-2 were off but cabled, so unit 9 has CG-2's cable on its jack.
+- Round 42's baseline is Sept 30, with the same units driven and no
+  cables on 4 or 9.
+
+**Bring-up:**
+
+- 30 checks, 0 failures;
+- the helper 10001305.8 Hz against the PS clock (7.1 ppm, as always);
+- 0 slips, and no latched LOL or LOS flags.
+
+**Squarers with no input, 30 Si5351 restarts:**
+
+| unit | Sept 30 | today | note |
+|---|---|---|---|
+| 3 | quiet 27, oscillating 3 (125 kHz) | quiet 22, chatter 1, oscillating 7 (329 kHz) | no jack |
+| **4** | **oscillating 30 (557.1 kHz)** | **oscillating 30 (560.4 kHz)** | today with the 33220A's cable and tee (output off), JP401 on |
+| 5 | oscillating 30 (560.4) | oscillating 30 (559.2) | |
+| 6 | oscillating 30 (571.2) | oscillating 30 (570.2) | |
+| 7 | quiet 24, oscillating 6 (363) | quiet 9, **oscillating 21** (550) | more often |
+| 8 | oscillating 30 (563.0) | oscillating 30 (561.5) | |
+| 9 | oscillating 30 (553.8) | oscillating 30 (**354.9**) | CG-2's cable on its jack |
+| 10, 13 | quiet 30 | quiet 30 | |
+
+**PLLA slips per second, CLK0 × CLK1 drive** (today / Sept 30, each the mean
+of two 8 s runs):
+
+| CLK0 \ CLK1 | 2 mA | 4 mA | 6 mA | 8 mA | off |
+|---|---|---|---|---|---|
+| **2 mA** | **0 / 0** | **0 / 0** | **0 / 0** | **0 / 0** | **0 / 0** |
+| 4 mA | 0 / 0 | 866 / 965 | 1449 / 1418 | 1601 / 1370 | 0 / 0 |
+| 8 mA | 1962 / 2205 | 2010 / 2226 | 1803 / 2025 | 1569 / 1536 | 775 / 1038 |
+
+**Beats, 30 s of units 1, 2, 11, 12**, then 60 s with unit 4 driven by the
+33220A (`beats_u4driven.npz`):
+
+| | top (45.4) | beat | pair with unit 1 |
+|---|---|---|---|
+| unit 1 (SDG) | 82% | 1243.1 Hz | - |
+| unit 2 (SDG) | 81-82% | 1243.1 Hz | **32 ps rms**, both runs |
+| unit 11 (HP, locked) | 79-80% | 1243.1 Hz | 611 / 626 ps rms |
+| unit 12 (HO) | 100% | 1234.4 Hz | the board's TCXO **+0.90 ppm** against the SDG |
+| unit 4 (33220A), driven | **100%** | 1428.3 Hz | the source **−18.4 ppm**, still drifting as it warms |
+
+**What it says:**
+
+- **The board is where it was on Sept 30.** CLK0 at 2 mA (the firmware fix,
+  round 40) is slip-free at every CLK1 drive. Unit 4 oscillates undriven
+  30 times in 30, at the same frequency, so **the FB401 rework has its
+  baseline in this wiring**.
+- **Unit 7 oscillates more often** (21 in 30, against 6), and unit 9's
+  oscillation moved with a cable on its jack. These are the marginal units,
+  and the oscillation depends on what hangs on the input.
+- **The two clean beats are the two not on the SDG's frequency.** Unit 4
+  (33220A, 1428 Hz) and unit 12 (HO, 1234.4 Hz) score 100%. Units 1, 2 and
+  11 (the SDG's clock, 1243 Hz) score 80%.
+- **My first guess was wrong, and the test shows it.** The guess was that
+  three channels whose beat edges coincide disturb one another. I moved SDG
+  output 2 off 10 MHz, so unit 2's edges stopped coinciding with units 1
+  and 11 (30 s each, 23:38-23:41 UTC):
+
+| | unit 1 | unit 2 | unit 4 (33220A) | unit 11 |
+|---|---|---|---|---|
+| all on 10 MHz | 77% | 76% | 100% | 74% |
+| unit 2 moved +5 Hz | 69% | 70% | **46%** | 69% |
+| unit 2 moved +200 Hz | 66% | 63% | **35%** | 65% |
+| back on 10 MHz | 80% | 81% | 100% | 80% |
+
+  - **Separating one channel made every channel chatter more**, unit 4 most
+    of all. Channels on *different* frequencies disturb one another; a group
+    sharing a clock coexists. 45.4's CircuitGear did the same from outside.
+  - **That matters for the board's real use**: thirteen GPSDOs, every one
+    slightly off every other.
+  - What the tests so far show is extra edges, not phase error. Unit 2 −
+    unit 1 stayed at 32 ps rms whenever the two shared a frequency.
+  - **G6 must measure phase on off-frequency victims**, as item 13's
+    crosstalk matrix says, and not only edge counts.
+- **Unit 4 − unit 1 wanders 20-55 ns rms, and that is the 33220A, not the
+  board.** A quadratic fit barely touches it, and successive points differ
+  by only 0.6 ns: slow wander of a free-running crystal. **A free-running
+  generator is no phase reference.** A locked 33220A (Option 001) would be.
+- **The board's TCXO now reads +0.90 ppm** against the SDG (round 40:
+  about +0.4 ppm). One of them moved; free-running TCXOs do.
+
+### 45.6 Rev B: logged, not built
+
+**Item 3, the 1-Wire labels**, rewritten to your layout.
+
+- Rev A prints each terminal's `blk red yel` turned 90° at y = 18.2. That
+  is 7 mm below the terminal's outline, which ends at 11.22.
+- The two 47 Ω resistors under pins 2 and 1 pushed two tags sideways:
+
+| pin | signal | wire | pin x (W1) | tag x | reads as |
+|---|---|---|---|---|---|
+| 1 | DAT | yellow | 16.0 | 17.5 | 1.5 mm outside the row |
+| 2 | VCC | red | 12.5 | 10.5 | **nearer pin 3 (GND)** |
+| 3 | GND | black | 9.0 | 9.0 | right |
+
+The fix, per your message:
+
+- **Two lines centred on each pin, just under the outline:** `YEL RED BLK`
+  over `DAT VCC GND`. Three letters at 1.0 mm fit the 3.5 mm pitch.
+- **`J6001`-`J6005` move out of that strip**: inside the outline below the
+  screws, or onto F.Fab. W1-W5 already name the terminals.
+- **The VCC resistors (R6002, R6004, ...) move down about 2 mm.** Their top
+  pad starts 1.36 mm under the outline: room for one line, not two.
+- A code check that each word's centre is within 0.3 mm of its pin's x.
+
+I sent you the render with the pin centrelines drawn on it.
+`pcb/silk_region.sh` makes it from any board file, so the rev B board can be
+checked the same way when it is built. It also shows `R6002` and `R6005`
+printed across their own outlines.
+
+**Item 19, monitor taps**, from your second message. The details are in
+REVB_CHANGES.md; the decisions are these.
+
+- **The series resistor is the divider you described:**
+  - 450 Ω is a 10× probe into a 50 Ω scope, and loads the node with 500 Ω;
+  - 1 kΩ is ÷21, with 1 kΩ of load.
+  - Both read ×1 into a 1 MΩ CircuitGear, within a pigtail's bandwidth.
+  - With the ratio on the board, a stock U.FL-to-BNC pigtail replaces the
+    probe boards.
+- **Where:**
+  - every unit's input, on the source side of its 330 Ω (13);
+  - squarer supplies: 13, or units 1, 4 and 13;
+  - two squarer outputs (this replaces item 4);
+  - the helper at both ends of its tree;
+  - the TCXO;
+  - four rails.
+
+  That is 25-35 taps.
+- **The trap:** never tap the squarer's side of the 330 Ω (`S`).
+  - A 500 Ω tap there would cut that unit's amplitude by ~40%.
+  - Through item 18's AM-to-PM, plugging the scope in would move its phase
+    by about a nanosecond. The tap would change what it measures.
+- **U.FL is rated for 30 matings, MMCX for about 500.**
+  - Use MMCX for the half-dozen taps plugged most (rails, helper, TCXO).
+  - Use U.FL where the tiles are tight.
+
+### 45.7 CLAUDE_PCB.md
+
+Four additions, each with its source:
+
+- **§2, look at the output.** `silk_region.sh` renders one corner as the fab
+  prints it. One plot of all the top layers buries the silkscreen.
+- **§6, screw-terminal labels.**
+  - Centre each under its pin, just outside the outline.
+  - Reserve that strip before placing the terminal's resistors.
+  - A label slid sideways reads as the neighbour's.
+- **§9, monitor taps.**
+  - The series resistor is the divider and the load.
+  - DC-block biased nodes.
+  - Never tap a node whose amplitude sets a timing.
+  - U.FL 30 matings, MMCX ~500.
+- **§9, read the DNP flag before saying what is fitted** (my 51 Ω mistake).
+  Also: try a new bench source as an aggressor before trusting it as a
+  channel (45.4).
+
+### 45.8 Changes this round, and the bench as I leave it
+
+- **lab-instrument-control**, three commits, each pushed at once (local =
+  GitHub):
+  - `f82e1a2`: the 2.53 ppb correction and the load-change behaviour;
+  - `ad7569e`: `phase_locked()`;
+  - `e851b30`: the 33220A's missing option, its 18.1 ppm, and where both
+    function generators now go.
+- **This repository:**
+  - `REVB_CHANGES.md`: items 3, 4 and 19;
+  - `gateware/board/BENCH_WIRING.md`: C3, C6, the pps correction, and your
+    two connections as E2;
+  - `bench_wiring.csv`: serials, C6, and rows E2a-E2c;
+  - `pcb/silk_region.sh`: new;
+  - `gateware/board/overnight.py` and `temps.py`: new (45.9), with a
+    section in `gateware/board/README.md`;
+  - BENCH_WIRING.md section G: where each test stands;
+  - this round.
+- **`../CLAUDE_PCB.md`**: the four additions.
+- **The PYNQ**: `rates.py`, `ppswatch.py` and `temps.py` in `~/gpsdo-dmtd`.
+  They only read the loaded overlay.
+- **Committed on Oct 7, at your request** (not pushed): one commit for
+  rounds 44-45, and a separate one for KiCad 10's rewrite of the project
+  file. The overnight log's data is ignored while it runs
+  (`gateware/.gitignore`).
+  - Round 44's removal of `siglent.py` and `scope_log.py` had already
+    been swept into another agent's ECP5 commit, `c99f630`.
+- **The instruments now:**
+  - the SDG's outputs: 10 MHz, 3.3 Vpp open circuit, on; its 10 MHz rear
+    output enabled; its screen back on the waveform page;
+  - the HP: the same, locked;
+  - the 33220A: on unit 4;
+  - both CircuitGear generators off;
+  - the scope on section D's settings, running.
+
+### 45.9 Running now, and next
+
+**G7 is running overnight**, from 23:50 UTC (16:50 PDT) for 15 hours: one
+row every 2 minutes. It runs as `gateware/board/overnight.py` on the laptop.
+
+- **The log:** `gateware/board/overnight_20261006T2350Z/log.csv`, with
+  console output in `overnight_console_*.log` beside it.
+- **Each row:**
+  - the eight board thermometers and the probe;
+  - each unit's fold concentration;
+  - unit 2 − unit 1 and unit 11 − unit 1 as phase, which join into
+    night-long traces;
+  - the 33220A and the board's TCXO as frequencies against the SDG;
+  - PLLA slips and HO-beat jumps;
+  - the three rails;
+  - the scope's amplitudes.
+- The test rows read: unit 2 − unit 1 at 628.4 → 628.9 ps (32 ps rms),
+  unit 11 − unit 1 at −18.06 ns, the 33220A −18,430 ppb, the TCXO
+  +914-926 ppb, no slips.
+- **It changes nothing.** Its beats files go to the PYNQ's RAM
+  (`/dev/shm`), not the SD card that hung in round 43.
+- **To stop it:** `pkill -f overnight.py`. Nothing else needs undoing.
+- **While it runs, don't start another board script; stop it first.**
+  `bench.sh` refuses only if a board script is running at the moment it
+  starts, and overnight.py's steps come and go.
+
+**Next, in this order:**
+
+1. ~~F1: one DMM reading at J5001 pin 5~~. Done: 3.185 V (45.10).
+2. **G3**, the rails against each source, now that the CircuitGears are wired.
+   At 45 mV a count they resolve a step only by averaging (~0.2 mV over 32k
+   samples), so a step smaller than a millivolt or two may not show.
+3. **G6, the crosstalk matrix, measured as phase** on off-frequency victims
+   (45.5). Its aggressors are ready: CG-2 on unit 9 at any frequency and
+   level, and SDG output 2's offset.
+4. **G5**: `xcheck.py` on units 1-2, against round 43's numbers.
+5. **Then the reworks**: FB401, then R3001/R3002. Each is followed by
+   `bench.sh fb401` / `xa` against `before_20261006T2325Z`.
+
+**From you, when convenient:** a 33220A with Option 001, if one turns up
+(45.10: G6 can go ahead without it).
+
+### 45.10 After your reply: the DMM readings
+
+| rail at J5001 | your DMM | round 41's DMM | CircuitGear | its error |
+|---|---|---|---|---|
+| +3V3_A, pin 5 | **3.185 V** | 3.177 V | CG-1 B: 3.093 V | −2.9%: −24 mV of zero drift, then −2.1% gain |
+| +3V3_D, pin 7 | **3.296 V** | (7 mV below its LDO) | CG-2 A, zeroed: 3.238 V | −1.8%, gain |
+
+- **The rails didn't move.** +3V3_A is within 8 mV of round 41, and still
+  ~100 mV below its LDO's 3.286 V, so item 5 (a real +3V3_A plane) stands.
+  +3V3_D is fine.
+- **Both CircuitGears read about 2% low at DC**, even the unit whose gains
+  were calibrated. I found it by zeroing CG-1 between two overnight rows:
+  its zero had drifted only 24 mV, and the rest is gain.
+  - That calibration was measured on sine amplitudes against the SDG, and
+    doesn't carry over to DC.
+  - Recorded in lab-instrument-control (`473484d`, pushed): auto-zero at
+    the start, then scale by one DMM point.
+- **For the overnight log**: multiply `v3a_far` by 1.0296 and `v3d` by
+  1.0178. Those are one-point factors, good near these voltages; the
+  changes through the night need no correction. `v5_hdr` (4.90 V) has no
+  DMM point, so it is ±2%.
+- **No 33220A with Option 001 yet, and G6 doesn't need one.**
+  - The HP, locked to the SDG, can be the aggressor at 10 MHz + Δ, an exact
+    offset, with units 1 and 2 as the victims (round 41's method).
+  - The free-running 33220A on unit 4 adds a second aggressor at 18 ppm.
+  - Option 001 would only make unit 4 itself a phase reference.

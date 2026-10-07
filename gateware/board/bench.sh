@@ -5,11 +5,13 @@
 #   ./bench.sh fb401      after bridging FB401
 #   ./bench.sh xa         after R3001 3k3 -> 1k and R3002 1k -> 330R
 #
-# Cabling, the same at every stage: the Siglent on units 1 and 2 (one output,
-# teed), the HP on unit 11, HO on unit 12 with its 50R jumper fitted.  Halfway
-# through it asks you to move the Siglent's unit-1 cable to unit 4, and back.
+# Cabling, the same at every stage: BENCH_WIRING.md, section C (the SDG on units
+# 1 and 2, the 33220A on unit 4, the HP on unit 11, HO on unit 12).  Unit 4 is
+# counted with the unplugged units, so its source (the 33220A) must be OFF while
+# this runs: `bench_setup.py unit4 off` on the laptop.  Recording unit 4 driven
+# is done from the laptop, which can switch the 33220A (round 44).
 #
-# About 12 minutes.  Everything lands in logs/<stage>_<UTC time>/ and nothing
+# About 10 minutes.  Everything lands in logs/<stage>_<UTC time>/ and nothing
 # is overwritten, so any two runs can be compared.  It re-programs the Si5351
 # many times, so it refuses to start while another board script is running
 # (the overnight si_watch.py, for one).
@@ -17,14 +19,13 @@
 #   bringup.log            the whole bring-up, with the helper frequency
 #   unplugged.log/.json    30 Si5351 restarts: which squarers oscillate
 #   beats_std.log/.npz     30 s of units 1, 2, 11, 12 (crosstalk, scatter)
-#   beats_u4.log/.npz      30 s of units 2, 4, 11, 12 (unit 4 driven)
 #   matrix.log             CLK0 x CLK1 drive matrix, slips per second
 #   summary.txt            the lines that matter from all of the above
 set -u -o pipefail
 cd "$(dirname "$0")"
 stage=${1:-}
-if ! [[ "$stage" =~ ^[a-z0-9_-]+$ ]]; then
-    sed -n '2,22p' "$0"
+if ! [[ "$stage" =~ ^[a-z0-9_-]+$ ]] || [ $# -gt 1 ]; then
+    sed -n '2,23p' "$0"
     exit 2
 fi
 busy=$(pgrep -af 'python3 [^ ]*(si_watch|beats|unplugged|bringup)\.py')
@@ -63,12 +64,6 @@ run unplugged unplugged.py 30 1,2,11,12
 keep unplugged.json 'unplugged_*.json'
 run beats_std beats.py record 30 1 2 11 12
 keep beats_std.npz 'beats_1_2_11_12_*.npz'
-echo
-read -r -p "Move the Siglent cable from unit 1 to unit 4, then press Enter " _
-run beats_u4 beats.py record 30 2 4 11 12
-keep beats_u4.npz 'beats_2_4_11_12_*.npz'
-echo
-read -r -p "Move it back from unit 4 to unit 1, then press Enter " _
 run matrix si_watch.py matrix 8 2 12
 
 {
@@ -78,7 +73,7 @@ run matrix si_watch.py matrix 8 2 12
     echo
     sed -n '/^unit   quiet/,/^saved/p' "$out/unplugged.log" | grep -v '^saved'
     echo
-    grep -h 'polls in' "$out/beats_std.log" "$out/beats_u4.log"
+    grep -h 'polls in' "$out"/beats_*.log
     echo
     python3 - "$out/matrix.log" <<'EOF'
 import re, sys

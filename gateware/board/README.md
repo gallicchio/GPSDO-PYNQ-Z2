@@ -66,32 +66,34 @@ USB-powered and stays enumerated) or the board lost power (it does).
 Which port: `/dev/ttyUSB1` here is the UART, `/dev/ttyUSB0` the JTAG of the
 same FT2232, and `/dev/ttyACM0` is the ADALM2000, not the PYNQ.
 
-## The generator and the scope (round 43) -- these run on the LAPTOP
+## The generator and the scope -- these run on the LAPTOP
+
+The bench instruments are driven through **lab-instrument-control**
+(QuantumQuasars/lab-instrument-control, checked out at `~/lab-instrument-control`;
+set `LAB_INSTRUMENT_CONTROL` if it is elsewhere).  Round 44 moved this
+directory's own instrument code there: `siglent.py` became the library's
+Siglent drivers, and `scope_log.py` its `siglent/sds_log.py`.  What stays here
+is GPSDO-specific.
 
 ```sh
-python3 siglent.py              # identify the SDG1032X and SDS2104X Plus, print their settings
 python3 xcheck.py steps --scope # output 2's phase in steps: generator vs scope vs DDMTD
 python3 xcheck.py ramp 0.05     # output 2 at 10 MHz + 0.05 Hz: scale, linearity, crosstalk
-python3 xcheck.py amp           # output 2's amplitude in steps: the squarer's AM-to-PM
+python3 xcheck.py amp --scope   # output 2's amplitude in steps: the squarer's AM-to-PM
+python3 ~/lab-instrument-control/siglent/sds_log.py 3600 3 4   # log CH3/CH4 while probing
 ```
 
-`siglent.py` speaks to both over VXI-11 by default (`TCPIP::<ip>::INSTR` to
-VISA), with its own few lines of ONC RPC, so nothing needs installing.  A raw
-socket (`--raw`) does not frame replies, and the scope's went out of step with
-it in round 43.  USB (`--usb`) needs one udev rule, given in its docstring.
+`xcheck.py` keeps the board's own limits on top of the library's drivers.
 
-It will not:
+- The generator's open-circuit swing stays at or below 3.3 Vpp, the rating of
+  an input without its 50R jumper (the driver's `vlimit`, 1.65 V peak).
+- Only a running sine's frequency (within 0.1 % of 10 MHz), amplitude and
+  phase are changed. Never its LOAD, waveform or on/off state.
+- Both outputs go back exactly as found, and the scope is left running or
+  stopped as found.
 
-- send `*RST`;
-- change an output's LOAD, waveform or on/off state;
-- change the scope's input impedance or coupling;
-- set an amplitude whose open-circuit voltage exceeds 3.3 Vpp, the board's
-  rating at an input without its 50R jumper.
-
-Every experiment snapshots the generator and puts it back exactly.
-`xcheck.py` records units 1 and 2 on the PYNQ while it changes output 2 at
-logged moments.  `beats.py` recordings now carry a wall-clock anchor, so
-those moments can be found in the data.
+It records units 1 and 2 on the PYNQ while it changes an output at logged
+moments.  `beats.py` recordings carry a wall-clock anchor, so those moments can
+be found in the data.  The bench wiring is in `BENCH_WIRING.md`.
 
 ## Beats by their timestamps (round 39) -- `beats.py`, both ends
 
@@ -149,10 +151,49 @@ chunks, so the log covers about 78 % of the wall-clock time.
 ```
 
 It runs the same battery each time, so any two runs compare like with like:
-`bringup.py`, `unplugged.py 30`, 30 s recordings of units 1, 2, 11 and 12 and,
-after asking you to move a cable, of units 2, 4, 11 and 12, then the drive
-matrix.  About 12 minutes.  Everything goes to `logs/<stage>_<UTC time>/`
+`bringup.py`, `unplugged.py 30`, 30 s recordings of units 1, 2, 11 and 12, and
+the drive matrix.  About 10 minutes.  Everything goes to `logs/<stage>_<UTC time>/`
 with a `summary.txt`.  It refuses to start while another board script is
 running (`sudo pkill -f 'si_watch.py watch'` stops an overnight watch).
-Cabling: the Siglent on units 1 and 2, the HP on 11, HO on 12 with its 50R
-jumper.
+
+Rev A had no jack on unit 4, so round 42's step of moving a cable there is
+gone.  With the SMA you are fitting, the 33220A drives unit 4 and the laptop
+switches it.  Run `bench.sh` with it off (`bench_setup.py unit4 off`), so
+that unit 4 counts as unplugged (round 44).
+
+## The bench, wired to stay (round 44) -- `BENCH_WIRING.md`, `bench_setup.py`
+
+`BENCH_WIRING.md` says what connects to what, cable by cable: two solder jobs
+(unit 4's SMA, one 1-Wire terminal), the sources, the scope and two
+CircuitGears on the rails.  Its
+`bench_wiring.csv` is the copy the experiments read.  `bench_setup.py` (on the
+laptop) puts the sources into the bench's state, or out of it:
+
+```sh
+python3 bench_setup.py status       # read-only
+python3 bench_setup.py on           # 10 MHz sines, 3.3 Vpp open circuit, everywhere
+python3 bench_setup.py unit4 off    # the 33220A's output off: unit 4 undriven
+python3 bench_setup.py off
+```
+
+## Overnight (round 45) -- `overnight.py` on the LAPTOP, `temps.py` on the board
+
+```sh
+python3 overnight.py 14             # one row per 90 s for 14 hours
+python3 overnight.py 2 --period 60  # a shorter, denser run
+./pynq-run temps.py                 # on the PYNQ: the 8 thermometers and the probe, once
+```
+
+`overnight.py` is BENCH_WIRING.md's G7. Each row, in `overnight_<UTC time>/log.csv`,
+holds:
+
+- the board's temperatures;
+- 20 s of beats on units 1, 2, 4, 11 and 12: each unit's fold concentration,
+  unit 2 − unit 1 and unit 11 − unit 1 as phase (modulo 100 ns, so the rows
+  join into one trace), and units 4 and 12 as frequency;
+- 10 s of `si_watch.py watch`;
+- the three rails on the CircuitGears;
+- the scope's amplitudes on CH1-CH4.
+
+It changes no setting. Each step's failure is logged in the row and the run
+goes on. Over password SSH, set `PYNQ_SSH` and `PYNQ_SCP` as for `xcheck.py`.

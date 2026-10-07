@@ -28,13 +28,27 @@ What each one checks:
          the squarer's AM-to-PM, in ps per dB.
 
 The PYNQ is reached with $PYNQ_SSH and $PYNQ_SCP (default `ssh`/`scp` as
-xilinx@192.168.8.200) in $PYNQ_DIR (~/gpsdo-dmtd).  Each run is saved under
-xcheck_<UTC time>/ beside this file: the recording, the events, the results.
+$PYNQ_HOST, xilinx@192.168.8.156) in $PYNQ_DIR (~/gpsdo-dmtd).  Each run is
+saved under xcheck_<UTC time>/ beside this file: the recording, the events,
+the results.
+
+The instruments are driven through lab-instrument-control (round 44:
+QuantumQuasars/lab-instrument-control, at $LAB_INSTRUMENT_CONTROL or
+~/lab-instrument-control).  The board's own limits are kept here:
+
+  * the generator's open-circuit swing stays at or below 3.3 Vpp, the rated
+    maximum of an input without its 50R jumper (driver vlimit, 1.65 V peak);
+  * only an output already running a SINE is touched, and only its
+    frequency (within 0.1 % of 10 MHz), amplitude and phase -- never its
+    LOAD (the same number would then mean other volts), waveform or on/off;
+  * both outputs are put back exactly as found, and the scope is left
+    running or stopped as found.
 """
 import contextlib
 import io
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -45,14 +59,76 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import beats as B                                              # noqa: E402
-import siglent as S                                            # noqa: E402
 
-PYNQ = os.environ.get('PYNQ_HOST', 'xilinx@192.168.8.200')
+LIC = os.environ.get('LAB_INSTRUMENT_CONTROL',
+                     os.path.expanduser('~/lab-instrument-control'))
+sys.path.insert(0, os.path.join(LIC, 'siglent'))
+from siglent_SDG1032X import SDG1032X                          # noqa: E402
+from siglent_SDS2104X import SDS2104X                          # noqa: E402
+
+PYNQ = os.environ.get('PYNQ_HOST', 'xilinx@192.168.8.156')
 SSH = shlex.split(os.environ.get('PYNQ_SSH', 'ssh ' + PYNQ))
 SCP = shlex.split(os.environ.get('PYNQ_SCP', 'scp'))
 RDIR = os.environ.get('PYNQ_DIR', 'gpsdo-dmtd')
 SETTLE = 0.4         # s ignored after each change
 START = 1.0          # s of recording before the first change
+BOARD_VPEAK = 1.65   # V peak open circuit: 3.3 Vpp, the board's rated maximum
+
+
+class Generator:
+    """The SDG1032X, with the board's rules on top of the driver's."""
+
+    def __init__(self):
+        self.g = SDG1032X(vlimit=BOARD_VPEAK)
+
+    def close(self):
+        self.g.close()
+
+    KEYS = (('freq', 'FRQ'), ('amp', 'AMP'), ('offset', 'OFST'), ('phase', 'PHSE'))
+
+    def snapshot(self, ch):
+        """What restore() needs.  A DC output has only an offset, so absent
+        settings are None."""
+        w = self.g.wave(ch)
+        snap = {k: w.get(k) for k, _ in self.KEYS}
+        snap.update(type=w['type'], load=self.g.output_state(ch)['load'])
+        return snap
+
+    def set(self, ch, freq=None, amp=None, phase=None):
+        """Change a running SINE's frequency (Hz), amplitude (Vpp as the
+        generator states it) or phase (degrees); returns the read-back."""
+        w = self.g.wave(ch)
+        if w['type'] != 'SINE':
+            raise ValueError('output %d is %s, not SINE: not touching it' % (ch, w['type']))
+        if freq is not None and not 9.99e6 <= freq <= 10.01e6:
+            raise ValueError('%.3f Hz is not within 0.1 %% of 10 MHz' % freq)
+        params = {}
+        if freq is not None:
+            params['FRQ'] = '%.6f' % freq
+        if amp is not None:
+            params['AMP'] = '%.4f' % amp
+        if phase is not None:
+            params['PHSE'] = '%.3f' % phase
+        w = self.g.set_wave(ch, **params)       # the driver refuses > BOARD_VPEAK
+        return dict(freq=w['freq'], amp=w['amp'], phase=w['phase'])
+
+    def restore(self, ch, snap):
+        """Put a snapshot back: the one way to write more than the cap, since
+        it was the setting found (round 43 found both outputs at 4 Vpp)."""
+        now = self.snapshot(ch)
+        if now['type'] != snap['type'] or now['load'] != snap['load']:
+            raise ValueError('output %d changed under us: %s -> %s' % (ch, snap, now))
+        params = {scpi: ('%.6f' % snap[k] if k == 'freq' else snap[k])
+                  for k, scpi in self.KEYS if snap[k] is not None}
+        self.g.vlimit = None
+        try:
+            self.g.set_wave(ch, **params)
+        finally:
+            self.g.vlimit = BOARD_VPEAK
+        back = self.snapshot(ch)
+        if any(snap[k] is not None and abs(back[k] - snap[k]) > 1e-9 for k, _ in self.KEYS):
+            raise IOError('output %d did not restore: %s -> %s' % (ch, snap, back))
+        return back
 
 
 def ntp_synced():
@@ -89,8 +165,9 @@ def run(kind, plan, scope=False, df=None, ch=2):
     else:
         raise IOError('the recording never started:\n' + ''.join(head))
     events = []
-    g = S.connect('sdg')
-    sds = S.connect('sds') if scope else None
+    g = Generator()
+    sds = SDS2104X() if scope else None
+    sds_stopped = sds and sds.q(':TRIGger:STATus?').endswith('Stop')
     snap = {c: g.snapshot(c) for c in (1, 2)}
     try:
         time.sleep(START)
@@ -101,9 +178,9 @@ def run(kind, plan, scope=False, df=None, ch=2):
             c = g.set(ch, **kw)
             t = time.time()
             ev = dict(t_before=t_before, t_laptop=t, t_pynq=t + off, set=kw,
-                      readback={k: c[k] for k in ('FRQ', 'AMP', 'PHSE')})
-            print('  %s  output %d: FRQ %s AMP %s PHSE %s'
-                  % (time.strftime('%H:%M:%S'), ch, c['FRQ'], c['AMP'], c['PHSE']))
+                      readback=c)
+            print('  %s  output %d: %.6f Hz, %.3f Vpp, %.2f deg'
+                  % (time.strftime('%H:%M:%S'), ch, c['freq'], c['amp'], c['phase']))
             if sds:
                 time.sleep(SETTLE)
                 ev['scope'] = scope_phase(sds)
@@ -119,6 +196,8 @@ def run(kind, plan, scope=False, df=None, ch=2):
             g.restore(out_ch, snap[out_ch])  # output, and is saved below
         g.close()
         if sds:
+            if sds_stopped:
+                sds.stop()                 # as it was found
             sds.close()
         print('generator restored')
     log = ''.join(head) + rec.communicate(timeout=total + 120)[0]
@@ -138,17 +217,16 @@ def run(kind, plan, scope=False, df=None, ch=2):
 
 
 def scope_phase(sds):
-    """CH2 minus CH1 at 10 MHz, by a sine fit to one stopped acquisition.
+    """CH2 minus CH1 at 10 MHz, by a sine fit to one complete, fresh acquisition.
 
-    Run for a moment first, so that the record is a fresh one.  The commands
-    are :TRIGger:RUN and :TRIGger:STOP.  A bare :STOP is accepted but :RUN is
-    not, which left the scope stopped in round 43 and made every capture
-    re-read one frozen frame."""
-    sds.write(':TRIGger:RUN')
-    time.sleep(0.3)
-    sds.write(':TRIGger:STOP')
+    acquire_now() forces one record, so both channels come from the same
+    instant and the record is whole.  (Round 44: running briefly and stopping
+    can leave no record at all on a slow timebase; the library now says so.)
+    The trigger mode and run state are put back as found."""
+    mode = sds.q(':TRIGger:MODE?')
+    running = not sds.q(':TRIGger:STATus?').endswith('Stop')
     try:
-        time.sleep(0.1)
+        sds.acquire_now()
         fits = []
         for ch in (1, 2):
             t, v, _ = sds.waveform(ch)
@@ -157,7 +235,12 @@ def scope_phase(sds):
             c = np.linalg.lstsq(A, v, rcond=None)[0]
             fits.append((np.hypot(c[0], c[1]), np.arctan2(c[1], c[0])))
     finally:
-        sds.write(':TRIGger:RUN')
+        if mode not in ('STOP', 'FTRIG'):
+            sds.w(':TRIGger:MODE %s' % mode)
+        if running:
+            sds.run()
+        else:
+            sds.stop()
     d = (fits[1][1] - fits[0][1] + np.pi) % (2 * np.pi) - np.pi
     # a phase LEAD of CH2 is an earlier waveform: CH2 - CH1 in time is -d/w
     return dict(dt_ns=-d / (2 * np.pi * 1e7) * 1e9, vpp1=2 * fits[0][0],
@@ -238,7 +321,7 @@ def analyse(out):
             rows.append(row)
         res['segments'] = rows
         if meta['kind'] == 'steps':
-            ph = np.array([_f(r['readback']['PHSE']) for r in rows])
+            ph = np.array([_rb(r, 'phase') for r in rows])
             m = np.array([r['mean_ps'] for r in rows]) / 1e3
             want = ph / 360.0 * 100.0                  # the setting, as ns
             k, c = np.polyfit(want, m, 1)
@@ -263,7 +346,7 @@ def analyse(out):
                 vpp = np.array([r['scope_vpp'][ch - 1] for r in rows])
                 board = m - np.array([r['scope_dt_ns'] for r in rows]) * 1e3
             else:
-                vpp = np.array([_f(r['readback']['AMP']) for r in rows])
+                vpp = np.array([_rb(r, 'amp') for r in rows])
                 board = m
             sign = 1.0 if ch == 2 else -1.0          # a delay of unit `ch`
             delay = sign * (board - board[0])
@@ -273,8 +356,8 @@ def analyse(out):
             lines.append('  output %d   Vpp at the scope   dB      unit1-unit2 ps   '
                          'scope CH2-CH1 ns   unit %d delay change ps   rms ps' % (ch, ch))
             for r, v_, d_, mm, dl in zip(rows, vpp, db, m, delay):
-                lines.append('  %8s   %16.3f   %6.2f   %14.1f   %16s   %21.1f   %6.1f'
-                             % (r['readback']['AMP'], v_, d_, mm,
+                lines.append('  %7.3fV   %16.3f   %6.2f   %14.1f   %16s   %21.1f   %6.1f'
+                             % (_rb(r, 'amp'), v_, d_, mm,
                                 ('%+.4f' % r['scope_dt_ns']) if 'scope_dt_ns' in r else '-',
                                 dl, r['rms_ps']))
             lines.append('  AM-to-PM of unit %d: %+.1f ps of delay per dB of amplitude '
@@ -311,8 +394,14 @@ def analyse(out):
     return res
 
 
-def _f(s):
-    return S._num(str(s))
+def _rb(row, key):
+    """A read-back setting, from round 44's numbers or round 43's strings
+    ('10000000HZ', '4V', '0'), so old runs still analyse."""
+    rb = row['readback']
+    if key in rb:
+        return float(rb[key])
+    old = str(rb[{'freq': 'FRQ', 'amp': 'AMP', 'phase': 'PHSE'}[key]])
+    return float(re.match(r'[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?', old).group(0))
 
 
 def main():
