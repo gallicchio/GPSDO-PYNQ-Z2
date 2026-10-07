@@ -115,14 +115,17 @@ def beats(row, out_dir, keep):
         row['helper_hz'] = h
         U = {}
         for u in UNITS:
-            with contextlib.redirect_stdout(io.StringIO()):
-                a = B.analyse_unit('unit%d' % u, z['unit%d' % u], h, force=True)
-            row['u%d_top' % u] = round(100 * a['top'], 1)
-            row['u%d_beat_hz' % u] = round(h / a['P'], 3)
             _, edges, _ = B.bursts(z['unit%d' % u])
             row['u%d_ept' % u] = round(float(edges.mean()), 4)     # chatter
-            if 'sel' in a:
-                U[u] = X.unit(z, 'unit%d' % u, h, force=True)
+            try:                     # an oscillating, undriven unit has no beat to fold
+                with contextlib.redirect_stdout(io.StringIO()):
+                    a = B.analyse_unit('unit%d' % u, z['unit%d' % u], h, force=True)
+                row['u%d_top' % u] = round(100 * a['top'], 1)
+                row['u%d_beat_hz' % u] = round(h / a['P'], 3)
+                if 'sel' in a:
+                    U[u] = X.unit(z, 'unit%d' % u, h, force=True)
+            except Exception:
+                pass
         if 1 in U:
             for u in SAME_CLOCK + OTHER_CLOCK:
                 if u not in U:

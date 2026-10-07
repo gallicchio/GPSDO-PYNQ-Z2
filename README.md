@@ -14791,3 +14791,73 @@ python3 overnight_plot.py overnight_20261006T2350Z overnight_20261007T0529Z
 **Optional, if you are still up:** one more DMM reading of +3V3_A and
 +3V3_D (J5001 pins 5 and 7). The board is now 2.3 K cooler than at the
 first, so it would separate the CircuitGears' gain drift from the rails'.
+
+### 45.12 The whole night, a first rev B test, and the tests still to run
+
+**Your DMM at 08:20:** +3V3_A 3.186 V and +3V3_D 3.297 V, against 3.185 and
+3.296 V last night. **The rails moved 1 mV across a 2.5 K swing**, so every
+larger drift in the CircuitGear columns is the CircuitGears.
+
+**The run** went from 16:50 to 07:58 PDT: 453 rows in two segments (a
+5-minute gap at 05:24 UTC for 45.11's changes), with no errors.
+
+```sh
+python3 gateware/board/overnight_plot.py overnight_20261006T2350Z overnight_20261007T0529Z
+```
+
+| | the night | for rev B |
+|---|---|---|
+| **Si5351** | **0 PLLA slips, 0 HO-beat jumps, no latched LOL/LOS in 15.1 h**, CLK0 at 2 mA | The firmware fix holds. Item 9's Si5351C and XA drive buy margin; they fix nothing seen today. |
+| **the room** | A full cycle: −2.5 K to 23:50, +2.5 K to 05:00, −2.5 K to 08:00. The eight sensors stay within 0.3 K of each other; the helper's corner runs 2 K warm. | No strong gradients inside the board. |
+| **unit 2 − unit 1** | **610-630 ps all night; +4.3 to +5.0 ps/K, 2.1 ps rms about the fit.** No hysteresis (619.0 ps cooling, 618.4 ps warming, at 23.5 °C), and no rate term. | The floor for a same-source pair: ±10 ps over a night with 2.5 K. It includes the SDG's two outputs; T4 splits off the board's share. |
+| unit 11 − unit 1 | −133 ps/K, 57 ps rms about the fit: the HP's lock lagging the room | The bench, not the board. |
+| **chatter** (edges per transition) | Flat all night: 1.63, 1.72, 1.47, 1.57 and 1.00 on units 1, 2, 4, 11 and 12 | Chatter doesn't depend on temperature. |
+| **board TCXO** | Wanders 20-30 ppb between 20 s windows, against the SDG and against the PYNQ's crystal alike (row-to-row correlation 0.34). Swings ~±250 ppb with the room. | It cancels in pairs. It matters only for a unit read against the helper alone, which item 9's `EXT REF` addresses. |
+| **rails** | The DMM saw them flat to 1 mV. CG-1, zeroed every row, ended within 4 mV of the DMM; CG-2 ended 28 mV high (its gain drifts ~0.4%/K). | **Item 7**: an on-board monitor beats re-zeroed 1-2% instruments. |
+
+**T1, run this morning: does a squarer changing state move its neighbours?**
+`gateware/board/toggle_test.py`, 15:32-15:46 UTC, results in
+`toggle_20261007T1532Z/toggle.csv`.
+
+- The 33220A was switched on and off eight times. Off, unit 4 oscillates
+  undriven; on, it squares 10 MHz.
+- In each state, 20 s of units 1, 2, 4, 11 and 12 were recorded, with
+  +3V3_A on CG-1.
+- The fit is a slow quadratic drift plus a step:
+
+| when unit 4 starts oscillating | step |
+|---|---|
+| **unit 2 − unit 1** (unit 2 is unit 4's neighbour) | **+1.90 ± 0.34 ps** (5.6σ, 0.7 ps residual) |
+| unit 11 − unit 1 | −0.65 ± 1.95 ps (the HP's wander hides it) |
+| +3V3_A at J5001 | −2.6 ± 1.3 mV (2σ) |
+
+**So on rev A, one squarer changing state moves its neighbour by about
+2 ps.** That is the mechanism behind items 5 (a +3V3_A plane), 11 (park
+unused channels) and 12 (RC instead of bead filters), measured rather than
+modelled.
+
+- For an instrument whose same-source floor is 1.3 ps per 2-minute mean,
+  that is not small. A GPSDO dropping out, or an unplugged unit starting
+  to oscillate, steps its neighbours.
+- **After FB401 is bridged**, the same test says whether item 12 alone
+  fixes it.
+
+**The tests that would still decide rev B items:**
+
+| | test | decides | hands? | time |
+|---|---|---|---|---|
+| **T2** | Crosstalk by phase. The HP (locked, so Δ is exact) at 10 MHz + Δ on unit 11; read the tone at Δ in unit 2 − unit 1. Then HO at 2, 4, 6, 8 mA and off. Then the CircuitGear at 1 kHz on unit 9 (45.4's one odd row). | items 10 and 13 | no | ~40 min |
+| **T3** | AM-to-PM per unit: `xcheck.py amp` on units 1 and 2, and the 33220A's amplitude stepped on unit 4 | item 18's numbers per unit and termination | no | ~20 min |
+| **T4** | **The board alone against temperature.** One SDG output teed to units 1 and 2, then the board's heater stepped for a controlled 3-5 K | how much of the 4-5 ps/K is the board; whether item 18's replica bias or thermal layout should fix it | a tee, and a **15 V supply** in the heater jack | ~2 h |
+| **T5** | FB401 bridged, then `bench.sh fb401` and T1 again | item 12 | solder | 10 + 15 min |
+| **T6** | R3001 → 1k and R3002 → 330 Ω, then `bench.sh xa` (is CLK0 at 4 mA clean?) | item 9's XA drive | solder | 10 + 15 min |
+| **T7** | **New: a 100 kΩ from an oscillating unit's `S` test point to ground** (unit 5, 6 or 8: no jack needed), then `unplugged.py` and T1 against it | item 11's PARK design, before rev B commits to it | one resistor | 15 min |
+| T8 | One squarer swapped for a 74AUP1GU04 | item 8 | solder and a part | 30 min |
+
+**The order I'd suggest:**
+
+1. T2 and T3 whenever the bench is free; they need nobody.
+2. T4 when you can bring a tee and a 15 V supply.
+3. Then the solder jobs: T7 and T5 first (one resistor, one bridge), then
+   T6, each followed by its `bench.sh` stage against
+   `before_20261006T2325Z`.

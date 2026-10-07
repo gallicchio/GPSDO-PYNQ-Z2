@@ -191,6 +191,11 @@ total). +3V3_D loses 7 mV.
   supply. **Load changes** do: an unplugged squarer switching in or out of
   oscillation moves every other channel's supply by a *different* amount,
   and against a 50 mV/ns sine each millivolt is ~20 ps.
+- **Measured, round 45 (README 45.12, T1).** Unit 4 was switched eight
+  times between driven and oscillating.
+  - Unit 2 − unit 1 stepped **+1.90 ± 0.34 ps**; unit 2 is unit 4's
+    neighbour.
+  - +3V3_A at J5001 sagged −2.6 ± 1.3 mV.
 
 **What.**
 
@@ -214,6 +219,16 @@ An **INA3221** (LCSC C181255) measures three rails' voltage *and current* over
 I²C, through 0.1 Ω shunts on +5 V in, +3V3_A and +3V3_D. The PYNQ then logs
 rail voltages and load currents with the measurement. Round 41's question
 about an overloaded LDO would have taken one read.
+
+**Round 45 adds a reason.** Overnight, Jason's DMM found +3V3_A and +3V3_D
+flat to 1 mV across a 2.5 K swing (3.185/3.296 V, then 3.186/3.297 V).
+
+- The CircuitGears watching them read 1-2% low.
+- Their zeros drift ~15 mV/K, so they need re-zeroing every reading.
+- Even then, one of them drifted 28 mV in gain.
+
+An on-board monitor removes a whole instrument's worth of calibration from
+every overnight run.
 
 ### 8. LDO load and squarer current: TEST ON REV A FIRST
 
@@ -389,6 +404,18 @@ properly, at ~1 Vpp, AC coupled, with fast edges. Either:
 set by the driver. Going beyond 10 pF would need a capacitor on XA, and it
 would shrink the reference further. Don't.
 
+**Round 45's night** (README 45.12):
+
+- 15.1 h with **no PLLA slips, no HO-beat jumps and no latched LOL/LOS**,
+  at CLK0 2 mA. The firmware fix holds; the Si5351C and the XA drive are for
+  margin, not for a fault seen today.
+- **The board's TCXO wanders 20-30 ppb between 20 s windows.** It shows
+  against the SDG and against the PYNQ's own crystal alike, and it swings
+  ~±250 ppb with the room.
+  - It is common to every unit and cancels in every pair.
+  - It matters only when one unit is read against the helper alone, which
+    is what the `EXT REF` option above is for.
+
 ### 10. Isolate HO: PLANNED
 
 **Why.** Round 41: HO at 8 mA into 50 Ω puts a **~58 ps** sinusoidal phase
@@ -437,6 +464,12 @@ coupled, so grounding the SMA cannot reach it.
   the rail and the flip-flop sees a solid level: no chatter, no oscillation,
   and no crowbar current.
 - Forgetting to un-park a used channel fails loudly (a quiet channel).
+- **Why it matters, measured in round 45 (T1):** unit 4 going from driven
+  to oscillating moves its neighbour, unit 2, by +1.9 ps. Parking removes
+  the oscillating state.
+- **Test it on rev A first (45.12, T7):** a 100 kΩ from an oscillating
+  unit's `S` test point to ground. Then check that `unplugged.py` calls it
+  quiet, and that T1 against it shows no step.
 - **Option**: an I²C port expander driving the thirteen 100 k resistors, so
   the PYNQ parks empty channels itself.
 - **Not recommended**: a permanent offset on every squarer. It brings back the
@@ -454,6 +487,11 @@ unplugged squarers oscillate.
 
 **Then.** Feed the gates through 2.2-10 Ω resistors (RC, no resonance),
 especially the squarers.
+
+**And after the bridge**, repeat round 45's T1 (`toggle_test.py`). Before
+the bridge, unit 4's oscillation moves unit 2 by +1.9 ps. Afterwards, if
+unit 4 stays quiet undriven, that step should go too. The before data is
+`gateware/board/toggle_20261007T1532Z/`.
 
 ### 13. Crosstalk: PLANNED
 
@@ -489,6 +527,14 @@ small, not merely averaged.
 **Verify with a crosstalk matrix**: drive an aggressor at f + Δ and a victim at
 f, and read the victim's phase at Δ with `beats.py`. Rev A's numbers above are
 the baseline.
+
+**Round 45** found no crosstalk by a cruder measure, and that measure turned
+out not to measure crosstalk.
+
+- A CircuitGear on unit 9 and an offset SDG output changed no unit's chatter
+  (edges per transition).
+- `top` dips by itself, so it cannot show crosstalk either way (README 45.11).
+- The matrix above, read as phase, is still the test (45.12's T2).
 
 ---
 
@@ -581,6 +627,17 @@ sees, leaves the board's:
 **Bench note**: the SDG1032X's own output delay changes by about 1.5 ns at its
 amplitude-range boundary, between 2.0 V and 1.6 V. Keep the generator's
 amplitude on one side of that during any phase measurement.
+
+**Temperature, round 45's night.** Unit 2 − unit 1 drifted +4.3 to
++5.0 ps/K over a 2.5 K room cycle.
+
+- 2.1 ps rms about the fit, with no hysteresis: 619.0 ps cooling against
+  618.4 ps warming, at 23.5 °C.
+- That includes the SDG's two outputs.
+- Feeding both units from one output through a tee, and stepping the
+  temperature with the board's heater, would give the board's own share
+  (README 45.12, T4). A replica bias should shrink it if the self-bias
+  offset is what drifts.
 
 ---
 

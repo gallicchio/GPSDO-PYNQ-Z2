@@ -208,6 +208,8 @@ def analyse_unit(name, rows, helper, force=False):
         resid = np.array(resid) if resid else np.zeros(1)
         fams.append((sel.sum() / span_s, edges[sel].mean(), resid.std(), sel))
     fams.sort(key=lambda f: -f[0])
+    if not fams:                     # forced on a unit with no transitions to follow
+        return out
     ps_per_cycle = T_SIG / P * 1e12
     for label, (per_s, e, rms, _) in zip(('rising transition', 'falling transition'), fams):
         print('   %-18s %6.0f per s; %.2f rising edges each; last edge scatters '

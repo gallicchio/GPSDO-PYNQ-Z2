@@ -17,3 +17,4 @@ NA/
 # the beats files stay here, out of git.
 board/overnight_*/
 board/overnight_console_*.log
+board/toggle_console*.log
