@@ -3,6 +3,10 @@
 Everything planned for the next JLCPCB order, collected in one place so it is
 applied **all at once**.
 
+**Brought up to date 2026-10-07** (README round 45). It uses everything
+measured on the rev A bench board from 2026-09-30 to 2026-10-07: two nights
+of logging, a crosstalk matrix, AM-to-PM, and three reworks.
+
 ## Revisions
 
 | rev | state | what it is | where |
@@ -33,34 +37,195 @@ Do this on the day it is ordered:
    `mfg/release/`, the handbook, the README and `SHA256SUMS.txt`.
 5. Set `REV = "C"`, `DATE = "unreleased"`, and start `REVC_CHANGES.md`.
 
-### Rev A boards: reworks
+## The plan at a glance
+
+Priority: **1** = don't order rev B without it; **2** = should be in rev B;
+**3** = worth it if it fits.
+
+| # | item | status | pri. | what rev A showed | rev B |
+|---|---|---|---|---|---|
+| 1 | Designators inside their own box | IN GENERATOR | 2 | 71 outside on rev A (r41) | the placer refuses; `check_silk_boxes.py` |
+| 2 | Jumper designators beside the jumper | IN GENERATOR | 3 | | |
+| 3 | 1-Wire colours and signals at each screw | PLANNED | 2 | `red` printed nearer GND than VCC (r45) | Jason's layout |
+| 4 | A squarer-output test point | merged into 19 | | | |
+| 5 | **A real +3V3_A plane** | PLANNED | **1** | 109 mV lost in tracks (r41). **A neighbour going driven ↔ undriven moves a channel 1.4-1.9 ps** (r45 T1). | inner-layer plane, one feed |
+| 6 | Rail LEDs with "in range" | PLANNED | 3 | | TPS3700 windows |
+| 7 | Rail monitor (INA3221) | PLANNED | 2 | Rails flat to 1 mV; the CircuitGears read 1-2% low and drift (r45) | on-board V and I logging |
+| 8 | A lower-current squarer (74AUP1GU04) | **NOT DOING** | | Can't be tested on rev A (T8); items 11 and 12 remove the idle load | keep the 74LVC1GU04 |
+| 9 | **Si5351C, the TCXO on CLKIN** | PLANNED | **1** | PLLA slips at CLK0 ≥ 4 mA; 15 h clean at 2 mA (r39-45) | CLKIN, separate VDDO banks; RA1 weighs the layout rules |
+| 10 | **Isolate HO, drive it at 2-4 mA** | PLANNED | **1** | 58 ps on unit 11 (r41); **+16 ps rms jitter on an unrelated pair at 8 mA** (r45 T2) | buffered, filtered, own bank; RA5 |
+| 11 | **Park unused channels** | PLANNED, **VALIDATED ON REV A** | **1** | **100 kΩ from S to ground held unit 5 quiet in 30 of 30 restarts** (r45) | 3-pin header, 50R / PARK |
+| 12 | **RC, not bead, gate filters** | PLANNED, **CONFIRMED ON REV A** | **1** | **FB401 bridged: unit 4 quiet in 30 of 30**, was oscillating 30 of 30 (r45) | 2.2-10 Ω on every gate; RA3 picks the value |
+| 13 | Crosstalk rules | PLANNED, reprioritised | 2 | No 10 MHz tone above 0.4 ps; state changes and strong edges are what move a channel (r45 T2) | supply rules first |
+| 14 | Tools on this machine | NOTE | | KiCad 10's GUI rewrites the project file (r45) | |
+| 15 | Deglitch the beats in the gateware | PLANNED | 2 | 28-32% of transitions carry extra edges (r45) | |
+| 16 | Monitor the Si5351 during long runs | PLANNED | 2 | | |
+| 17 | ps per cycle from the measured beat | PLANNED | 2 | 0.8% off design (r43) | |
+| 18 | **Replica-biased squarers** (AM-to-PM) | PLANNED | **1** | −147 to −231 ps/dB (r43, r45 T3); a pair drifts +4-5 ps/K (r45) | 74LVC2GU04 per channel; RA2 |
+| 19 | U.FL/MMCX monitor taps | PLANNED | 2 | Every rev A question needed a hand-held probe | 25-35 taps |
+| 20 | Heater and thermal layout | TEST RUNNING (RA2) | 2 | The heater moves a pair 3 ps within seconds, before the thermometers move (r45) | decided from RA2 |
+| 21 | pps inputs | **NO CHANGE** | | First real pulses counted; thresholds 1.93 V up, 1.32 V down at the jack (r45) | keep 1k/10k, 51R DNP |
+
+## Rev A boards: reworks and hand-fitted parts
 
 The tag is the board as JLCPCB built it. Anything done to a physical board
 since goes here, so that every later measurement can be read against the
-right hardware.
+right hardware. All of it is the bench board.
 
-| date | board | change | why | result |
-|---|---|---|---|---|
-| — | — | none yet | CLK0 at 2 mA (round 40) is firmware, not a rework | |
-| pending | | FB401 bridged | item 12 | |
-| pending | | R3001 3k3 → 1k, R3002 1k → 330 Ω | item 9 | |
+| date | change | why | result |
+|---|---|---|---|
+| before round 39 | SMAs hand-fitted on units 1, 2, 11 and 12 (10 MHz and pps), `HO` (J3001) and `HIN` (J3002) | the hand-solder BOM | |
+| 2026-10-06 (r44) | SMA on unit 4 (J401); terminal block J6001 | a switchable source on unit 4; the 1-Wire probe | both work (r45) |
+| before 2026-10-06 | SMA on unit 9 (J901), by Jason | | CG-2's generator cabled there (r45) |
+| 2026-10-07 (r45) | **FB401 bridged** | item 12 | unit 4 quiet in 30/30 restarts (was oscillating 30/30). T1: the step on unit 2 from unit 4's state fell from 1.90 to 1.39 ps, but did not go. |
+| 2026-10-07 (r45) | **100 kΩ from TP502 (unit 5's `S`) to JP501 pin 2 (GND)** | item 11 | unit 5 quiet in 30/30 (was oscillating 30/30). Unit 3 now oscillates 29-30/30 (was 7/30). |
+| 2026-10-07 (r45) | **Barrel jack J2003 fitted; a 15 V 6 A supply in it** | item 20, RA2 | The heater works. No added noise (jitter +0.06 ± 0.07 ps, rails unchanged). |
+| pending | R3001 3k3 → 1k, R3002 1k → 330 Ω | item 9 (RA1) | |
+| not planned | HIN: R3004 in, R3005 out (an external helper) | | |
 
-Round 42 has the bench list for before and after each rework.
+CLK0 at 2 mA (round 40) is firmware, not a rework.
+
+**Before data**, all on the PYNQ or in `gateware/board/`:
+
+- `logs/before_20261006T2325Z`: the battery before any rework.
+- `logs/mods_20261007T2139Z`: the battery after FB401, the unit 5 park and
+  the heater jack.
+- `toggle_20261007T1532Z` and `toggle_20261007T2146Z`: T1 before and after
+  the bridge.
+- `crosstalk_20261007T1914Z` and `…1916Z`: T2.
+- `xcheck_amp_20261007T19*`: T3.
+
+## Tests still to run on rev A, before rev B is drawn
+
+Each is explicit enough to do without the chat.
+
+- **Hands** is what Jason does at the bench.
+- **Runs** is the command on the laptop, with `PYNQ_SSH` and `PYNQ_SCP` set
+  as for `xcheck.py`.
+- **Against** is the data it is compared with.
+
+### RA1. The XA drive: is the Si5351's reference slope the slip mechanism? (item 9)
+
+- **Hands.** Two 0805 resistors, both beside the TCXO X3001 and the Si5351
+  at the top centre:
+  - R3001, 3k3 → **1 kΩ**. At (101.25, 47.0), vertical; pads at
+    y = 46.09 (TCXO side) and 47.91.
+  - R3002, 1k → **330 Ω**. At (98.1, 49.4), horizontal; pads at x = 99.01
+    and 97.19 (GND).
+  - The divider ratio barely changes (0.23 → 0.25); the source impedance
+    drops from 767 Ω to 248 Ω.
+- **Runs.** `night.sh xa 13`: the battery, T1, then the logged night.
+- **Against.** `mods_20261007T2139Z`'s drive matrix. There, CLK0 at 4 mA
+  slips 865-1711 per second whenever CLK1 is at 4 mA or more.
+- **Decides.**
+  - **If CLK0 at 4 mA goes clean**, the slow crossing at XA was the
+    mechanism, and the Si5351C's CLKIN removes it; item 9's layout rules
+    become insurance.
+  - **If it still slips**, the coupling also runs through the supplies and
+    ground. The separate VDDO banks, the decoupling and the guard ring
+    become as important as CLKIN.
+
+### RA2. The board's own temperature coefficient, with the heater (items 18 and 20): running now
+
+- **Hands.** Done: the 15 V supply in J2003.
+- **Runs.** `night.sh mods 15`, started 2026-10-07 14:39 PDT. The heater is
+  off 1 h, on 3 h, off 3 h, on 3 h, then off. The logger cuts it off for
+  good above 50 °C.
+- **Against.**
+  - Round 45's room-temperature night: unit 2 − unit 1 drifted +4.3 to
+    +5.0 ps/K, SDG included.
+  - The heater warms only the board, so the drift during a step is the
+    board's own.
+- **Decides.**
+  - **Item 18**: the size of the board's own temperature coefficient, which
+    the replica bias is meant to cut.
+  - **Item 20**: whether channels warm unevenly. Round 45 saw the pair move
+    3 ps within seconds of switch-on, before the thermometers moved, and
+    the sensors near units 1 and 2 ran 2 K warmer than the helper's.
+
+### RA3. RC instead of the bridge: what resistor, and does local RC isolate a neighbour? (item 12)
+
+- **Hands.** Replace FB401's solder bridge with a **4.7 Ω 0805**, between
+  pads (142.76, 77.14) and (142.76, 79.26).
+- **Runs.** `unplugged.py` (inside the battery) and T1: `toggle_test.py 8`.
+- **Against.**
+  - Unit 4 quiet in 30/30 with the bridge.
+  - T1's +1.39 ± 0.38 ps after the bridge, and +1.90 ps with the bead.
+- **Decides.**
+  - **Still quiet with 4.7 Ω**: the resistor value works, and no resonance
+    comes back.
+  - **T1's step smaller**: local RC isolates neighbours as well. If the step
+    doesn't shrink, the shared +3V3_A path (item 5) is the coupling, and
+    RA4 is the test of that.
+
+### RA4. A +3V3_A strap: is the shared rail the coupling path? (item 5, optional)
+
+- **Hands.** One insulated wire, AWG 22-24, about 60 mm:
+  - from C2003 pad 1, the LDO's 10 µF output capacitor at (122.00, 7.95),
+    top centre beside U2001 (TPS7A2033);
+  - to FB201 pad 1, unit 2's +3V3_A, at (142.76, 61.46).
+- **Runs.** T1 (`toggle_test.py 8`). The logged night's rails will show
+  J5001's +3V3_A rise.
+- **Against.** T1 after the bridge (+1.39 ps). +3V3_A at J5001 sags
+  3.4 mV when unit 4 goes undriven.
+- **Decides.** If the step shrinks by about the ratio the rail sag does,
+  item 5's plane is the fix. Combined with RA3, that separates "the shared
+  rail" from "the local filter".
+
+### RA5. HO at 4 mA for a whole night (item 10; firmware only)
+
+- **Hands.** None.
+- **Runs.**
+  1. `./pynq-run si_set.py 2 4` on the PYNQ.
+  2. `overnight.py 13 --period 120`.
+  3. `si_set.py standard` in the morning.
+- **Against.**
+  - T2: per-transition rms 29.9 ps at 4 mA, against 32.7 ps at 8 mA.
+  - Round 45's 8 mA night.
+- **Decides.** Whether rev A's firmware moves to CLK1 at 4 mA now. That
+  needs unit 12 to stay a clean beat, no new slips, and the lower jitter to
+  hold for a night. It also fixes rev B's HO drive (item 10).
+
+### RA6. A locked source on unit 4 (items 13 and 18; needs an instrument)
+
+- **Hands.** A 33220A with Option 001 (rear 10 MHz jacks), teed onto C6
+  (BENCH_WIRING.md); or the HP moved from unit 11 to unit 4.
+- **Runs.**
+  - `crosstalk.py`: unit 4 then becomes a phase reference.
+  - AM-to-PM on unit 4: `xcheck.py amp`, adapted to the 33220A.
+- **Decides.**
+  - Item 18's numbers on a third unit.
+  - Whether HO's weak ~40 ps tone on unit 11 is real, which the HP's own
+    600 ps wander now hides.
+
+### Not runnable
+
+- **T8**, a 74AUP1GU04 in one squarer's place: no part, and too fine a
+  rework for the bench's iron. Item 8 is decided without it.
+
+**Order:**
+
+1. RA2 (tonight).
+2. RA5 (the next night; no hands).
+3. RA1 and RA3 in one sitting, then `night.sh xa 13`, which carries RA3's
+   T1.
+4. RA4 if RA3's step doesn't shrink.
+5. RA6 whenever a locked source turns up.
 
 ---
 
-Each item says why (with the round where the evidence is), what, and where it
-stands:
+Each item below says why (with the round where the evidence is), what, and
+where it stands:
 
 - **IN GENERATOR**: already changed in `gen/` or `pcb/`; takes effect when
   rev B is built.
 - **PLANNED**: agreed, not yet applied.
-- **TEST ON REV A FIRST**: a rework or measurement on the rev A board decides
-  it.
+- **VALIDATED / CONFIRMED ON REV A**: a rework on the bench board showed it
+  works.
+- **TEST ON REV A FIRST** / **TEST RUNNING**: a rework or measurement on the
+  rev A board decides it.
+- **NOT DOING**: considered and decided against, with the reason.
 - **OPEN**: a choice still to make.
-
-Rev A experiments come **after** everything that can be learned from the board
-as it is (round 41).
 
 ---
 
@@ -102,7 +267,7 @@ The routed rev B build must still pass the same check.
 - That is above the jumper on the right-hand (even) units and below it on the
   left, the mirror image, as everything else on that side is.
 
-### 3. 1-Wire colour labels at each screw, just under the terminal: PLANNED
+### 3. 1-Wire colour labels at each screw, just under the terminal: PLANNED, priority 2
 
 **Why.** Rev A prints the wire colours, but not next to the pins they name.
 Jason, round 45: "not right next to their pins".
@@ -169,7 +334,7 @@ D) would do. Item 19 makes it a plug-in tap on two or three units.
 
 ## Power
 
-### 5. A real +3V3_A plane: PLANNED
+### 5. A real +3V3_A plane: PLANNED, priority 1
 
 **Why.** Round 41 measured the rail:
 
@@ -191,11 +356,23 @@ total). +3V3_D loses 7 mV.
   supply. **Load changes** do: an unplugged squarer switching in or out of
   oscillation moves every other channel's supply by a *different* amount,
   and against a 50 mV/ns sine each millivolt is ~20 ps.
-- **Measured, round 45 (README 45.12, T1).** Unit 4 was switched eight
-  times between driven and oscillating.
-  - Unit 2 − unit 1 stepped **+1.90 ± 0.34 ps**; unit 2 is unit 4's
-    neighbour.
-  - +3V3_A at J5001 sagged −2.6 ± 1.3 mV.
+- **Measured, round 45 (T1, README 45.12 and 45.14).** Unit 4 was
+  switched eight times between driven and undriven, and unit 2 (its
+  neighbour) moved each time:
+
+| unit 4 undriven is… | unit 2 − unit 1 | +3V3_A at J5001 |
+|---|---|---|
+| oscillating (FB401 fitted) | **+1.90 ± 0.34 ps** | −2.6 ± 1.3 mV |
+| quiet (FB401 bridged) | **+1.39 ± 0.38 ps** | −3.4 ± 1.5 mV |
+
+- So stopping the oscillation removes only part of it. A squarer switching
+  at 10 MHz draws a different current from one idling at its threshold,
+  and the neighbour feels the difference through the shared rail.
+- In use that happens whenever a GPSDO drops out or comes back: its
+  neighbours step by ~1.5 ps. That is the size of the instrument's own
+  2-minute floor (1.3 ps), so it is worth removing.
+- **RA4** (a strap from the LDO to unit 2's bead) tests whether the shared
+  rail is the path.
 
 **What.**
 
@@ -203,8 +380,11 @@ total). +3V3_D loses 7 mV.
   near the middle of the board.
 - Keep In1 as the unbroken GND reference.
 - Correct the docstring.
+- Together with item 12's RC filters, every squarer then sees a stiff,
+  shared rail through its own small resistor. A neighbour's current
+  change is divided by the plane's milliohms, not by a track's ohms.
 
-### 6. Rail indicators with "in range": PLANNED
+### 6. Rail indicators with "in range": PLANNED, priority 3
 
 - One LED per rail to show it exists: +5 V, +3V3_A, +3V3_D and the heater
   input.
@@ -213,7 +393,7 @@ total). +3V3_D loses 7 mV.
   inside the window.
 - Drive every LED from +5 V, not from the analog rail.
 
-### 7. Rail monitoring: PLANNED (recommended)
+### 7. Rail monitoring: PLANNED, priority 2
 
 An **INA3221** (LCSC C181255) measures three rails' voltage *and current* over
 I²C, through 0.1 Ω shunts on +5 V in, +3V3_A and +3V3_D. The PYNQ then logs
@@ -230,21 +410,37 @@ flat to 1 mV across a 2.5 K swing (3.185/3.296 V, then 3.186/3.297 V).
 An on-board monitor removes a whole instrument's worth of calibration from
 every overnight run.
 
-### 8. LDO load and squarer current: TEST ON REV A FIRST
+### 8. LDO load and squarer current: NOT DOING (keep the 74LVC1GU04)
 
 - Rev A's +3V3_A carries ~180 mA, within the TPS7A2033's 300 mA. The part
   was never overloaded; the 3.15 V was distribution drop (item 5).
-- Most of that load is unplugged squarers biased at their threshold. Parking
-  them (item 11) removes it.
-- Candidate lower-current squarer: **74AUP1GU04**. It is pin-compatible and
-  built for low-power crystal oscillators. Try one channel on rev A and
-  compare edge scatter and supply current.
+- Most of that load is unplugged squarers biased at their threshold.
+  Parking them (item 11) removes it, and round 45 showed parking works.
+- The candidate lower-current squarer, the **74AUP1GU04**, is pin
+  compatible. But its test (T8, one channel swapped on rev A) can't be
+  done on the bench.
+- Changing the squarer family would also throw away everything measured
+  about this one: AM-to-PM (item 18), chatter, the temperature
+  coefficient.
+- **Decision**: keep the 74LVC1GU04, and let parking (11), the plane (5)
+  and RC filters (12) deal with the current. Revisit only if rev B's own
+  measurements ask for it.
 
 ---
 
 ## The helper synthesiser
 
-### 9. A Si5351 that works with margin: PLANNED, the Si5351C with the TCXO on CLKIN
+### 9. A Si5351 that works with margin: PLANNED, priority 1: the Si5351C with the TCXO on CLKIN
+
+**Status, 2026-10-07.**
+
+- **Firmware**: CLK0 at 2 mA has been clean through every test, 15.1 h
+  overnight included.
+- **Margin**: CLK0 at 4 mA still slips 865-1711 per second whenever CLK1 is
+  at 4 mA or more (battery `mods_20261007T2139Z`, after the other
+  reworks).
+- **RA1** (R3001/R3002) decides how much of item 9's layout list is
+  necessary beyond CLKIN itself.
 
 **Why.** Rounds 39-40 found:
 
@@ -416,7 +612,7 @@ would shrink the reference further. Don't.
   - It matters only when one unit is read against the helper alone, which
     is what the `EXT REF` option above is for.
 
-### 10. Isolate HO: PLANNED
+### 10. Isolate HO, and drive it at 2-4 mA: PLANNED, priority 1
 
 **Why.** Round 41: HO at 8 mA into 50 Ω puts a **~58 ps** sinusoidal phase
 error on unit 11, at f(unit 11) − f(HO) ≈ 10 Hz. That is about 5 mV of HO
@@ -448,7 +644,12 @@ per transition:
 - At 8 mA that is ~16 ps rms added, in quadrature. Unit 12 still beat
   cleanly at 2 mA.
 - So, besides the isolation above: drive HO at 2-4 mA. On rev A that is a
-  firmware change (`IDRV_NULL`) that can be made now.
+  firmware change (`IDRV_NULL` in `driver/i2c_devices.py`). **RA5** runs a
+  whole night at 4 mA before it is made the default.
+- The jitter rose steadily with drive, 28.3 ps with HO off. So whatever
+  HO's output stage does on the shared chip and supply reaches every
+  channel, not just its own cable. Separate output banks (item 9), the
+  buffer and the filter above all act on that.
 - Its coherent tone on unit 11, round 41's 58 ps, showed again only weakly
   (~40 ps at 8 mA, against a 26-34 ps floor). The HP on unit 11 wanders too
   much to resolve it better.
@@ -457,7 +658,7 @@ per transition:
 
 ## The channels
 
-### 11. Park an unused channel: PLANNED
+### 11. Park an unused channel: PLANNED, priority 1, VALIDATED ON REV A
 
 **Why.** An unplugged squarer sits still, chatters, or oscillates. Round 41,
 over 30 restarts with units 1, 2, 11 and 12 driven:
@@ -481,17 +682,26 @@ coupled, so grounding the SMA cannot reach it.
   and no crowbar current.
 - Forgetting to un-park a used channel fails loudly (a quiet channel).
 - **Why it matters, measured in round 45 (T1):** unit 4 going from driven
-  to oscillating moves its neighbour, unit 2, by +1.9 ps. Parking removes
-  the oscillating state.
-- **Test it on rev A first (45.12, T7):** a 100 kΩ from an oscillating
-  unit's `S` test point to ground. Then check that `unplugged.py` calls it
-  quiet, and that T1 against it shows no step.
+  to undriven moves its neighbour, unit 2, by +1.4-1.9 ps (item 5).
+- **Validated on rev A, 2026-10-07.** A leaded 100 kΩ from TP502 (unit 5's
+  `S`) to JP501 pin 2 (GND) held unit 5 **quiet in 30 of 30 Si5351
+  restarts**, twice. Before, it oscillated in 30 of 30 at 559 kHz.
+- **Side effect worth designing for.** With unit 5 parked and FB401
+  bridged, **unit 3 began oscillating in 29-30 of 30 restarts** (it had
+  oscillated in 7 of 30).
+  - Which marginal units oscillate shifts with their neighbours, so parking
+    alone is whack-a-mole.
+  - Rev B parks every unused channel, and also removes the oscillator's
+    tank on every channel (item 12).
+- **Parking is for unused channels only.** 100 kΩ from `S` holds the input
+  at ~0.3 V, so a driven signal would no longer cross the threshold. The
+  jumper is what makes it per channel.
 - **Option**: an I²C port expander driving the thirteen 100 k resistors, so
   the PYNQ parks empty channels itself.
 - **Not recommended**: a permanent offset on every squarer. It brings back the
   amplitude sensitivity the self-bias removes.
 
-### 12. No resonant supply filters on the gates: TEST ON REV A FIRST
+### 12. No resonant supply filters on the gates: PLANNED, priority 1, CONFIRMED ON REV A
 
 **Why.** Every gate is fed through its own 600 Ω@100 MHz bead into
 100 n + 10 n. A ~0.7-1 µH bead with 110 nF resonates at ~0.5-0.6 MHz, where the
@@ -504,12 +714,33 @@ unplugged squarers oscillate.
 **Then.** Feed the gates through 2.2-10 Ω resistors (RC, no resonance),
 especially the squarers.
 
-**And after the bridge**, repeat round 45's T1 (`toggle_test.py`). Before
-the bridge, unit 4's oscillation moves unit 2 by +1.9 ps. Afterwards, if
-unit 4 stays quiet undriven, that step should go too. The before data is
-`gateware/board/toggle_20261007T1532Z/`.
+**Result, 2026-10-07 (README 45.14).**
 
-### 13. Crosstalk: PLANNED
+- With FB401 bridged, **unit 4 was quiet in 30 of 30 restarts**, twice. It
+  had oscillated in 30 of 30 at 557-560 kHz in rounds 41, 42 and 45.
+- **The bead with its 110 nF is the oscillator's tank.** Remove the
+  resonance and the self-biased squarer has nothing to oscillate with.
+- **T1 after the bridge**: unit 4's change of state still moves unit 2, by
+  +1.39 ps (+1.90 before). The filter stops the oscillation; it doesn't
+  isolate the neighbour. That is item 5's job, or a resistor's (RA3).
+- **Unit 3 started oscillating** once unit 5 was parked and FB401 bridged
+  (item 11). So the fix goes on **every** gate, not just the units that
+  oscillate today.
+
+**For rev B.**
+
+- Every squarer's (and flip-flop's) supply through a small resistor into
+  its 100 n + 10 n: **RC, no inductor**.
+- **RA3** picks the value: 4.7 Ω in FB401's place, then the battery and T1
+  again.
+  - 2.2 Ω gives a 0.66 MHz corner with 110 nF; 4.7 Ω gives 0.31 MHz; 10 Ω
+    gives 0.14 MHz.
+  - The squarer's few mA drop only millivolts, and a static offset doesn't
+    matter: the squarer self-biases on its own supply.
+- If a bead is wanted anywhere for EMI, it goes on the rail's feed, never
+  on a single gate with its own capacitor.
+
+### 13. Crosstalk: PLANNED, priority 2 (reprioritised by round 45)
 
 Measured on rev A (round 41):
 
@@ -524,8 +755,17 @@ Between two GPSDOs a mHz apart, channel crosstalk appears as a slow periodic
 phase error with a ~1000 s period. It looks like wander, so it has to be
 small, not merely averaged.
 
-**Rules for rev B:**
+**Rules for rev B**, in the order round 45's measurements rank them:
 
+- **First, the supplies**: the +3V3_A plane (item 5), RC gate filters on
+  every channel (12), parked unused channels (11), and HO at 2-4 mA on its
+  own output bank (10, 9). These address what was actually seen to move a
+  channel: state changes (~1.5 ps) and strong edges (~16-19 ps rms of
+  jitter).
+- Then the isolation rules, which round 45 found already sufficient for
+  10 MHz tones (no tone above 0.4 ps on the unit 1-unit 2 pair). They stay
+  because rev B's taps (19) and the Si5351C's routing will change the
+  layout:
 - No near-10 MHz aggressor on the board beyond what is needed (item 10).
 - Every clock (helper tree, HO, the Si5351's outputs) as stripline between
   ground planes, in its own corridor. The helper is already stripline.
@@ -580,19 +820,41 @@ out not to measure crosstalk.
   path.
 - Set `KICAD_CLI` and `KICAD9_FOOTPRINTS`, or extract the AppImage where
   `build.py` expects it, before the rev B build.
+- **KiCad 10 is also here** (`~/.local/bin/kicad-10.0.6-x86_64.AppImage`), and
+  Jason opens the project in it.
+  - Its GUI rewrote `GPSDO-PYNQ-Z2.kicad_pro` to its own format (version 5,
+    committed as `e1ff1fd`), and `GPSDO-PYNQ-Z2.kicad_prl` with its UI state.
+  - `gen/project.py` still writes version 4, so a rebuild will undo the
+    former.
+  - **OPEN**: build rev B with KiCad 10 throughout, as CLAUDE_PCB.md
+    recommends for new boards. Otherwise expect that diff after every build
+    Jason opens.
 
 ---
 
 ## Firmware and gateware (not the PCB, but ship with rev B's bring-up)
 
-### 15. Deglitch the beats in `dmtd_capture.v`: PLANNED
+### 15. Deglitch the beats in `dmtd_capture.v`: PLANNED, priority 2
 
-Real beats chatter, mostly because of HO (item 10). The core keeps the *last*
-rising edge, so a timestamp can come from the falling transition's bounce,
-half a beat period away. Add design log §10's K-of-K deglitcher and first/last
-edge sums.
+Real beats chatter. Round 45 measured it directly, as rising edges per
+transition, over two nights and every condition tried:
 
-### 16. Monitor and log the Si5351 during long runs: PLANNED
+| unit (source) | edges per transition | transitions with extra edges |
+|---|---|---|
+| 1, 2 (SDG sine) | 1.63, 1.72 | 28%, 32% |
+| 4 (33220A sine) | 1.47 | 26% |
+| 11 (HP sine) | 1.57 | 28% |
+| 12 (HO, a square) | 1.00 | 0% |
+
+- It is set by the input's slew at the threshold, not by temperature,
+  neighbours or HO's drive; none of those moved it.
+- The core keeps the *last* rising edge, so a timestamp can come from the
+  falling transition's bounce, half a beat period away.
+- Add design log §10's K-of-K deglitcher and first/last edge sums.
+- `beats.py`'s analysis copes in software, but a quarter of every
+  channel's transitions are not clean single edges.
+
+### 16. Monitor and log the Si5351 during long runs: PLANNED, priority 2
 
 Your requirement, round 41:
 
@@ -601,6 +863,10 @@ Your requirement, round 41:
 - Log **pair-register slips** (`helper_slips()`, `si_watch.py`) for the
   whole multi-day run.
 
+Round 45's `overnight.py` already logs, every 2 minutes, a 10 s
+`si_watch.py` slip count (PLLA and HO's beat) and the latched LOL/LOS
+flags. Over 15 h at CLK0 2 mA there were none.
+
 A continuous **hardware slip counter** in the gateware would beat software
 sampling: count 1024-helper-cycle intervals whose PS-clock length is off by a
 reference period.  Today `si_watch.py watch` covers ~78 % of the time (round
@@ -608,7 +874,7 @@ reference period.  Today `si_watch.py watch` covers ~78 % of the time (round
 can also latch LOL/LOS in hardware.  Round 40 showed those flags miss the
 slips, so INTR is a supplement, not a substitute.
 
-### 17. The ps-per-cycle scale from the measured beat: PLANNED
+### 17. The ps-per-cycle scale from the measured beat: PLANNED, priority 2
 
 `T_RES_PS` assumes the design beat. A TCXO 2.5 ppm off moves it by 2 %.
 
@@ -621,7 +887,7 @@ Round 43 measured it:
   read the generator's phase steps with a slope of 1.00013 and a 0.05 Hz
   ramp to 2 ppm.
 
-### 18. The squarer's amplitude-to-phase conversion: PLANNED
+### 18. The squarer's amplitude-to-phase conversion: PLANNED, priority 1
 
 **Why.** Round 43 stepped one generator output's amplitude while the scope and
 the DDMTD both watched. Subtracting the generator's own delay, which the scope
@@ -673,12 +939,21 @@ amplitude on one side of that during any phase measurement.
   temperature with the board's heater, would give the board's own share
   (README 45.12, T4). A replica bias should shrink it if the self-bias
   offset is what drifts.
+- **RA2, running now, does the heater part.** The heater warms only the
+  board, not the SDG, so no tee is needed: the pair's drift during a heater
+  step is the board's.
+- **Why priority 1.**
+  - 147-231 ps per dB means a GPSDO whose output amplitude drifts by 0.1 dB
+    with its own temperature shows 15-23 ps of false phase. That is ten
+    times the instrument's 2-minute floor.
+  - Nothing else on the board converts a source's behaviour into a false
+    reading so efficiently.
 
 ---
 
 ## Probing without holding a probe
 
-### 19. U.FL or MMCX monitor taps on every analog node worth a look: PLANNED
+### 19. U.FL or MMCX monitor taps on every analog node worth a look: PLANNED, priority 2
 
 **Why.** Jason, round 45:
 
@@ -750,3 +1025,58 @@ this is maybe overkill"): with the ratio built into the board's own resistor,
 a stock U.FL-to-BNC pigtail does the job. A separate probe board would only
 earn its keep on a high-impedance node at high frequency, and none of the
 taps above is one.
+
+---
+
+## The heater, and the pps inputs
+
+### 20. Heater placement and the thermal layout: TEST RUNNING (RA2), priority 2
+
+**Why.** Rev A's heater is three banks of resistors and FETs spread over the
+board, ~9.6 W from its own 15 V jack. It was first switched on in round 45:
+
+- It works, and fast. The sensors nearest units 1 and 2 (T48, T49) rose
+  ~2 K within 90 s, while the helper's (T4E, centre) barely moved.
+- It adds **no electrical noise**: the jitter, chatter and both rails were
+  unchanged with it on, even from a cheap 15 V 6 A supply.
+- **It moves a pair by heat, fast.** Unit 2 − unit 1 sat 3.0 ± 0.65 ps
+  lower with it on.
+  - A 70 s recording showed that shift arriving over 2-4 s and not
+    reversing at switch-off: heat, not current.
+  - So a heater near a squarer warms it within seconds, long before the
+    nearest thermometer moves.
+
+**What RA2 will decide.**
+
+- The board's own temperature coefficient, per pair, with the board heated
+  ~10 K above the room while the SDG stays put (item 18).
+- **Whether the channels warm evenly.** If they don't, rev B wants:
+  - heaters equidistant from every squarer, or none near any;
+  - a thermometer beside each squarer rather than in the margins;
+  - the thermostat loop (the driver's slow PWM) holding the squarers'
+    temperature, not the margin sensors'.
+- Whether a heated board (a thermostat at, say, 35 °C) improves the night's
+  ±10 ps pair stability enough to keep the heater at all.
+
+**Keep regardless.**
+
+- The heater's own jack, polyfuse, Schottky and TVS.
+- The heater return on its own trace.
+- The DAC that powers up off (EEPROM 0, round 45 confirmed it on the bench).
+
+### 21. pps inputs: NO CHANGE
+
+**Round 45** gave a pps input its first real pulses: CG-1 drove `P2` (unit 2)
+with a 0-3 V square.
+
+- Every edge was counted and timestamped at 10 ns.
+- The thresholds, measured through the jack, are **1.88-1.98 V rising and
+  1.27-1.37 V falling**. That is ≈1.75 V and ≈1.20 V at the 74LVC1G17,
+  inside its datasheet ranges.
+- The 51 Ω terminators stay DNP. Round 44 wrongly read them as fitted;
+  `excluded_from_assembly.csv` says otherwise.
+- The 1k/10k divider passes 3.3 V and 5 V pps with margin.
+- **For rev B**: nothing to change in the circuit. Add the thresholds to the
+  silkscreen limits at each pps jack: `pps: ≥ 2.3 V`. That is the
+  datasheet's worst-case VT+ (2.08 V at 3.3 V) through the divider, against
+  1.98 V measured. Move the Schmitts onto +3V3_D, as item 13 already says.

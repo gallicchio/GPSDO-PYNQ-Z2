@@ -15024,3 +15024,46 @@ at its threshold, and its neighbour feels the difference through +3V3_A.
   filters on every gate (12), and parking unused channels in a defined
   low-current state (11).
 - Bridging beads alone is not enough.
+
+### 45.15 REVB_CHANGES.md brought up to date
+
+You asked for a current, thorough plan, with the remaining tests listed
+explicitly. REVB_CHANGES.md now opens with three new sections:
+
+- **The plan at a glance**: all 21 items with status, priority (1 = don't
+  order without it) and the rev A evidence. **Priority 1** is:
+  - the +3V3_A plane (5);
+  - the Si5351C with CLKIN (9);
+  - HO isolated and at 2-4 mA (10);
+  - parking (11);
+  - RC gate filters (12);
+  - replica-biased squarers (18).
+- **The rework log**, brought up to date: FB401 bridged, unit 5 parked,
+  J2003 and the heater supply, each with its result, plus where every
+  before-and-after data set lives.
+- **Tests still to run on rev A, RA1-RA6.** Each gives what you do, at
+  which board coordinates, the command I run, the data it is compared with,
+  and what it decides:
+  - RA1: R3001/R3002, the XA drive (item 9);
+  - RA2: the heated night, running now (items 18 and 20);
+  - RA3: FB401's bridge → 4.7 Ω, to pick item 12's value and see whether
+    local RC isolates a neighbour;
+  - RA4: a +3V3_A strap from the LDO to unit 2's bead (item 5; optional);
+  - RA5: HO at 4 mA for a night (item 10; no hands);
+  - RA6: a locked source on unit 4 (needs a 33220A with Option 001).
+
+**Decisions taken in it:**
+
+- **Item 8 is NOT DOING.** Keep the 74LVC1GU04. T8 can't be run, and
+  parking with RC filters removes the idle current without throwing away
+  everything measured about this squarer.
+- **Items 11 and 12 are validated on rev A.** They go on **every** channel,
+  because parking unit 5 and bridging FB401 made unit 3 start oscillating.
+- **Item 13's rules are reordered.** Supplies, parking and HO's drive come
+  first: what moves a channel is state changes and strong edges, not
+  10 MHz tones.
+- **New items.** Item 20 is the heater and thermal layout, decided by RA2.
+  Item 21 is the pps inputs: no change, with the measured thresholds and a
+  `pps: ≥ 2.3 V` silkscreen limit.
+- **Item 14 is OPEN.** KiCad 10 rewrites the project file whenever the
+  board is opened, so: build rev B in KiCad 10?
