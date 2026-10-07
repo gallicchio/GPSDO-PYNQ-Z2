@@ -25,7 +25,10 @@ Every hour that period's beats file is kept too, as beats_<time>.npz.
 three banks, ~9.6 W from the 15 V jack) at those minutes after the start,
 between rows, so its I2C writes never overlap temps.py's reads.  The state is
 logged in the `heater` column, and the heater is turned OFF when the run ends,
-however it ends.
+however it ends.  Safety: if any thermometer (or the probe) reads above
+HEATER_MAX_C, the heater is switched off and stays off for the rest of the run
+(`heater` = 'cutoff').  A row whose temperatures cannot be read turns it off
+too, until a later row can read them.
 
 Round 45's first analysis changed four things (the first 5.4 h were logged
 without them):
@@ -78,6 +81,7 @@ SCP = shlex.split(os.environ.get('PYNQ_SCP', 'scp'))
 RDIR = os.environ.get('PYNQ_DIR', 'gpsdo-dmtd')
 SHM = '/dev/shm/gpsdo-overnight'      # the beats files' scratch on the PYNQ
 UNITS = (1, 2, 4, 11, 12)
+HEATER_MAX_C = 50.0             # round 45: the heater warms the board ~2 K a minute
 SAME_CLOCK = (2, 11)            # phase against unit 1, modulo 100 ns
 OTHER_CLOCK = (4, 12)           # frequency against unit 1
 CG1, CG2 = 'C2BRGBL', 'C2BKO1A'
@@ -256,6 +260,7 @@ def main():
     last_keep = 0.0
     t_start = time.time()
     h_state = None
+    cutoff = False
     with open(os.path.join(out_dir, 'log.csv'), 'w', newline='') as f:
         w = csv.DictWriter(f, COLUMNS)
         w.writeheader()
@@ -267,6 +272,8 @@ def main():
                 errors = []
                 if plan:
                     want = schedule_state(plan, (t0 - t_start) / 60.0)
+                    if cutoff:
+                        want = 'off'
                     if want and want != h_state:
                         try:
                             h_state = heater(want)
@@ -275,7 +282,19 @@ def main():
                             errors.append('heater: %s' % str(e)[:100])
                     row['heater'] = h_state
                 keep = t0 - last_keep >= 3600
-                for name, fn in (('temps', lambda: temps(row)),
+                def guarded_temps():
+                    nonlocal_cutoff = temps(row)
+                    hot = max([row.get(k) or -273.0 for k in ('T' + a[2:] for a in THERMS)]
+                              + [row.get('probe') or -273.0])
+                    if plan and hot > HEATER_MAX_C and not cutoff_box[0]:
+                        cutoff_box[0] = True
+                        heater('off')
+                        row['heater'] = 'cutoff'
+                        print('%s  HEATER CUT OFF: %.2f C > %.1f C' % (row['utc'], hot, HEATER_MAX_C),
+                              flush=True)
+                    return nonlocal_cutoff
+                cutoff_box = [cutoff]
+                for name, fn in (('temps', guarded_temps),
                                  ('beats', lambda: beats(row, out_dir, keep)),
                                  ('slips', lambda: slips(row)),
                                  ('rails', lambda: rails(row, cg2_zero)),
@@ -287,6 +306,15 @@ def main():
                                                   if str(e) else type(e).__name__))
                 if keep and 'u1_top' in row:
                     last_keep = t0
+                if cutoff_box[0] and not cutoff:
+                    cutoff, h_state = True, 'off'
+                if plan and h_state == 'on' and row.get('T48') is None:
+                    # no temperatures this row: no heat until they come back
+                    try:
+                        h_state = heater('off')
+                        row['heater'] = 'off (no temperatures)'
+                    except Exception as e:
+                        errors.append('heater off: %s' % str(e)[:80])
                 row['errors'] = ' | '.join(errors)
                 w.writerow(row)
                 f.flush()

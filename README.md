@@ -14939,3 +14939,70 @@ chat reply of this date, repeated here so it survives the chat.
   3. The overnight log with the heater off 1 h, on 3 h, off 3 h, on 3 h,
      then off. About 9.6 W should warm the board roughly 10 K, while the
      SDG stays at room temperature.
+
+### 45.14 After your reworks: M1-M3 checked, the heater's noise, the night started
+
+**M1 and M2 work.** `unplugged.py 30 1,2,11,12` was run with the 33220A
+off, so unit 4 was undriven, and compared with last night's battery:
+
+| unit | before (`before_20261006T2325Z`) | after M1 and M2 |
+|---|---|---|
+| **4**, FB401 bridged | oscillating 30/30, 560 kHz | **quiet 30/30** |
+| **5**, 100 kΩ from TP502 to ground | oscillating 30/30, 559 kHz | **quiet 30/30** |
+| 3 | quiet 22, oscillating 7 (329 kHz) | oscillating **30/30** (568 kHz) |
+| 7 | oscillating 21/30 | oscillating 12/30 |
+| 6, 8, 9 | oscillating 30/30 | the same |
+| 10, 13 | quiet | the same |
+
+- **Item 12's hypothesis holds.** Bridging the bead stopped unit 4's
+  oscillation, so the bead with its capacitors is the oscillator's tank.
+- **Item 11's park works as designed.** A 100 kΩ from `S` to ground holds
+  unit 5 quiet through every Si5351 restart.
+- **But unit 3 now oscillates every time.** The marginal units move with
+  their neighbours, so the oscillation is a property of the supply
+  network, not only of each bead. Rev B's RC filters (item 12) and its
+  +3V3_A plane (item 5) should be applied to every unit, not just the
+  oscillating ones.
+
+**M3 works.** The heater warms the board fast. With it on, the sensors
+nearest units 1 and 2 (T48, T49) rose ~2 K within a minute and a half, and
+T48 reached 32 °C over the toggle test. The helper's sensor, in the centre,
+barely moved.
+
+**Your cheap 15 V supply adds no noise.** `toggle_test.py heater 8`
+switched the heater on and off eight times, with 20 s of beats, both rails
+and the temperatures in each state (`toggle_heater_20261007T2111Z/`). The
+fit is a slow drift plus a step:
+
+| with the heater on | step |
+|---|---|
+| unit 2 − unit 1 jitter (rms per transition) | +0.06 ± 0.07 ps (32.0 against 32.0 ps) |
+| chatter, units 1 and 2 | +0.001 ± 0.002 edges per transition |
+| +3V3_A / +3V3_D | −1.6 ± 1.4 mV / −0.3 ± 1.0 mV |
+| **unit 2 − unit 1** | **−3.0 ± 0.65 ps** |
+| T48 / T49 | +2.1 / +2.3 K |
+
+- The jitter with the heater off also matches yesterday's 32.7 ps, from
+  before the supply was connected. So neither the supply being plugged in
+  nor its 0.64 A adds measurable noise.
+- **The −3 ps is heat, not current.** In a 70 s recording with the heater
+  switched mid-way:
+  - unit 2 − unit 1 slid ~1.5 ps over 2-4 s after switch-on;
+  - it did not step back at switch-off (623.2-624.6 ps before, 623.6-624.8
+    after).
+
+  An electrical effect would jump at both edges. So a heater near a squarer
+  warms it within seconds, faster than the thermometers see.
+
+**Added for the unattended night.** `overnight.py` turns the heater off for
+good if any thermometer passes **50 °C**. It also turns it off for any row
+whose temperatures cannot be read, until a later row can read them.
+
+**The night: `night.sh mods 15`, from 14:39 PDT.** It runs three steps:
+
+1. `bench.sh mods` with unit 4 undriven: the battery, against
+   `before_20261006T2325Z`.
+2. T1 again. Unit 4 no longer oscillates undriven, so this asks whether
+   driven-against-quiet still moves unit 2.
+3. 15 h of `overnight.py`, with the heater off 1 h, on 3 h, off 3 h, on
+   3 h, then off.
