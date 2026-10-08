@@ -101,34 +101,38 @@ the tee, and a second from the tee to the board's SMA (BNC-to-SMA).
 - **C7, the OCXO (round 45.17).** A BG7TBL 8-port distribution amplifier
   becomes the bench's one reference. Every instrument only *takes* 10 MHz:
   SDG 10MOut Disable, SDS `:SYSTem:CLOCk IN_OFF` (it was `IN_ON`).
-  - Each port: **6 Vpp open circuit** (your measurement). BG7TBL sells it as
-    "10 dBm / 1 Vrms, 50 Ω/75 Ω"; 6 Vpp from a 50 Ω source is 3 Vpp into 50 Ω,
-    +13.5 dBm, 1.06 Vrms, so the two agree if the source is 50 Ω.
-    **Not yet measured here**: see the check below.
-  - **Your note: ports 1, 2, 5, 6 are 180° from ports 3, 4, 7, 8.** Nothing
-    published says so either way. A centre-tapped transformer feeding two
-    banks of four amplifiers would do it. It doesn't matter to anything that
-    locks (a PLL takes any phase), and on the board it is a 50 ns offset, which
-    a pair series reads mod 100 ns. Use one bank where the phase is compared.
+  - **Measured (round 45.18), ports 1-3 on SDS CH1-CH3, each channel at 1 MΩ
+    and then 50 Ω:**
+
+    | Port | 1 MΩ | 50 Ω | Source | Phase vs port 1 |
+    |---|---|---|---|---|
+    | 1 | 6.03 Vpp | 3.53 Vpp | 35 Ω | — |
+    | 2 | 5.70 | 3.42 | 33 Ω | −0.4° |
+    | 3 | 5.75 | 3.39 | 35 Ω | **180.0°** |
+
+    - **The source is ~35 Ω, not 50 Ω**, so a port gives **3.4-3.5 Vpp into
+      50 Ω, +14.7 dBm**, not the 3 Vpp first estimated from 6 Vpp.
+    - Harmonics ≥ 51 dB down (the scope's own floor). Ports differ by up to
+      0.5 dB, which matters for AM-to-PM (item 18) if a port's level drifts.
+  - **Your note: ports 1, 2, 5, 6 are 180° from ports 3, 4, 7, 8.** Port 3
+    against ports 1 and 2 confirms it; 4-8 not yet looked at. It doesn't matter
+    to anything that locks (a PLL takes any phase), and on the board it is a
+    50 ns offset, which a pair series reads mod 100 ns. Use one bank where the
+    phase is compared.
   - Where each port may go:
 
     | Into | What it sees from one port | Verdict |
     |---|---|---|
-    | HP 33120A `10 MHz In` (50 Ω, −10..+15 dBm, abs max +25 dBm / 10 Vpp) | 3 Vpp, +13.5 dBm | **direct** |
-    | SDG `10MHz In/Out` (≥ 1.4 Vpp, 5 kΩ, AC; no max given) | 6 Vpp unterminated | **through a 50 Ω feed-through or 6 dB pad**: 3 Vpp, about its own output's level |
-    | a board unit **with** its 50R jumper (JP101, JP401, JP1101, JP1201) | ~3.0 Vpp | **OK** (rated 3.3 Vpp; abs max 4.10 Vpp) |
-    | a board unit **without** it (JP201 unit 2, JP901 unit 9 now) | ~5.9 Vpp | **No**: over the 4.10 Vpp abs max. Fit the jumper or a 6 dB pad first |
-    | a scope channel, 1 MΩ / 50 Ω | 6 / 3 Vpp | OK (50 Ω: ≤ 5 Vrms) |
+    | HP 33120A `10 MHz In` (50 Ω, −10..+15 dBm, abs max +25 dBm / 10 Vpp) | 3.5 Vpp, +14.9 dBm | **direct**: inside the range, at its top; a 3 dB pad puts it mid-range. The bottom HP locks on it (45.18) |
+    | SDG `10MHz In/Out` (≥ 1.4 Vpp, 5 kΩ, AC; no max given) | 6 Vpp unterminated | **through a 50 Ω feed-through or 6 dB pad**: 3.5 or ~1.8 Vpp |
+    | a board unit **with** its 50R jumper (JP101, JP401, JP1101, JP1201) | ~3.5 Vpp | under the 4.10 Vpp abs max but over the 3.3 Vpp rating: **through a 3 dB pad** (~2.5 Vpp) |
+    | a board unit **without** it (JP201 unit 2, JP901 unit 9 now) | ~6 Vpp | **No**: over the 4.10 Vpp abs max. Fit the jumper, and a pad |
+    | a scope channel, 1 MΩ / 50 Ω | 6 / 3.5 Vpp | OK (50 Ω: ≤ 5 Vrms) |
     | the 33220A | — | no `10 MHz In` (no Option 001) |
-    | the SDS2104X Plus | — | its datasheet lists no 10 MHz jack: look at its rear panel |
+    | the SDS2104X Plus | — | **no 10 MHz jack** (you looked: front WaveGen out; rear Ext trig, pass/fail) |
 
   - **Then:** I choose External on the SDG (it refuses with no signal on the
-    jack), and on the scope if it has the jack. The HP locks by itself.
-  - **The check, from here, once a port is on a scope channel with no tee:**
-    its Vpp at 1 MΩ, then at 50 Ω (the channel switches; nothing is moved).
-    Source impedance = 50 Ω × (V_1MΩ / V_50Ω − 1). Two ports on two channels,
-    equal cables, give the phase between them: port 1 against port 2 (same
-    bank) and against port 3.
+    jack). The HPs lock by themselves.
 - **Nothing on** `HIN` (J3002) or the pps jacks.
 - **I set all the amplitudes** (`bench_setup.py on`): 10 MHz sines at **3.3 Vpp
   open circuit**.

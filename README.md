@@ -15225,3 +15225,65 @@ tee:**
 Then I put the channels back to 1 MΩ. `BENCH_WIRING.md` (C6, C7) and
 lab-instrument-control (`siglent.md`, `hp.md`, `9d12627`, pushed) have the
 details.
+
+### 45.18 The OCXO measured, the new 33120As over RS-232, and one locked to the OCXO
+
+**Your wiring:** OCXO ports 1, 2, 3 on SDS CH1, CH2, CH3 directly; the two new
+33120As on two USB-RS232 adapters (OIKWAN), their `10 MHz In` on the OCXO; then
+the bottom one's output on CH4. The SDS has no 10 MHz jack at all (you looked):
+`IN_OFF` stays, and there is nothing to lock.
+
+**The OCXO's ports.** Each channel at 1 MΩ, then switched to 50 Ω from here, then
+put back:
+
+| Port → CH | 1 MΩ | 50 Ω | Source impedance | Phase vs port 1 |
+|---|---|---|---|---|
+| 1 → CH1 | 6.03 Vpp | 3.53 Vpp | 35 Ω | — |
+| 2 → CH2 | 5.70 | 3.42 | 33 Ω | −0.4° |
+| 3 → CH3 | 5.75 | 3.39 | 35 Ω | **180.0°** |
+
+- **Your note is right for port 3**: it is 180° from ports 1 and 2 (ports 4-8
+  not looked at).
+- **The source is ~35 Ω, not 50 Ω.** Into 50 Ω a port gives 3.4-3.5 Vpp,
+  +14.7 dBm, not the 3 Vpp of 45.17. That changes two verdicts:
+  - **A board unit with its 50R jumper now gets ~3.5 Vpp.** That is under the
+    4.10 Vpp absolute maximum but over the 3.3 Vpp rating, so use a **3 dB pad**
+    (~2.5 Vpp). Without the jumper (units 2, 9): no.
+  - **An HP's `10 MHz In` gets +14.9 dBm.** That is inside −10 to +15 dBm, at the
+    top; the absolute maximum is +25 dBm. Direct is fine, and a 3 dB pad puts it
+    mid-range.
+- Harmonics ≥ 51 dB down (the scope's limit). The ports differ by up to 0.5 dB,
+  which matters through AM-to-PM (item 18) only if a port's level drifts.
+
+**The two new 33120As.** Both adapters are FTDI FT232R (USB 0403:6001, bcdDevice
+6.00; OIKWAN renamed one "USB Serial Converter"). RS-232 levels of ±5 V and up
+are within the standard, and an old instrument doesn't need ±12 V: the
+adapter is not the problem.
+
+- **Port `FTER3DQU` (ttyUSB7): the "bottom" HP.** Firmware 7.0-5.0-1.0. It
+  answers, and showed `TTYUSB7` on its display when told to.
+  - My driver never got an answer from it at first, but a bare `*IDN?` did. The
+    cause was half a command left in the generator: the FT232R's `tcdrain`
+    returns before the bytes are on the line, so a session that closed right
+    after `SYSTem:LOCal` cut it short, and the next session's first command was
+    glued to the remnant. Fixed in lab-instrument-control (`2edcec1`, pushed):
+    the line is timed in Python, and a device clear goes first.
+  - **All five RS-232 tests pass**: 102 ms per query, a 200-point ASCII
+    arbitrary waveform, device clear. It is back at its power-on 1 kHz,
+    0.1 Vpp.
+  - **It is locked to the OCXO.** Its 10 MHz on CH4, against OCXO port 1 on
+    CH1:
+
+    | HP set to | Phase slope | Expected | Off by | Phase wander |
+    |---|---|---|---|---|
+    | 10 MHz | −0.004°/s | 0 | −0.001 ppb | 10 ps rms over 19 s |
+    | 10 MHz + 0.1 Hz | +35.984°/s | +36.000°/s | −0.005 ppb | (timing-limited) |
+
+    Its lock bit (Questionable Data bit 6) never set. A free-running 33120A
+    would be off by about a ppm, hundreds of degrees a second.
+- **Port `A9WV8RTV` (ttyUSB8): the "top" HP.** Nothing: no reply at any setting,
+  never a DSR, and `TTYUSB8` didn't appear on its display. So it receives
+  nothing either. The likeliest cause is its I/O menu: a 33120A listens on one
+  interface only, `E: I/O MENU` → `2: INTERFACE`, and the factory setting is
+  HP-IB. Otherwise, the cable (a null modem with DTR/DSR wired is needed, like
+  the bottom one's).
