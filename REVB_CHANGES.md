@@ -97,6 +97,17 @@ CLK0 at 2 mA (round 40) is firmware, not a rework.
 
 ## Tests still to run on rev A, before rev B is drawn
 
+**2026-10-08: the OCXO bench.**  `gateware/board/BENCH_WIRING_OCXO.md` has the
+rework, wiring and test plan that carries these out:
+
+- S1-S4: an SMA on unit 10, parks on units 3, 6, 7 and 8, RA3 and RA1;
+- O0-O8 in a day;
+- N1, which is RA7 at the four corners (units 1, 2, 10 and 11);
+- N2, which is RA5.
+
+Its table maps each test to the rev B item it decides.  The RA sections below
+stay as the definitions.
+
 Each is explicit enough to do without the chat.
 
 - **Hands** is what Jason does at the bench.

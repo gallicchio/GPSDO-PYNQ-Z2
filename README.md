@@ -15319,3 +15319,37 @@ The same −0.04 % on both at +0.1 Hz is the generators' frequency setting or my
 timing (host time stamps), not the lock. Both are back at 1 kHz, 0.1 Vpp. The
 scope now has: CH1 OCXO port 1, CH2 the top HP, CH3 OCXO port 3, CH4 the bottom
 HP.
+
+### 45.19 The right HP's power-on state, and the plan for the OCXO bench
+
+**The right HP (GPIB 10) powers on in the default state too.** I set it to
+2.345 kHz, 0.2 Vpp; you switched it off and on, and it came back at 1 kHz,
+0.1 Vpp.
+- Its `*ESR?` showed the power-on bit (128), with no errors, and its full
+  self-test passes (`*TST?` = 0).
+- The "power fail" you glimpsed isn't in either manual. If it comes back,
+  note the exact text.
+- Its memories 1 and 2 hold a 0.1 Hz, 5 Vpp triangle (a piezo scan, maybe).
+  The teaching-lab units hold student settings too (250 kHz squares, a 3 kHz
+  TTL square), so stored states don't say whose a unit is.
+- **All four generators power on in the default state.**
+
+**The plan is `gateware/board/BENCH_WIRING_OCXO.md`.** In short:
+
+- **Solder:**
+  - **S1:** an SMA and 50R header on unit 10, so the OCXO can sit at the
+    board's four corners (1, 2, 10, 11).
+  - **S2:** 100 kΩ parks on units 3, 6, 7 and 8, the last undriven
+    oscillators.
+  - **S3:** RA3's 4.7 Ω in FB401's place.
+  - **S4:** RA1's two resistors.
+- **More SMAs: no, apart from S1.**
+- **Wire:**
+  - the OCXO's left bank to units 1, 2, 10 and 11, through tees on scope
+    CH1-CH4, with **JP201 fitted** (unit 2 has none now);
+  - the right bank to the SDG (through 50 Ω) and to the three HPs;
+  - the top HP to unit 4, the bottom HP to unit 9, HO to unit 12;
+  - the right HP, the SDG's outputs and the 33220A unplugged from the
+    board.
+- **Then:** O0-O8 today, N1 (RA7) tonight and N2 (RA5) tomorrow night. Its
+  table says which rev B item each test decides.

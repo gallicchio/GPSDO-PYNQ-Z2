@@ -1,5 +1,8 @@
 # The GPSDO-PYNQ-Z2 bench: what connects to what
 
+> **From 2026-10-08 the bench runs on the OCXO: see `BENCH_WIRING_OCXO.md`.**
+> It replaces sections A, C, D and G below; B, E1, F and H still hold.
+
 Round 44, revised after your reply.  It needs **two solder joints' worth of
 work and no more**, and everything else stays connected so that experiments can
 run with nobody at the bench.  Each line is one cable or one clip.  The
