@@ -15068,3 +15068,105 @@ explicitly. REVB_CHANGES.md now opens with three new sections:
 - **Item 14 was OPEN, and is now decided.** You've switched to KiCad 10, and you
   never save; you'll say if you do. So rev B is to be built in KiCad 10,
   and KiCad's own writes on opening are committed on their own.
+
+### 45.16 The heated night, an OCXO plan, and RS-232 for the 33120As
+
+**The run** went from 15:01 to 06:00 PDT (`overnight_20261007T2201Z/`): 450 rows,
+no errors.
+
+- The heater was off 1 h, on 3 h, off 3 h, on 3 h, then off. It switched on
+  schedule, and was off at the end.
+- The 50 °C cutoff never fired: the hottest sensor reached 39 °C.
+
+```sh
+python3 gateware/board/overnight_plot.py overnight_20261007T2201Z
+```
+
+| heater on, steady state minus the hour before (1 h means) | step 1 | step 2 |
+|---|---|---|
+| left edge, T4A / T4C (units 5 and 11 side) | +13.6 / +13.5 K | +14.9 / +14.7 K |
+| T48 (unit 1) / T49 (unit 2) | +11.5 / +8.7 K | +13.0 / +10.6 K |
+| T4E (the helper, centre) | +6.7 K | +8.5 K |
+| **unit 2 − unit 1** | **+27.5 ps** | **+31.1 ps** |
+| chatter, units 1, 2, 4 / unit 11 | −0.06 / −0.11 edges per transition | −0.06 / −0.12 |
+| +3V3_A, +3V3_D | −3 to −5 mV, −1 mV | the same |
+
+**What it says:**
+
+- **The board's own temperature response is real, and repeatable.** The
+  heater warms the board, not the SDG, and unit 2 − unit 1 moved +27.5 and
+  +31.1 ps for a ~+11 K average rise.
+  - That is about **+2.6 ps/K of average board temperature**, against
+    +4.3-5 ps/K over the room's cycle on the 6th, SDG included.
+  - It settles with a ~5 minute time constant, and goes back when the
+    heater goes off.
+- **The heater heats unevenly.** The left edge rises 13.5-15 K and the right
+  8.7-11 K, so at full heat there is a ~5 K gradient across the board.
+- **So this run can't decide between two readings:**
+  - **(A)** units 1 and 2 have different temperature coefficients, ~2.6 ps/K
+    apart;
+  - **(B)** they share one coefficient, ~10-13 ps/K each, and the pair sees
+    the 2.4-2.8 K temperature *difference* between them.
+
+  Both heater steps have the same left-hot pattern, so they can't separate
+  the two, and the answer decides item 20. Under (B), gradients are what
+  rev B must avoid, and an uneven heater makes things worse. **The OCXO
+  separates them** (below).
+- **Unit 11 − unit 1** dips 50-100 ps within ~10 minutes of switch-on and
+  recovers 60-70 ps at switch-off. Unit 11 sits next to the hottest sensors.
+  Its steady-state change is hidden by the HP's own drift through the night
+  (+237 ps).
+- **Chatter falls slightly when warm**, −0.06 edges per transition on units 1,
+  2 and 4 and −0.11 on unit 11, for +11-14 K. That corrects 45.12's "chatter
+  doesn't depend on temperature": a 2.5 K swing was too small to show it.
+- **No slips at +14 K**: PLLA 0 and HO-beat jumps 0 all night, with the Si5351
+  and TCXO ~8 K warmer.
+- **The PYNQ's crystal warms too.** The helper against the PS clock moved
+  +525-700 ppb with the heater, while the TCXO against the SDG moved less
+  than its own ~50 ppb wander. The PS clock serves only the 10 ns pps stamps
+  and the slip check, so that doesn't matter.
+
+**Your OCXO, split 8 ways: use it both ways.**
+
+1. **As the bench's reference.** OCXO → the SDG's rear `10MHz In/Out` (Utility,
+   Clock, Source: External; 10MOut then off), and → each 33120A's `10 MHz In`.
+   - Every generator is then coherent with every other and with the OCXO, to
+     the OCXO's stability rather than the SDG's TCXO.
+   - Every aggressor offset is exact.
+2. **Straight into the board, on four units at different places.** For
+   example, unit 1 (top left), unit 2 (top right), unit 4 (right, unit 2's
+   neighbour) and unit 11 (bottom left).
+   - Every pair among them is then a same-source pair: the board alone, with
+     no generator in it.
+   - The heater's left-hot pattern and the room's even swings change those
+     units' temperatures in different proportions. That separates (A) from
+     (B), and gives each channel's own coefficient (RA2's follow-up).
+   - It also gives the board's true floor, with no SDG jitter in the pairs.
+   - HO stays on unit 12 (the slip check reads its beat); the SDG, locked to
+     the OCXO, goes on unit 9 as the aggressor.
+3. **Two things I need to know first:**
+   - **The splitter.** Is it a distribution amplifier (every output at full
+     level) or a passive 8-way splitter (~9 dB down each)?
+   - **The OCXO's output.** Sine or square, and how many dBm?
+
+   Each unit wants at least ~1 Vpp at its input. Because of AM-to-PM
+   (item 18), all the OCXO-fed units should get the **same** amplitude; I
+   would check each on the scope before trusting a pair.
+
+**RS-232 for the older 33120As** is in lab-instrument-control, `795af9e`,
+pushed:
+
+- `Link(serial=...)` with the DTR/DSR handshake done in Python;
+- `HP33120A(serial=PORT)`;
+- `python hp_33120A.py ports` and `serial PORT`;
+- `HP_SERIAL=... pytest test_hp.py -k serial`.
+
+It passes its offline tests: 6 of 6, on a pseudo-terminal with a fake
+33120A. It has not yet been tried on a real one. **To try it:**
+
+- set each generator's front panel to RS-232, 9600, none/8;
+- connect it with a **full-handshake null-modem cable** (DTR and DSR wired) to
+  a USB adapter with modem lines. FTDI-based ones have them; this machine has
+  two FT231X adapters plugged in (`DP0525BU`, `DP0525LR`).
+
+`hp/hp.md` has the menu steps.
