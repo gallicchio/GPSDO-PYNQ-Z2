@@ -19,10 +19,10 @@ debug header J5001) faces the PYNQ and the generator stacks.
 | # | Who | What | Takes |
 |---|---|---|---|
 | 1 | me | shut the PYNQ down | 1 min |
-| 2 | you | unplug the PYNQ's barrel jack and the 15 V heater supply, then **solder S1-S4** (§2) | ~60 min |
-| 3 | you | **wire it** as §3, then tell me the OCXO port of each cable | ~20 min |
+| 2 | you | unplug the PYNQ's barrel jack and the 15 V heater supply, lift the board off the PYNQ, then **solder S1-S4 and the JP201 shunt** (§2), and **S5 if you can** | 60-90 min |
+| 3 | you | board back on the PYNQ; **wire it** as §3, then tell me the OCXO port of each cable | ~20 min |
 | 4 | you | power up: PYNQ barrel jack, then the heater supply | 1 min |
-| 5 | me | **O0-O7** (§4), about 3 h, no hands | afternoon |
+| 5 | me | **O0-O7** (§4), about 3 h, no hands; **O9** too if S5 is in | afternoon |
 | 6 | you | **O8**, swap two cables at the OCXO and back again | 2 min, when I ask |
 | 7 | me | **N1**, the night: RA7 with the heater stepped | overnight |
 
@@ -50,14 +50,56 @@ it: the RA4 strap, which is one wire.
 
 ## 2. Soldering
 
-**Before you start.**  Tell me, and I shut the PYNQ down (`sudo shutdown`).
-Then unplug the PYNQ's barrel jack and the 15 V supply from J2003.  The board
-can stay on the PYNQ's header.
+All the pictures are KiCad's 3D render of this board (rev A, as built), cut and
+marked by `pcb/rework_zooms.py` from the PCB file's own coordinates.  In every
+picture the board's top edge (the 1-Wire terminals, `HO`/`HIN`) is **up**.  The
+render draws every SMA footprint as bare pads, fitted or not, and FB401 as the
+bead it was before the bridge.
+
+### What to bring to the iron
+
+- **S1:** one vertical THT SMA like the others, one 2-pin header (2.54 mm),
+  one shunt.
+- **S2:** four 100 kΩ leaded resistors (three if you do S5).
+- **S3:** one 4.7 Ω 0805 (2.2-10 Ω will do).
+- **S4:** one 1 kΩ and one 330 Ω 0805.
+- **JP201:** one shunt.
+- **S5 (optional):**
+  - one **74AUP1GU04GW** (Nexperia, SC-70-5), or an
+    **SN74AHC1GU04DBVR** (SOT-23-5, see S5);
+  - one more SMA, 2-pin header and shunt;
+  - hot air or Chip Quik for the old chip.
+- Flux and wick.
+
+### Before you start
+
+1. Tell me, and I shut the PYNQ down (`sudo shutdown`).
+2. Unplug the PYNQ's barrel jack and the 15 V supply from J2003.
+3. Unplug the SMA cables and the leads on J5001 from the board.
+4. **Lift the board off the PYNQ.** It sits on the Pi header from underneath,
+   and the SMA and header pins of S1 and S5 are soldered from the underside.
+5. Leave the existing shunts where they are.
+
+### The soldering table
+
+| # | What | Where (board mm) | Part | Pictures | Needed? |
+|---|---|---|---|---|---|
+| **S1** | SMA on unit 10, its 50R header, a shunt | J1001 (164.1, 125.0); JP1001 (152.9, 121.6) | SMA, 2-pin header, shunt | [top](rework_img/s1_unit10_top.jpg), [underneath](rework_img/s1_unit10_bottom.jpg) | **yes**: tonight's four corners |
+| **S2** | park units 3, 7, 8, and 6 unless S5: 100 kΩ from `TPx02` (S) to `JPx01` pin 2 (GND) | see S2's table | 100 kΩ leaded | [3](rework_img/s2_unit3.jpg), [6](rework_img/s2_unit6.jpg), [7](rework_img/s2_unit7.jpg), [8](rework_img/s2_unit8.jpg) | **yes** |
+| **S3** | FB401's solder bridge → 4.7 Ω | FB401 (142.76, 78.2) | 0805, 4.7 Ω | [S3](rework_img/s3_fb401.jpg) | recommended |
+| **S4** | R3001 3k3 → 1k; R3002 1k → 330 Ω | R3001 (101.25, 47.0); R3002 (98.1, 49.4) | 0805 1 kΩ, 330 Ω | [S4](rework_img/s4_r3001_r3002.jpg) | optional |
+| **S5** | unit 6: U601 → 74AUP1GU04; SMA J601; header JP601 and a shunt | U601 (143.9, 89.4); J601 (164.1, 89.4); JP601 (152.9, 86.0) | as S5 says | [top](rework_img/s5_unit6_top.jpg), [underneath](rework_img/s5_unit6_bottom.jpg) | optional |
+| **JP201** | fit the shunt | JP201 (151.6, 50.4) | shunt | [JP201](rework_img/jp201.jpg) | **yes**: unit 2 goes on the OCXO |
+
+![The whole board, every site marked](rework_img/overview.jpg)
+
+*The whole board.  Unit 6 carries both S2 and S5: it gets one or the other.*
 
 ### S1. One more SMA: unit 10 (J1001), with its 50R header and a shunt
 
 - **Where.** J1001, the jack marked `10`, at (164.1, 125.0): right-hand
   column, the fifth jack down.  Its 2-pin header JP1001 is at (152.9, 121.6).
+  Both solder from underneath.
 - **Why.** RA7 wants four OCXO-fed units at the board's four corners:
   - **1** (top left), **2** (top right), **10** (lower right), **11** (lower
     left);
@@ -66,18 +108,23 @@ can stay on the PYNQ's header.
     and the room's even swings move all four alike.
   - Rev A's plan used unit 4 for this, but 4 sits 18 mm under 2, so only the
     left column saw top against bottom.
-  - It also frees unit 4 for a locked generator (O5-O7).
+  - It also frees unit 4 for a locked generator (O4-O7).
 - **Fit the shunt on JP1001.**
 
-### S2. Park units 3, 6, 7 and 8: one 100 kΩ leaded resistor each
+![S1 from the top](rework_img/s1_unit10_top.jpg)
+
+![S1 from underneath](rework_img/s1_unit10_bottom.jpg)
+
+### S2. Park units 3, 7 and 8, and unit 6 unless you do S5: one 100 kΩ leaded resistor each
 
 The same rework as unit 5 (round 45): from the squarer's gate node, the test
-point `TPx02`, to pin 2 (GND) of that unit's 50R header `JPx01`, about 7.4 mm.
+point `TPx02` (the pad marked `S`), to pin 2 (GND) of that unit's 50R header
+`JPx01`, about 7.4 mm.
 
 | Unit | From TP (gate node `S`) | To JP pin 2 (GND) | Why |
 |---|---|---|---|
 | 3 | TP302 (60.3, 59.7) | JP301 pin 2 (56.64, 66.1) | oscillates 29-30 of 30 since unit 5's park; a neighbour of unit 1 |
-| 6 | TP602 (146.7, 92.4) | JP601 pin 2 (150.36, 86.0) | oscillated 30 of 30 (round 41); a neighbour of unit 4 |
+| 6 | TP602 (146.7, 92.4) | JP601 pin 2 (150.36, 86.0) | **skip if S5.** Oscillated 30 of 30 (round 41); a neighbour of unit 4 |
 | 7 | TP702 (60.3, 95.3) | JP701 pin 2 (56.64, 101.7) | sometimes; a neighbour of unit 9 |
 | 8 | TP802 (146.7, 110.2) | JP801 pin 2 (150.36, 103.8) | oscillated 30 of 30; a neighbour of unit 10 |
 
@@ -88,17 +135,30 @@ point `TPx02`, to pin 2 (GND) of that unit's 50R header `JPx01`, about 7.4 mm.
   local aggressor that changes state with its neighbours: parking unit 5 woke
   unit 3.  Parked, they can't confound anything tonight.  Rev B parks every
   unused channel (item 11), so the bench board becomes more like rev B.
-- **Leave alone:** unit 13 (never oscillated), unit 5 (parked already), and
-  units 4 and 9 (generators drive them).
+- **Leave alone:**
+  - unit 13 (never oscillated);
+  - unit 5 (parked already);
+  - units 4 and 9 (generators drive them);
+  - unit 6 if S5 makes it a channel.
+
+![S2, unit 3](rework_img/s2_unit3.jpg)
+
+![S2, unit 7](rework_img/s2_unit7.jpg)
+
+![S2, unit 8](rework_img/s2_unit8.jpg)
+
+![S2, unit 6, only without S5](rework_img/s2_unit6.jpg)
 
 ### S3. RA3: FB401's bridge becomes a 4.7 Ω 0805
 
 - **Where.** Between FB401's pads, (142.76, 79.26) on the +3V3_A side and
-  (142.76, 77.14) on the gate side.  Unit 4's squarer, right-hand column.
+  (142.76, 77.14) on the gate side.  It sits just below unit 4's squarer U401.
 - **Why.** Rev B feeds every gate through a resistor instead of a bead
   (item 12), and this test picks the value.  O2 checks unit 4 stays quiet,
   and O7 measures what unit 4's state does to its neighbour, unit 2.
 - **Skip it** if you don't have a 4.7 Ω 0805 (2.2-10 Ω will do; tell me which).
+
+![S3](rework_img/s3_fb401.jpg)
 
 ### S4. RA1: the XA drive, two 0805s by the TCXO
 
@@ -112,14 +172,65 @@ point `TPx02`, to pin 2 (GND) of that unit's 50R header `JPx01`, about 7.4 mm.
   comparison.
 - **Skip it** if it fights you: it is insurance for item 9, not a decision.
 
-### More SMAs?  Only S1
+![S4](rework_img/s4_r3001_r3002.jpg)
+
+### S5 (optional). A lower-current squarer on unit 6, with its own SMA and 50R header
+
+This is T8, which rev B's item 8 had given up on: **one channel's
+74LVC1GU04 replaced by a 74AUP1GU04**.  Unit 6 then becomes a working channel,
+driven by the spare right HP.  It is compared against unit 4: the same column,
+the same jumper, the same kind of source, and still the LVC part.
+
+1. **Remove U601** (74LVC1GU04, SOT-23-5) at (143.9, 89.4): hot air, or Chip
+   Quik, or cut its five leads and clean the pads.
+2. **Fit the new part.**  The pinout is the same: 1 NC, 2 A, 3 GND, 4 Y,
+   5 VCC.
+   - Pin 1 goes to the pad marked "pin 1" in the picture, at (145.04, 90.35).
+     The part is rotated 180°, so pin 1 is at the lower right as drawn.
+   - **The catch: the package.**
+     - The 74AUP1GU04 is Nexperia's; TI doesn't make an unbuffered AUP.  It
+       comes only as SC-70-5 (`74AUP1GU04GW`, SOT353: 0.65 mm pitch, about
+       2.1 mm across the leads) or leadless.
+     - The board's pads are SOT-23-5: 0.95 mm pitch, 1.3 × 0.6 mm pads,
+       2.28 mm between the rows' centres.
+     - Centred on the footprint, the SC-70's corner leads land on the inner
+       edges of pads 1, 3, 4 and 5, and pin 2 sits on pad 2.  Use flux and
+       very little solder.  Then check 1-2, 2-3 and 4-5 with a meter for
+       bridges, and pin 2 to TP602 (`S`) for continuity.
+   - **The easy alternative, in the same SOT-23-5 footprint:**
+     `SN74AHC1GU04DBVR` (TI) or `74AHC1GU04W5-7` (Diodes).
+     - That is an unbuffered inverter of an older, weaker family, so it
+       should draw less current than the LVC when biased at threshold (not
+       checked against a datasheet curve; O9 measures it).  But it isn't the
+       part item 8 named.
+     - It would make rev B a drop-in change.
+     - **Tell me which part you fitted.**
+3. **SMA on J601** (164.1, 89.4) and **header JP601** (152.9, 86.0), with a
+   shunt, both from underneath.
+4. **Don't park unit 6** (skip its S2 line).
+
+- **Why.** Item 8 kept the LVC part only because this couldn't be tested.
+  O9 compares unit 6 with unit 4 in:
+  - per-transition jitter;
+  - AM-to-PM;
+  - whether it oscillates undriven;
+  - the current it draws (the +3V3_A step when it goes driven ↔ 0 V).
+- **If you don't get to it**, park unit 6 as in S2 instead.
+
+![S5 from the top](rework_img/s5_unit6_top.jpg)
+
+![S5 from underneath](rework_img/s5_unit6_bottom.jpg)
+
+### More SMAs?  Only S1 (and S5's, if you do it)
 
 - **What another SMA would buy:** a generator-driven unit.  There are already
   five locked outputs (three HPs, the SDG's two) for two free jacks (4 and 9).
 - **What it costs:** a generator and a cable per unit, and another channel
   whose state changes.  Parking those units (S2) is cheaper, and it is what
   rev B does.
-- **The one exception is S1**, because RA7 needs a fourth corner.
+- **The exceptions:**
+  - S1, because RA7 needs a fourth corner;
+  - S5, whose new squarer needs a source to be measured at all.
 - **Unit 13 (J1301)** would give a third aggressor position, next to unit 11.
   Not needed.
 
@@ -130,10 +241,13 @@ point `TPx02`, to pin 2 (GND) of that unit's 50R header `JPx01`, about 7.4 mm.
 | 1 | JP101 **fitted** (as now) | OCXO |
 | 2 | JP201 **fit it** (it is off now) | OCXO: **needs it** |
 | 4 | JP401 fitted (as now) | top HP |
+| 6 | JP601 **fit it** (S5 only) | right HP |
 | 9 | JP901 **off** (as now) | bottom HP, set to ≤ 3.3 Vpp open circuit |
 | 10 | JP1001 **fit it** (S1) | OCXO |
 | 11 | JP1101 fitted (as now) | OCXO |
 | 12 | JP1201 fitted (as now) | HO |
+
+![JP201: fit the shunt](rework_img/jp201.jpg)
 
 ## 3. Wiring
 
@@ -180,7 +294,7 @@ isn't needed.
 | G1 | **top HP** OUTPUT (front) | `4` (unit 4) | the aggressor and AM-to-PM unit, right column, beside unit 2 |
 | G2 | **bottom HP** OUTPUT | `9` (unit 9) | the same on the left column, beside unit 11. JP901 off |
 | G3 | the board's `HO` (J3001) | `12` (unit 12) | **direct, no tee now** (CH3 is the OCXO's); the slip check reads its beat |
-| G4 | **right HP** OUTPUT | **nothing**: unplug it from unit 11 | a spare locked source |
+| G4 | **right HP** OUTPUT | **`6` (unit 6) if S5 is in**; otherwise nothing. Either way, unplug it from unit 11 | S5's source: terminated (JP601), at unit 4's level |
 | G5 | SDG outputs 1 and 2 | **nothing** | outputs off; locked, as a spare |
 | G6 | 33220A | **nothing**: it is off unit 4 | free-running; leave it on the LAN, output off |
 
@@ -224,7 +338,7 @@ board.  **Never set a channel to 50 Ω while it sits on a tee to the board.**
  y  62.7  [ 3] parked (S2)
  y  71.6                                      [ 4] top HP (G1); 4.7 ohm (S3)
  y  80.5  [ 5] parked (round 45)
- y  89.4                                      [ 6] parked (S2)
+ y  89.4                                      [ 6] parked (S2), or S5: 74AUP1GU04, right HP
  y  98.3  [ 7] parked (S2)
  y 107.2                                      [ 8] parked (S2)
  y 116.1  [ 9] bottom HP (G2), no jumper
@@ -336,6 +450,21 @@ L = later.  Each says what it decides for rev B (`REVB_CHANGES.md` item).
 - **Decides.** Whether RA7's per-channel numbers can be trusted to the
   picosecond.
 
+### O9. The lower-current squarer (S5 only, 40 min): item 8
+
+- **What.** Unit 6 (the new squarer) against unit 4 (LVC), both terminated,
+  both from a locked HP at the same level:
+  - per-transition jitter against the OCXO units;
+  - AM-to-PM, both HPs stepped ±1 dB as in O4;
+  - the +3V3_A step on CG-1 B when unit 6 goes driven ↔ 0 V DC, which is its
+    current;
+  - `unplugged.py` with unit 6 at 0 V: does it oscillate on its bead?
+- **Decides.** Item 8.
+  - **As good as the LVC, at a fraction of the current**: rev B can take it.
+    With the SC-70 part that means a new footprint; with the AHC it is a
+    drop-in.
+  - **Worse**: item 8 stays NOT DOING, now on a measurement.
+
 ### N1. The night: RA7 (items 18 and 20)
 
 - **What.** `overnight.py` with the heater stepped as in RA2: off 1 h, on 3 h,
@@ -375,6 +504,7 @@ the coupling path, which item 5's plane removes.
 | Rev B item | Decided by |
 |---|---|
 | 5 +3V3_A plane (priority 1) | O7, L1 |
+| 8 a lower-current squarer (NOT DOING) | O9 (S5) |
 | 9 Si5351C, CLKIN (priority 1) | O3 |
 | 10 HO isolated, 2-4 mA (priority 1) | O5, O6, N2 |
 | 11 park unused channels (priority 1) | O2 |
