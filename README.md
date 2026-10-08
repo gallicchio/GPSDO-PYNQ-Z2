@@ -15370,3 +15370,95 @@ HP.
     pads' inner edges.
   - `SN74AHC1GU04DBVR` is a drop-in alternative.
   - If S5 isn't done, unit 6 is parked with the others.
+
+### 45.20 The OCXO bench, day one: O0-O3 and O6
+
+You soldered S1-S4 and fitted JP201, but not S5, and won't order parts for
+it. So item 8's alternative goes onto one or two rev B channels as a BOM
+change; see `REVB_CHANGES.md` item 8. You wired the bench as
+`BENCH_WIRING_OCXO.md`, with the probe taped to the OCXO's case. The PYNQ came
+back at **192.168.8.215**. The SDG and the 33220A aren't on the network today;
+nothing of theirs is on the board.
+
+**O0, the wiring check: passes.**
+
+- **The four OCXO lines read 3.3-3.4 Vpp at their scope tees,** so all four
+  units are terminated, JP201 and JP1001 included.
+- **All four lines are in phase,** so they are all one bank. Ports 5 and 6
+  (CH3, CH4) arrive 8° (2.3 ns) after ports 1 and 2: the ports, or ~45 cm
+  more cable.
+- **Every driven input runs at one frequency.** From a 10 s recording:
+  - units 1, 2, 10 and 11 (OCXO), and 4 and 9 (the HPs), beat at 1234.229 Hz;
+  - units 4 and 9 sit within 0.003 ppb of unit 1: **both HPs are locked to
+    the OCXO**;
+  - HO (unit 12, the board's TCXO) is 18 ppb from the OCXO.
+- **The HPs' lock bit isn't proof.** Questionable Data bit 6 latches a *lost*
+  lock only; a 33120A with no reference at all reads clear. The DDMTD is the
+  test. bringup.py's one-second edge counts misled me at first: chatter
+  inflates them.
+- **`bench_setup.py` now drives the OCXO bench.** The top HP is on unit 4 and
+  the bottom HP on unit 9, both at 10 MHz, 2.94 Vpp open circuit (1 dB under
+  the 3.3 Vpp cap). `unit4 off` puts 0 V DC on unit 4.
+- **The RS-232 driver lost an answer.** The 33120A drops characters sent
+  while it is still executing the previous command, and its DTR doesn't
+  fall for that. `OUTPut:LOAD INF` with `APPLy?` straight after was never
+  answered; 20 ms apart it always was. Every command over RS-232 now ends
+  in `;*OPC?` (lab-instrument-control `3c9aa58`, pushed).
+
+**O2, quiet when undriven: the parks and S3 work; unit 13 now oscillates.**
+
+| Units | 30 Si5351 restarts |
+|---|---|
+| 3, 5, 6, 7, 8 (parked) | quiet 30 of 30 |
+| 4, undriven (0 V DC), with S3's resistor in place of the bridge | quiet 30 of 30 |
+| **13** | **oscillates 29 of 30, 582.5 kHz**; it never did before |
+
+The oscillation has moved to the last undriven, unparked channel, as it moved
+to unit 3 when unit 5 was parked. **S2b parks unit 13**, beside unit 11, one
+of tonight's corners. Rev B parks every unused channel.
+
+**O3, RA1's drive matrix: the slips are gone.** Slips per second, 2 × 8 s per
+setting, against round 45's matrix from before RA1:
+
+| CLK0, CLK1 (mA) | Before RA1 | After |
+|---|---|---|
+| 2, any | 0 | 0 |
+| 4, 2 | 0 | 0 |
+| 4, 4 / 4, 6 / 4, 8 | 865-875 / 1470-1491 / 1710 | **0 / 0 / 0** |
+| 8, 2 / 8, 4 / 8, 6 | 2016-2087 / 2046-2087 / 1823-1850 | **0 / 0 / 0** |
+| 8, 8 | 1559-1621 | **50-53** |
+| 8, off | 837-858 | **0** |
+
+The CLK1-off row settles the cause: HO isn't running there, so its new cabling
+can't be it. **The slow edge at XA was the slip mechanism.** R3001 at 1 kΩ and
+R3002 at 330 Ω fix it on rev A, and rev B's CLKIN removes it by design.
+
+**O1, the floor, and O6, HO's drive.** These are 120 s and 4 × 60 s
+recordings; rms per transition about a line.
+
+| Pair | HO off | HO 2 mA | HO 4 mA | HO 8 mA (standard) | 1 s average at 8 mA |
+|---|---|---|---|---|---|
+| 2 − 1 | 10.5 | 11.2 | 11.5 | 12.1 | 0.39 ps |
+| 11 − 10 | 11.8 | 12.3 | 12.9 | 15.1 | 0.69 ps |
+| 10 or 11 − 1 or 2 | 19.5-20.3 | 23.7-25.1 | 32.3-34.8 | 50.5-56.3 | 4.6-5.1 ps |
+
+- **A pair within one helper buffer's group is at about the DDMTD's own step**
+  (100 ns × 1234/10⁷ = 12.3 ps). Round 45's SDG pairs were 32 ps.
+- **Between groups, HO's drive adds jitter** (U3004 drives units 1-4, U3006
+  units 9-11): 20 ps with HO off, 53 ps at 8 mA. HO's edges reach the helper
+  buffers, and each group gets a different share. That is item 10's case,
+  measured: isolate HO, and run it at 2 mA.
+  - **Unit 12 stays a clean beat at 2 mA,** so tonight runs at 2 mA.
+- **O8 will say what is left at HO off,** the 20 ps against 11 ps: the OCXO's
+  ports, or the board's two buffers. Swap the cables on ports 1 and 6.
+- **The HPs:** 4 − 1 and 9 − 1 are 76-79 ps per transition and 25 ps at 1 s.
+  That is their own loop's wander, consistent with the scope's 10-22 ps over
+  20 s.
+
+**On the side:**
+
+- **+3V3_A reads 3.203 V on CG-1, about 3.30 V corrected, ~110 mV higher than
+  before.** The four parked squarers no longer draw crowbar current. A DMM
+  reading will confirm it.
+- **The probe on the OCXO's case reads 27.0 °C,** ~3.5 K above the board's
+  sensors: a warm box, though not warm to the hand.
