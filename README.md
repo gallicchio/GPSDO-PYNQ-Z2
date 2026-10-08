@@ -15295,3 +15295,14 @@ since power-on (likely before its reference was there), and it didn't come back
 in 16 s at 10 MHz; the bottom one's didn't either. The bit alone doesn't prove
 a lock, so the scope test is still to do for the top one: its output on a scope
 channel, against an OCXO port.
+
+**Power-on state (you asked: the teaching lab's come up in their default state).**
+
+| Generator | Powers on in | How I know |
+|---|---|---|
+| 33220A MY44054664 | **default** | `MEMory:STATe:RECall:AUTO?` = 0; its four user states are empty |
+| 33120A "top" (RS-232) | **default** | its power-down memory (`*RCL 0`) held a 100 kHz square, 1.65 Vpp; it came up at the 1 kHz, 0.1 Vpp sine |
+| 33120A "bottom" (RS-232) | **default** | its memory 0 held a 100 Hz sine, 1 Vpp, High Z; it came up at the default |
+| 33120A "right" (GPIB 10, unit 11) | not known | a 33120A's setting can't be read remotely, and `*RCL 0` could put up to 10 Vpp on unit 11 |
+
+`*RST` put the top and bottom back to the default they were found in.
