@@ -87,6 +87,7 @@ bead it was before the bridge.
 |---|---|---|---|---|---|
 | **S1** | SMA on unit 10, its 50R header, a shunt | J1001 (164.1, 125.0); JP1001 (152.9, 121.6) | SMA, 2-pin header, shunt | [top](rework_img/s1_unit10_top.jpg), [underneath](rework_img/s1_unit10_bottom.jpg) | **yes**: tonight's four corners |
 | **S2** | park units 3, 7, 8, and 6 unless S5: 100 kΩ from `TPx02` (S) to `JPx01` pin 2 (GND) | see S2's table | 100 kΩ leaded | [3](rework_img/s2_unit3.jpg), [6](rework_img/s2_unit6.jpg), [7](rework_img/s2_unit7.jpg), [8](rework_img/s2_unit8.jpg) | **yes** |
+| **S2b** | **park unit 13** (added after O2): 100 kΩ from TP1302 (S) to JP1301 pin 2 | TP1302 (60.3, 148.7); JP1301 pin 2 (56.64, 155.1) | 100 kΩ leaded | [13](rework_img/s2_unit13.jpg) | **yes**, before N1 |
 | **S3** | FB401's solder bridge → 4.7 Ω | FB401 (142.76, 78.2) | 0805, 4.7 Ω | [S3](rework_img/s3_fb401.jpg) | recommended |
 | **S4** | R3001 3k3 → 1k; R3002 1k → 330 Ω | R3001 (101.25, 47.0); R3002 (98.1, 49.4) | 0805 1 kΩ, 330 Ω | [S4](rework_img/s4_r3001_r3002.jpg) | optional |
 | **S5** | unit 6: U601 → 74AUP1GU04; SMA J601; header JP601 and a shunt | U601 (143.9, 89.4); J601 (164.1, 89.4); JP601 (152.9, 86.0) | as S5 says | [top](rework_img/s5_unit6_top.jpg), [underneath](rework_img/s5_unit6_bottom.jpg) | optional |
@@ -137,7 +138,7 @@ point `TPx02` (the pad marked `S`), to pin 2 (GND) of that unit's 50R header
   unit 3.  Parked, they can't confound anything tonight.  Rev B parks every
   unused channel (item 11), so the bench board becomes more like rev B.
 - **Leave alone:**
-  - unit 13 (never oscillated);
+  - unit 13: see S2b (it oscillates now);
   - unit 5 (parked already);
   - units 4 and 9 (generators drive them);
   - unit 6 if S5 makes it a channel.
@@ -149,6 +150,21 @@ point `TPx02` (the pad marked `S`), to pin 2 (GND) of that unit's 50R header
 ![S2, unit 8](rework_img/s2_unit8.jpg)
 
 ![S2, unit 6, only without S5](rework_img/s2_unit6.jpg)
+
+### S2b. Park unit 13 too (added after O2, 2026-10-08)
+
+**O2 found unit 13 oscillating** at 582.5 kHz in 29 of 30 restarts, with
+units 3, 5, 6, 7 and 8 parked and unit 4 undriven.  Unit 13 never oscillated
+before.  It is the last undriven, unparked channel, so the oscillation moved
+to it, as it moved to unit 3 when unit 5 was parked.  It sits beside unit 11,
+one of N1's four corners.
+
+- **100 kΩ from TP1302 (60.3, 148.7), the `S` pad, to JP1301 pin 2
+  (56.64, 155.1), GND**: the same as the others, left column, bottom unit.
+- With it in, **every channel is driven or parked**, which is rev B's rule
+  (item 11).
+
+![S2b, unit 13](rework_img/s2_unit13.jpg)
 
 ### S3. RA3: FB401's bridge becomes a 4.7 Ω 0805
 
@@ -359,7 +375,7 @@ board.  **Never set a channel to 50 Ω while it sits on a tee to the board.**
  y 125.0                                      [10] OCXO port 5 (K3): new SMA (S1)
  y 133.9  [11] OCXO port 6 (K4)
  y 142.8                                      [12] HO (G3)
- y 151.7  [13] null channel, undriven (quiet)
+ y 151.7  [13] null channel: parked (S2b)
  board's bottom edge (J5001): toward the PYNQ and the generator stacks
 ```
 
