@@ -63,7 +63,7 @@ Priority: **1** = don't order rev B without it; **2** = should be in rev B;
 | 17 | ps per cycle from the measured beat | PLANNED | 2 | 0.8% off design (r43) | |
 | 18 | **Replica-biased squarers** (AM-to-PM) | PLANNED | **1** | −147 to −231 ps/dB (r43, r45 T3); a pair drifts +4-5 ps/K (r45) | 74LVC2GU04 per channel; RA2 |
 | 19 | U.FL/MMCX monitor taps | PLANNED | 2 | Every rev A question needed a hand-held probe | 25-35 taps |
-| 20 | Heater and thermal layout | TEST RUNNING (RA2) | 2 | The heater moves a pair 3 ps within seconds, before the thermometers move (r45) | decided from RA2 |
+| 20 | Heater and thermal layout | OPEN, RA7 decides | 2 | Heated ~11 K, the unit 1-2 pair moved +27.5/+31.1 ps; the heater runs the left edge 5 K hotter (r45, RA2) | symmetric heating, sensors at the squarers |
 | 21 | pps inputs | **NO CHANGE** | | First real pulses counted; thresholds 1.93 V up, 1.32 V down at the jack (r45) | keep 1k/10k, 51R DNP |
 
 ## Rev A boards: reworks and hand-fitted parts
@@ -125,7 +125,20 @@ Each is explicit enough to do without the chat.
     ground. The separate VDDO banks, the decoupling and the guard ring
     become as important as CLKIN.
 
-### RA2. The board's own temperature coefficient, with the heater (items 18 and 20): running now
+### RA2. The board's own temperature coefficient, with the heater (items 18 and 20): DONE
+
+**Result** (README 45.16, `overnight_20261007T2201Z/`):
+
+- Heating the board ~11 K, with the SDG at room temperature, moved unit 2 −
+  unit 1 by **+27.5 and +31.1 ps**: about +2.6 ps/K of average board
+  temperature.
+- It settled in ~5 minutes and reversed when the heater went off.
+- The heater runs the left edge ~5 K hotter than the right, so the result
+  can't say whether that is two different channel coefficients, or one shared
+  ~10-13 ps/K coefficient seen through the gradient. **RA7 decides.**
+
+What was planned:
+
 
 - **Hands.** Done: the 15 V supply in J2003.
 - **Runs.** `night.sh mods 15`, started 2026-10-07 14:39 PDT. The heater is
@@ -142,6 +155,27 @@ Each is explicit enough to do without the chat.
   - **Item 20**: whether channels warm unevenly. Round 45 saw the pair move
     3 ps within seconds of switch-on, before the thermometers moved, and
     the sensors near units 1 and 2 ran 2 K warmer than the helper's.
+
+### RA7. The OCXO on four units: per-channel temperature coefficients (items 18 and 20)
+
+- **Hands.**
+  - Four OCXO outputs to units 1, 2, 4 and 11, with the 50R jumpers fitted
+    and the **same amplitude** at each, checked on the scope.
+  - The SDG's rear `10MHz In/Out` from a fifth output (Source: External),
+    and the SDG's output 1 onto unit 9.
+  - HO stays on unit 12.
+- **Runs.** `overnight.py` with the heater stepped, as RA2, for a night.
+- **Against.** RA2. With every pair now a same-source pair, nothing but the
+  board is in any of them.
+- **Decides.** The heater's left-hot pattern and the room's even swings warm
+  the four units in different proportions. That gives each channel's own
+  coefficient, and whether the board responds to its mean temperature (A)
+  or to gradients across it (B).
+  - **(A)**: item 18's replica bias is the fix.
+  - **(B)**: thermal symmetry and an even heater are (item 20).
+  - It also gives the board's floor with no generator jitter in the pairs.
+- **Before plugging in.** Is the splitter a distribution amplifier or a
+  passive 8-way (~9 dB down per port)? And what is the OCXO's output level?
 
 ### RA3. RC instead of the bridge: what resistor, and does local RC isolate a neighbour? (item 12)
 
@@ -203,10 +237,10 @@ Each is explicit enough to do without the chat.
 - **T8**, a 74AUP1GU04 in one squarer's place: no part, and too fine a
   rework for the bench's iron. Item 8 is decided without it.
 
-**Order:**
+**Order** (RA2 done):
 
-1. RA2 (tonight).
-2. RA5 (the next night; no hands).
+1. RA7, as soon as the OCXO's splitter and level are known.
+2. RA5 (a night; no hands).
 3. RA1 and RA3 in one sitting, then `night.sh xa 13`, which carries RA3's
    T1.
 4. RA4 if RA3's step doesn't shrink.
@@ -856,8 +890,9 @@ transition, over two nights and every condition tried:
 | 11 (HP sine) | 1.57 | 28% |
 | 12 (HO, a square) | 1.00 | 0% |
 
-- It is set by the input's slew at the threshold, not by temperature,
-  neighbours or HO's drive; none of those moved it.
+- It is set mostly by the input's slew at the threshold. Neighbours and HO's
+  drive didn't move it. Temperature moves it a little: −0.06 edges per
+  transition (−0.11 on unit 11) for +11-14 K (RA2).
 - The core keeps the *last* rising edge, so a timestamp can come from the
   falling transition's bounce, half a beat period away.
 - Add design log §10's K-of-K deglitcher and first/last edge sums.
@@ -1056,7 +1091,16 @@ board, ~9.6 W from its own 15 V jack. It was first switched on in round 45:
   - So a heater near a squarer warms it within seconds, long before the
     nearest thermometer moves.
 
-**What RA2 will decide.**
+**RA2's result** (README 45.16):
+
+- Full power warms the left edge 13.5-15 K, the right 8.7-11 K, and the
+  helper's sensor 6.7-8.5 K: a 5 K gradient.
+- The unit 1-2 pair moved +27.5 and +31.1 ps, settling in ~5 minutes.
+- No slips at +14 K, and the rails stayed flat.
+- Whether the channels respond to the mean temperature or to the gradient
+  is RA7's question.
+
+**What RA2 and RA7 decide together.**
 
 - The board's own temperature coefficient, per pair, with the board heated
   ~10 K above the room while the SDG stays put (item 18).
