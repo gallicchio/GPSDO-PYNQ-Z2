@@ -15306,3 +15306,16 @@ channel, against an OCXO port.
 | 33120A "right" (GPIB 10, unit 11) | not known | a 33120A's setting can't be read remotely, and `*RCL 0` could put up to 10 Vpp on unit 11 |
 
 `*RST` put the top and bottom back to the default they were found in.
+
+**The top 33120A is locked to the OCXO too.** You moved CH2's cable (OCXO port
+2) to its output; against OCXO port 1 on CH1:
+
+| HP | At 10 MHz | Wander | At 10 MHz + 0.1 Hz (expect 36.000°/s) |
+|---|---|---|---|
+| bottom (CH4) | −0.001 ppb | 10 ps rms, 19 s | 35.984°/s |
+| top (CH2) | −0.001 ppb | 22 ps rms, 20 s | 35.984°/s |
+
+The same −0.04 % on both at +0.1 Hz is the generators' frequency setting or my
+timing (host time stamps), not the lock. Both are back at 1 kHz, 0.1 Vpp. The
+scope now has: CH1 OCXO port 1, CH2 the top HP, CH3 OCXO port 3, CH4 the bottom
+HP.
