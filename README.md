@@ -15170,3 +15170,58 @@ It passes its offline tests: 6 of 6, on a pseudo-terminal with a fake
   two FT231X adapters plugged in (`DP0525BU`, `DP0525LR`).
 
 `hp/hp.md` has the menu steps.
+
+### 45.17 The OCXO as the bench's one reference: instruments set to take 10 MHz, and what is safe
+
+You asked for every instrument to *take* 10 MHz from the BG7TBL 8-port OCXO
+distribution amplifier, and none to send it.
+
+**What I changed (Oct 8):**
+
+| Instrument | Was | Now | How |
+|---|---|---|---|
+| SDG1032X | Clock: Source Internal, **10MOut Enable** | Source Internal, **10MOut Disable** | panel (VKEY): Utility, Page, Clock, 10MOut. The rear `10MHz In/Out` is **one BNC**, so with 10MOut on it would have fought the OCXO. |
+| SDS2104X Plus | `:SYSTem:CLOCk` **`IN_ON`** | **`IN_OFF`** | SCPI, read back |
+| HP 33120A | locked to the SDG's rear output | free-running until the OCXO is on its `10 MHz In` | nothing to send: it locks to whatever is there |
+
+**External is chosen after the OCXO is plugged in.** The SDG refuses Source
+External with no signal on its jack ("No external clock source!"). The
+SDS2000X Plus datasheet lists **no 10 MHz connector** at all (USB, LAN, Aux
+out, Ext trig); the command exists because the firmware is shared with models
+that have one.
+
+**Is the 6 Vpp safe?** You measured 6 Vpp; BG7TBL sells it as "10 dBm / 1 Vrms,
+50 Ω/75 Ω". A 50 Ω source with 6 Vpp open circuit gives 3 Vpp into 50 Ω:
++13.5 dBm, 1.06 Vrms. That fits the "1 Vrms", so it is very probably a 50 Ω
+source and your 6 Vpp an unloaded reading. Each destination:
+
+- **HP 33120A `10 MHz In`**: 50 Ω, −10 to +15 dBm, absolute maximum +25 dBm or
+  10 Vpp. It gets +13.5 dBm. **Direct.** Even a 6 Vpp stiff source (+19.5 dBm)
+  is under the absolute maximum.
+- **SDG `10MHz In/Out`**: ≥ 1.4 Vpp, 5 kΩ, AC coupled, no maximum given.
+  Unterminated, it would see the whole 6 Vpp. **Use a 50 Ω feed-through or a
+  6 dB pad**, which gives about 3 Vpp, the level of its own 10 MHz output.
+- **The board's units**: **only with the 50R jumper fitted.** With it, a unit
+  sees ~3.0 Vpp: under the 3.3 Vpp bench cap and the 4.10 Vpp absolute
+  maximum. Without it, ~5.9 Vpp, over the maximum. Units 2 (JP201) and 9
+  (JP901) have none today.
+- **Scope channels**: fine at 1 MΩ (6 Vpp) and at 50 Ω (3 Vpp, under 5 Vrms).
+- **The 33220A** has no `10 MHz In`.
+
+**The 180° banks** (ports 1, 2, 5, 6 against 3, 4, 7, 8): I found nothing
+published either way. A centre-tapped transformer feeding two banks of four
+amplifiers would do exactly that. It doesn't matter to the instruments, since a
+PLL locks at any phase. On the board it is a 50 ns offset, which pair series
+read mod 100 ns. For RA7's same-source pairs, I'd still use one bank.
+
+**Two checks I can do from here, once you put ports on scope channels with no
+tee:**
+
+- Vpp at 1 MΩ, then at 50 Ω. I switch the channel; nothing is moved. The source
+  impedance is 50 Ω × (V_1MΩ / V_50Ω − 1).
+- With two ports on two channels on equal cables: the phase between port 1 and
+  port 2 (same bank), and between port 1 and port 3.
+
+Then I put the channels back to 1 MΩ. `BENCH_WIRING.md` (C6, C7) and
+lab-instrument-control (`siglent.md`, `hp.md`, `9d12627`, pushed) have the
+details.

@@ -55,7 +55,8 @@ the tee, and a second from the tee to the board's SMA (BNC-to-SMA).
 | C3 | Agilent 33220A **OUTPUT** (front) | scope **CH4** | `4` (unit 4, the new jack) | JP401 **fitted** |
 | C4 | HP 33120A **OUTPUT** (front) | no tee | `11` (unit 11) | JP1101 **fitted** |
 | C5 | The board's **`HO`** (J3001, "CLK1 OUT") | scope **CH3** | `12` (unit 12) | JP1201 **fitted** |
-| C6 | SDG1032X rear **10MHz In/Out** | | HP 33120A rear **10 MHz In** (and a 33220A's, if it has Option 001) | |
+| C6 | ~~SDG1032X rear **10MHz In/Out**~~ **the BG7TBL OCXO distribution amplifier** (from Oct 8, C7) | | HP 33120A rear **10 MHz In** (and a 33220A's, if it has Option 001) | |
+| C7 | **BG7TBL OCXO**, one port each | | SDG rear `10MHz In/Out` **through a 50 Ω feed-through or 6 dB pad**; HP 33120A rear `10 MHz In` **direct** | (board units: see C7 below) |
 
 - **C3, the 33220A.** It has an output switch, so it is the source I can turn
   off to leave unit 4 undriven. Switch it on, and leave it on the LAN; it was
@@ -76,12 +77,12 @@ the tee, and a second from the tee to the board's SMA (BNC-to-SMA).
     - locked, first 2.5 ppb, the same fraction at 10 kHz and at 1 MHz, with
       the phase scatter 40 times smaller; an hour later ≤ 0.001 ppb (below).
   - Tee the SDG's rear output to both rear inputs to lock both.
-  - **The SDG's `10MHz In/Out` must be set to output on its panel**: Utility,
-    Page 1/2, Clock, 10MOut, Enable.
+  - **Until Oct 8 the SDG's `10MHz In/Out` was set to output on its panel**:
+    Utility, Page 1/2, Clock, 10MOut, Enable.
     - `ROSC 10MOUT,ON` over SCPI is ignored by this firmware, and `ROSC?`
       doesn't report the state.
-    - It is enabled now, and it should stay set: it is in the clock menu, not
-      a per-waveform setting.
+    - **Oct 8: 10MOut is now Disable** (Source still Internal), so the jack is
+      an input, ready for C7. The HP 33120A free-runs until C7 is plugged in.
   - **What locking buys, measured** (round 44):
     - anything on the rear output locks to it: the HP to 0.006 ppb, with
       ~0.5 ns of phase wander;
@@ -97,6 +98,37 @@ the tee, and a second from the tee to the board's SMA (BNC-to-SMA).
       from 0 to 2.5 ns/s at 10 MHz. A run with units 1 and 11 shows which;
       G0 found 0.
     - `lab-instrument-control` (`siglent.md`, `hp.md`) has the numbers.
+- **C7, the OCXO (round 45.17).** A BG7TBL 8-port distribution amplifier
+  becomes the bench's one reference. Every instrument only *takes* 10 MHz:
+  SDG 10MOut Disable, SDS `:SYSTem:CLOCk IN_OFF` (it was `IN_ON`).
+  - Each port: **6 Vpp open circuit** (your measurement). BG7TBL sells it as
+    "10 dBm / 1 Vrms, 50 Ω/75 Ω"; 6 Vpp from a 50 Ω source is 3 Vpp into 50 Ω,
+    +13.5 dBm, 1.06 Vrms, so the two agree if the source is 50 Ω.
+    **Not yet measured here**: see the check below.
+  - **Your note: ports 1, 2, 5, 6 are 180° from ports 3, 4, 7, 8.** Nothing
+    published says so either way. A centre-tapped transformer feeding two
+    banks of four amplifiers would do it. It doesn't matter to anything that
+    locks (a PLL takes any phase), and on the board it is a 50 ns offset, which
+    a pair series reads mod 100 ns. Use one bank where the phase is compared.
+  - Where each port may go:
+
+    | Into | What it sees from one port | Verdict |
+    |---|---|---|
+    | HP 33120A `10 MHz In` (50 Ω, −10..+15 dBm, abs max +25 dBm / 10 Vpp) | 3 Vpp, +13.5 dBm | **direct** |
+    | SDG `10MHz In/Out` (≥ 1.4 Vpp, 5 kΩ, AC; no max given) | 6 Vpp unterminated | **through a 50 Ω feed-through or 6 dB pad**: 3 Vpp, about its own output's level |
+    | a board unit **with** its 50R jumper (JP101, JP401, JP1101, JP1201) | ~3.0 Vpp | **OK** (rated 3.3 Vpp; abs max 4.10 Vpp) |
+    | a board unit **without** it (JP201 unit 2, JP901 unit 9 now) | ~5.9 Vpp | **No**: over the 4.10 Vpp abs max. Fit the jumper or a 6 dB pad first |
+    | a scope channel, 1 MΩ / 50 Ω | 6 / 3 Vpp | OK (50 Ω: ≤ 5 Vrms) |
+    | the 33220A | — | no `10 MHz In` (no Option 001) |
+    | the SDS2104X Plus | — | its datasheet lists no 10 MHz jack: look at its rear panel |
+
+  - **Then:** I choose External on the SDG (it refuses with no signal on the
+    jack), and on the scope if it has the jack. The HP locks by itself.
+  - **The check, from here, once a port is on a scope channel with no tee:**
+    its Vpp at 1 MΩ, then at 50 Ω (the channel switches; nothing is moved).
+    Source impedance = 50 Ω × (V_1MΩ / V_50Ω − 1). Two ports on two channels,
+    equal cables, give the phase between them: port 1 against port 2 (same
+    bank) and against port 3.
 - **Nothing on** `HIN` (J3002) or the pps jacks.
 - **I set all the amplitudes** (`bench_setup.py on`): 10 MHz sines at **3.3 Vpp
   open circuit**.
