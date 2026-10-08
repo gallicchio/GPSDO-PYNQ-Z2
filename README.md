@@ -15510,3 +15510,27 @@ either side of it:
   restarts the HP's synthesiser, and an Option 001 33120A then comes back at
   a random phase against its reference. It is running again with `VOLTage`
   alone.
+
+**O4, AM-to-PM, again.** The amplitude was stepped with `VOLTage` alone; the
+phase held to 1-15 ps across the 0 dB repeats. The pair is the unit against the
+mean of the four OCXO units. Thirteen 20 s points, −1 to +1 dB:
+
+| Unit | Input | Level at the input | AM-to-PM below the HP's range boundary |
+|---|---|---|---|
+| 4 | terminated (JP401, the 4.7 Ω of S3) | ~1.3-1.6 Vpp | **+176 ± 4 ps/dB** (residual 5 ps) |
+| 9 | unterminated (bead, as built) | ~2.6-3.1 Vpp | **+23 ± 4 ps/dB** (residual 5 ps) |
+
+(+ means the unit moves later as the amplitude rises.)
+
+- **The +1 dB points (3.30 Vpp open circuit, 1.65 Vpp into 50 Ω) jump
+  +190-240 ps on both HPs.** That is the 33120A changing its output attenuator
+  range, which moves its own phase; once it stayed 560 ps off on the way back
+  down. Those points are left out, and future sweeps stay inside one range.
+- **The spread between units is large.** T3 had unit 2, also unterminated, at
+  a similar level, at 147 ps/dB against unit 9's 23. Level and termination
+  don't explain it alone.
+- **For item 18:** a per-channel calibration would have to be measured per
+  channel, and it would only hold while each level holds. The replica bias,
+  which removes the threshold offset, stays the fix.
+- **For N1:** the OCXO units see ~3.4 Vpp. A port drifting 0.01 dB moves its
+  unit 0.2-1.8 ps at these coefficients, so the scope logs each line's RMS.
