@@ -57,7 +57,7 @@ Priority: **1** = don't order rev B without it; **2** = should be in rev B;
 | 11 | **Park unused channels** | PLANNED, **VALIDATED ON REV A** | **1** | **100 kΩ from S to ground held unit 5 quiet in 30 of 30 restarts** (r45) | 3-pin header, 50R / PARK |
 | 12 | **RC, not bead, gate filters** | PLANNED, **CONFIRMED ON REV A** | **1** | **FB401 bridged: unit 4 quiet in 30 of 30**, was oscillating 30 of 30 (r45) | 2.2-10 Ω on every gate; RA3 picks the value |
 | 13 | Crosstalk rules | PLANNED, reprioritised | 2 | No 10 MHz tone above 0.4 ps; state changes and strong edges are what move a channel (r45 T2) | supply rules first |
-| 14 | Tools on this machine | NOTE | | KiCad 10's GUI rewrites the project file (r45) | |
+| 14 | Build rev B in KiCad 10 | DECIDED | 2 | Jason views in KiCad 10 and never saves; opening rewrites the project file | port `build.py` and `gen/project.py` |
 | 15 | Deglitch the beats in the gateware | PLANNED | 2 | 28-32% of transitions carry extra edges (r45) | |
 | 16 | Monitor the Si5351 during long runs | PLANNED | 2 | | |
 | 17 | ps per cycle from the measured beat | PLANNED | 2 | 0.8% off design (r43) | |
@@ -811,24 +811,34 @@ out not to measure crosstalk.
 
 ## Build environment
 
-### 14. Tools on this machine: NOTE
+### 14. Tools on this machine: DECIDED, build rev B in KiCad 10
 
 - `build.py` expects KiCad 9 extracted at `~/.local/kicad9/squashfs-root`.
   This machine has the AppImage (`~/.local/bin/kicad-9.0.9.1-x86_64.AppImage`),
   whose kicad-cli runs directly.
 - `pcb/build_pcb.py` now takes `KICAD9_FOOTPRINTS` for the stock library
   path.
-- Set `KICAD_CLI` and `KICAD9_FOOTPRINTS`, or extract the AppImage where
-  `build.py` expects it, before the rev B build.
-- **KiCad 10 is also here** (`~/.local/bin/kicad-10.0.6-x86_64.AppImage`), and
-  Jason opens the project in it.
-  - Its GUI rewrote `GPSDO-PYNQ-Z2.kicad_pro` to its own format (version 5,
-    committed as `e1ff1fd`), and `GPSDO-PYNQ-Z2.kicad_prl` with its UI state.
-  - `gen/project.py` still writes version 4, so a rebuild will undo the
-    former.
-  - **OPEN**: build rev B with KiCad 10 throughout, as CLAUDE_PCB.md
-    recommends for new boards. Otherwise expect that diff after every build
-    Jason opens.
+- **Jason has switched to KiCad 10**
+  (`~/.local/bin/kicad-10.0.6-x86_64.AppImage`). He opens the boards to
+  look, **never saves**, and will say if he does (2026-10-07).
+  - Opening still makes KiCad 10 write its own files: it rewrote
+    `GPSDO-PYNQ-Z2.kicad_pro` to its format (version 5, committed as
+    `e1ff1fd`), and `GPSDO-PYNQ-Z2.kicad_prl` with its UI state (`0d6aac5`).
+  - Those are KiCad's writes, not edits. Commit them on their own, labelled
+    as such, never mixed with work.
+  - A change to a `.kicad_pcb` or `.kicad_sch` that nobody announced is
+    something to ask about, not to commit.
+- **Decision**: port the build to KiCad 10 before rev B is built.
+  - `build.py`'s `KICAD_CLI` default.
+  - `pcb/build_pcb.py`'s stock footprint path (`KICAD9_FOOTPRINTS`).
+  - `gen/project.py` writing version 5.
+  - The board and sheets saved in KiCad 10's own format
+    (`kicad-cli pcb upgrade`, `sch upgrade`), as CLAUDE_PCB.md asks for new
+    boards.
+  - Then opening rev B in the GUI changes nothing on disk.
+  - Check that the KiCad 10 build reproduces rev A's fab outputs byte for
+    byte (the round 30 test in `build.py`'s docstring) before changing
+    anything else.
 
 ---
 

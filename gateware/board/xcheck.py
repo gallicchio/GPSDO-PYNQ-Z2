@@ -207,6 +207,9 @@ def run(kind, plan, scope=False, df=None, ch=2):
     local = os.path.join(out, 'beats.npz')
     subprocess.run(SCP + ['%s:%s' % (PYNQ, remote[-1]), local], check=True,
                    timeout=120)
+    # the file name only: a committed record names no place on any machine
+    # (CLAUDE_PCB.md section 2), and this one is the PYNQ's home directory
+    log = re.sub(r'(?<!\S)/\S*/([^/\s]+\.npz)', r'\1', log)
     meta = dict(kind=kind, df=df, ch=ch, plan=plan, events=events,
                 clock_offset=off, t_plan_end=t_plan_end, recording_log=log,
                 snapshot=snap)

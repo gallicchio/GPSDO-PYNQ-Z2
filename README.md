@@ -15065,5 +15065,6 @@ explicitly. REVB_CHANGES.md now opens with three new sections:
 - **New items.** Item 20 is the heater and thermal layout, decided by RA2.
   Item 21 is the pps inputs: no change, with the measured thresholds and a
   `pps: ≥ 2.3 V` silkscreen limit.
-- **Item 14 is OPEN.** KiCad 10 rewrites the project file whenever the
-  board is opened, so: build rev B in KiCad 10?
+- **Item 14 was OPEN, and is now decided.** You've switched to KiCad 10, and you
+  never save; you'll say if you do. So rev B is to be built in KiCad 10,
+  and KiCad's own writes on opening are committed on their own.

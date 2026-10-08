@@ -46,7 +46,7 @@
  ],
  "clock_offset": 0.0,
  "t_plan_end": 1791401644.3501978,
- "recording_log": "[sudo] password for xilinx: recording from 1791401611.227\n695299 polls in 36.0 s (52 us each); updates per unit {1: 71457, 2: 72819}; helper 10001302.889 Hz -> /home/xilinx/gpsdo-dmtd/beats_1_2_20261007T193408.npz\n",
+ "recording_log": "[sudo] password for xilinx: recording from 1791401611.227\n695299 polls in 36.0 s (52 us each); updates per unit {1: 71457, 2: 72819}; helper 10001302.889 Hz -> beats_1_2_20261007T193408.npz\n",
  "snapshot": {
   "1": {
    "freq": 10000000.0,
