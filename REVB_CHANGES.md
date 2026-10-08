@@ -247,6 +247,12 @@ What was planned:
 
 - **T8**, a 74AUP1GU04 in one squarer's place: no part, and too fine a
   rework for the bench's iron. Item 8 is decided without it.
+  - **2026-10-08: back as an optional rework.** `BENCH_WIRING_OCXO.md` S5 puts
+    it on unit 6, with its own SMA and 50R header and the spare right HP as
+    its source; O9 measures it.
+  - The part is SC-70-5 only (Nexperia `74AUP1GU04GW`; TI makes no
+    unbuffered AUP), so it has to straddle the SOT-23-5 pads.
+  - `SN74AHC1GU04DBVR` is the drop-in alternative in the same footprint.
 
 **Order** (RA2 done):
 

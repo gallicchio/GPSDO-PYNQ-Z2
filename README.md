@@ -15353,3 +15353,20 @@ HP.
     board.
 - **Then:** O0-O8 today, N1 (RA7) tonight and N2 (RA5) tomorrow night. Its
   table says which rev B item each test decides.
+
+**Addendum: the plan made usable at the soldering station.**
+`BENCH_WIRING_OCXO.md` §2 now has:
+
+- the soldering table, the parts to bring, and "lift the board off the PYNQ"
+  (the SMA and header pins solder from underneath);
+- marked zoom-ins of KiCad's 3D render for every site
+  (`gateware/board/rework_img/`, made by `pcb/rework_zooms.py` from the PCB
+  file's coordinates; the underside views are mirrored);
+- **S5 (optional)**: T8 after all. A 74AUP1GU04 replaces unit 6's squarer
+  U601, and unit 6 gets an SMA, its 50R header and the right HP; O9 compares
+  it with unit 4.
+  - The 74AUP1GU04 exists only as SC-70-5 (Nexperia; TI makes no unbuffered
+    AUP). On the SOT-23-5 pads it straddles them: the corner leads land on the
+    pads' inner edges.
+  - `SN74AHC1GU04DBVR` is a drop-in alternative.
+  - If S5 isn't done, unit 6 is parked with the others.
