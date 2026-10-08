@@ -51,10 +51,10 @@ Priority: **1** = don't order rev B without it; **2** = should be in rev B;
 | 5 | **A real +3V3_A plane** | PLANNED | **1** | 109 mV lost in tracks (r41). **A neighbour going driven ↔ undriven moves a channel 1.4-1.9 ps** (r45 T1). | inner-layer plane, one feed |
 | 6 | Rail LEDs with "in range" | PLANNED | 3 | | TPS3700 windows |
 | 7 | Rail monitor (INA3221) | PLANNED | 2 | Rails flat to 1 mV; the CircuitGears read 1-2% low and drift (r45) | on-board V and I logging |
-| 8 | A lower-current squarer (74AUP1GU04) | **NOT DOING** | | Can't be tested on rev A (T8); items 11 and 12 remove the idle load | keep the 74LVC1GU04 |
-| 9 | **Si5351C, the TCXO on CLKIN** | PLANNED | **1** | PLLA slips at CLK0 ≥ 4 mA; 15 h clean at 2 mA (r39-45) | CLKIN, separate VDDO banks; RA1 weighs the layout rules |
-| 10 | **Isolate HO, drive it at 2-4 mA** | PLANNED | **1** | 58 ps on unit 11 (r41); **+16 ps rms jitter on an unrelated pair at 8 mA** (r45 T2) | buffered, filtered, own bank; RA5 |
-| 11 | **Park unused channels** | PLANNED, **VALIDATED ON REV A** | **1** | **100 kΩ from S to ground held unit 5 quiet in 30 of 30 restarts** (r45) | 3-pin header, 50R / PARK |
+| 8 | A lower-current squarer (74AUP) | **ON ONE OR TWO CHANNELS** | 3 | Not tested on rev A (no part to hand). Parking 3, 6, 7, 8 raised +3V3_A ~110 mV (r45.20), so the idle load is mostly gone anyway | a 74AUP2GU04 in item 18's SC-70-6 footprint on one or two channels: a BOM change |
+| 9 | **Si5351C, the TCXO on CLKIN** | PLANNED, **RA1 CONFIRMS THE MECHANISM** | **1** | PLLA slips at CLK0 ≥ 4 mA; 15 h clean at 2 mA (r39-45). **RA1's faster XA edge: 0 slips in 14 of 15 drive settings (was 9 slipping), 53/s at 8+8 mA (was 1600)** (r45.20) | CLKIN, separate VDDO banks |
+| 10 | **Isolate HO, drive it at 2-4 mA** | PLANNED | **1** | 58 ps on unit 11 (r41); +16 ps rms on an unrelated pair at 8 mA (r45 T2). **OCXO pairs across helper-buffer groups: 20 ps (HO off), 24 (2 mA), 33 (4 mA), 53 ps (8 mA) per transition; within a group 11-15 ps** (r45.20 O6) | buffered, filtered, own bank, away from the helper tree; RA5 |
+| 11 | **Park unused channels** | PLANNED, **VALIDATED ON REV A** | **1** | 100 kΩ from S to ground held unit 5 quiet in 30 of 30 restarts (r45). **Parks on 3, 5, 6, 7, 8: all quiet 30/30, and unit 13 began oscillating (29/30): park every one** (r45.20 O2) | 3-pin header, 50R / PARK |
 | 12 | **RC, not bead, gate filters** | PLANNED, **CONFIRMED ON REV A** | **1** | **FB401 bridged: unit 4 quiet in 30 of 30**, was oscillating 30 of 30 (r45) | 2.2-10 Ω on every gate; RA3 picks the value |
 | 13 | Crosstalk rules | PLANNED, reprioritised | 2 | No 10 MHz tone above 0.4 ps; state changes and strong edges are what move a channel (r45 T2) | supply rules first |
 | 14 | Build rev B in KiCad 10 | DECIDED | 2 | Jason views in KiCad 10 and never saves; opening rewrites the project file | port `build.py` and `gen/project.py` |
@@ -80,7 +80,11 @@ right hardware. All of it is the bench board.
 | 2026-10-07 (r45) | **FB401 bridged** | item 12 | unit 4 quiet in 30/30 restarts (was oscillating 30/30). T1: the step on unit 2 from unit 4's state fell from 1.90 to 1.39 ps, but did not go. |
 | 2026-10-07 (r45) | **100 kΩ from TP502 (unit 5's `S`) to JP501 pin 2 (GND)** | item 11 | unit 5 quiet in 30/30 (was oscillating 30/30). Unit 3 now oscillates 29-30/30 (was 7/30). |
 | 2026-10-07 (r45) | **Barrel jack J2003 fitted; a 15 V 6 A supply in it** | item 20, RA2 | The heater works. No added noise (jitter +0.06 ± 0.07 ps, rails unchanged). |
-| pending | R3001 3k3 → 1k, R3002 1k → 330 Ω | item 9 (RA1) | |
+| 2026-10-08 (r45.19) | **S1**: SMA J1001 and header JP1001 on unit 10; **JP201 and JP1001 fitted** | RA7's fourth corner | unit 10 beats (O0) |
+| 2026-10-08 (r45.19) | **S2**: 100 kΩ parks on units 3, 6, 7 and 8 (TPx02 to JPx01 pin 2) | item 11 | all quiet 30/30 (O2). Unit 13 then oscillates 29/30 at 582 kHz |
+| 2026-10-08 (r45.19) | **S3**: FB401's bridge → 4.7 Ω (RA3) | item 12 | unit 4 quiet 30/30 undriven (O2) |
+| 2026-10-08 (r45.19) | **S4**: R3001 3k3 → 1k, R3002 1k → 330 Ω (RA1) | item 9 | slips gone in 14 of 15 drive settings (O3) |
+| pending | **S2b**: park unit 13 | item 11 | |
 | not planned | HIN: R3004 in, R3005 out (an external helper) | | |
 
 CLK0 at 2 mA (round 40) is firmware, not a rework.
@@ -476,6 +480,20 @@ every overnight run.
 - **Decision**: keep the 74LVC1GU04, and let parking (11), the plane (5)
   and RC filters (12) deal with the current. Revisit only if rev B's own
   measurements ask for it.
+- **2026-10-08 (r45.20): onto one or two of rev B's channels instead.**
+  - T8 couldn't run on rev A: there is no AUP part on the board to take, and
+    one part isn't worth an order.  The 74AUP1GU04 also comes only in SC-70-5,
+    which doesn't fit the SOT-23-5 pads.
+  - **The cheap route on rev B.**  Item 18 puts a dual unbuffered inverter on
+    every channel (74LVC2GU04).  Draw its footprint as SC-70-6 (TI's DCK)
+    and Nexperia's **74AUP2GU04GW** (SOT363) fits it.  One or two channels
+    can then carry the AUP part as a BOM change, with no new footprint.
+    **Confirm the two parts' pinouts match before drawing.**
+  - Not on the null channel, and not on a channel meant for the best
+    reference.  Silkscreen which channels carry it.
+  - The idle current that motivated item 8 is mostly gone: parking units 3,
+    6, 7 and 8 raised +3V3_A by ~110 mV (CG-1, r45.20).  So the AUP channels
+    are an experiment in jitter and AM-to-PM, not a fix.
 
 ---
 

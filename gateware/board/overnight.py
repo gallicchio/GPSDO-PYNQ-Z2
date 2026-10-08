@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""G7, the overnight log -- round 45.  Runs on the LAPTOP.
+"""G7, the overnight log -- round 45; the OCXO bench from 45.19.  Runs on the LAPTOP.
 
     python3 overnight.py HOURS [--period SECONDS]      # default one row per 90 s
     python3 overnight.py 13 --period 120 --heater 0:off,60:on,240:off,420:on,600:off
@@ -7,17 +7,20 @@
 One row per period into overnight_<UTC time>/log.csv beside this file:
 
   * the board's eight thermometers and the 1-Wire probe (temps.py on the PYNQ);
-  * 20 s of beats on units 1, 2, 4, 11 and 12 (beats.py on the PYNQ, analysed
-    here, the file then deleted there):
+  * 20 s of beats on units 1, 2, 4, 9, 10, 11 and 12 (beats.py on the PYNQ,
+    analysed here, the file then deleted there).  The wiring is
+    BENCH_WIRING_OCXO.md's: the OCXO on units 1, 2, 10 and 11 (the board's four
+    corners), the locked HPs on 4 and 9, HO on 12.
       - each unit's fold concentration (`top`, 45.4) and beat frequency;
-      - unit 2 - unit 1 and unit 11 - unit 1 as phase: the mean over the 20 s,
-        modulo 100 ns, so successive rows join into a night-long trace for
-        units that share the SDG's clock;
-      - unit 4 and unit 12 against unit 1 as a frequency, in ppb;
+      - every pair in PAIRS as phase: the mean over the 20 s, modulo 100 ns, so
+        successive rows join into a night-long trace (they all share the
+        OCXO's clock), and its rms per transition about a line;
+      - unit 12 (HO, from the board's TCXO) against unit 1 as a frequency, ppb;
   * 10 s of `si_watch.py watch` on unit 12: PLLA slips and HO-beat jumps;
   * the rails on the CircuitGears: +5V_HDR and +3V3_A (CG-1 A and B), +3V3_D
     (CG-2 A, zeroed once at the start);
-  * the scope's PKPK and MEAN on CH1-CH4.
+  * the scope's PKPK, MEAN and RMS on CH1-CH4: the four OCXO lines, so that a
+    port whose level drifts can be told from a channel that does (AM-to-PM).
 
 Every hour that period's beats file is kept too, as beats_<time>.npz.
 
@@ -80,10 +83,11 @@ SSH = shlex.split(os.environ.get('PYNQ_SSH', 'ssh ' + PYNQ))
 SCP = shlex.split(os.environ.get('PYNQ_SCP', 'scp'))
 RDIR = os.environ.get('PYNQ_DIR', 'gpsdo-dmtd')
 SHM = '/dev/shm/gpsdo-overnight'      # the beats files' scratch on the PYNQ
-UNITS = (1, 2, 4, 11, 12)
+UNITS = (1, 2, 4, 9, 10, 11, 12)
 HEATER_MAX_C = 50.0             # round 45: the heater warms the board ~2 K a minute
-SAME_CLOCK = (2, 11)            # phase against unit 1, modulo 100 ns
-OTHER_CLOCK = (4, 12)           # frequency against unit 1
+# phase pairs (a - b), modulo 100 ns: the OCXO's four corners, then the HPs
+PAIRS = ((2, 1), (11, 10), (10, 1), (11, 1), (10, 2), (11, 2), (4, 1), (9, 1))
+OTHER_CLOCK = (12,)             # frequency against unit 1
 CG1, CG2 = 'C2BRGBL', 'C2BKO1A'
 CG1_CAL = os.path.join(LIC, 'syscomp_circuit_gear', 'results', CG1, 'calibration.json')
 THERMS = ['0x%02X' % a for a in range(0x48, 0x50)]
@@ -137,18 +141,18 @@ def beats(row, out_dir, keep):
                     U[u] = X.unit(z, 'unit%d' % u, h, force=True)
             except Exception:
                 pass
-        if 1 in U:
-            for u in SAME_CLOCK + OTHER_CLOCK:
-                if u not in U:
-                    continue
-                tau, host = X.pair_series(U[u], U[1])
+        for a, b in PAIRS:
+            if a in U and b in U:
+                tau, host = X.pair_series(U[a], U[b])
                 t = (host - host[0]) / 1e9
                 p = np.polyfit(t, tau, 1)
-                if u in SAME_CLOCK:
-                    row['p%d_1_ps' % u] = round(float(tau.mean()), 1)
-                    row['p%d_1_rms_ps' % u] = round(float((tau - np.polyval(p, t)).std()), 1)
-                else:
-                    row['f%d_1_ppb' % u] = round(float(p[0]) * 1e-3, 3)
+                row['p%d_%d_ps' % (a, b)] = round(float(tau.mean()), 1)
+                row['p%d_%d_rms_ps' % (a, b)] = round(float((tau - np.polyval(p, t)).std()), 1)
+        for u in OTHER_CLOCK:
+            if u in U and 1 in U:
+                tau, host = X.pair_series(U[u], U[1])
+                t = (host - host[0]) / 1e9
+                row['f%d_1_ppb' % u] = round(float(np.polyfit(t, tau, 1)[0]) * 1e-3, 3)
     finally:
         if not keep:
             os.remove(local)
@@ -190,6 +194,7 @@ def scope(row):
         for c in (1, 2, 3, 4):
             row['ch%d_pkpk' % c] = s.pava('PKPK', c)
             row['ch%d_mean' % c] = s.pava('MEAN', c)
+            row['ch%d_rms' % c] = s.pava('RMS', c)
 
 
 def heater(state):
@@ -222,12 +227,12 @@ def zero_cg2(out_dir):
 
 COLUMNS = (['utc', 'unix'] + ['T' + a[2:] for a in THERMS] + ['probe', 'helper_hz']
            + ['u%d_%s' % (u, k) for u in UNITS for k in ('top', 'beat_hz', 'ept')]
-           + ['p%d_1_%s' % (u, k) for u in SAME_CLOCK for k in ('ps', 'rms_ps')]
+           + ['p%d_%d_%s' % (a, b, k) for a, b in PAIRS for k in ('ps', 'rms_ps')]
            + ['f%d_1_ppb' % u for u in OTHER_CLOCK]
            + ['slip_s', 'plla_slips', 'other_steps', 'ho_jumps', 'pllb_jumps', 'lol_chunks',
               'helper_ps_hz',
               'v5_hdr', 'v3a_far', 'v3d']
-           + ['ch%d_%s' % (c, k) for c in (1, 2, 3, 4) for k in ('pkpk', 'mean')]
+           + ['ch%d_%s' % (c, k) for c in (1, 2, 3, 4) for k in ('pkpk', 'mean', 'rms')]
            + ['heater', 'errors'])
 
 
@@ -318,10 +323,12 @@ def main():
                 row['errors'] = ' | '.join(errors)
                 w.writerow(row)
                 f.flush()
-                print('%s  T48 %s probe %s  p2-1 %s ps  p11-1 %s ps  slips %s  3V3_A %s  %s'
+                print('%s  T48 %s probe %s  p2-1 %s  p11-10 %s  p10-1 %s  p11-1 %s ps  slips %s  '
+                      '3V3_A %s  %s'
                       % (row['utc'], row.get('T48'), row.get('probe'), row.get('p2_1_ps'),
-                         row.get('p11_1_ps'), row.get('plla_slips'), row.get('v3a_far'),
-                         row['errors'] or 'ok'), flush=True)
+                         row.get('p11_10_ps'), row.get('p10_1_ps'), row.get('p11_1_ps'),
+                         row.get('plla_slips'), row.get('v3a_far'), row['errors'] or 'ok'),
+                      flush=True)
                 time.sleep(max(0.0, period - (time.time() - t0)))
         except KeyboardInterrupt:
             pass
