@@ -15287,3 +15287,11 @@ adapter is not the problem.
   interface only, `E: I/O MENU` → `2: INTERFACE`, and the factory setting is
   HP-IB. Otherwise, the cable (a null modem with DTR/DSR wired is needed, like
   the bottom one's).
+
+**After you set the top one's `2: INTERFACE` to RS-232, it answers**: firmware
+8.0-5.0-1.0, Option 001, all five RS-232 tests pass (105 ms per query). That
+was the whole problem, so no cable swap is needed. Its lock bit had latched once
+since power-on (likely before its reference was there), and it didn't come back
+in 16 s at 10 MHz; the bottom one's didn't either. The bit alone doesn't prove
+a lock, so the scope test is still to do for the top one: its output on a scope
+channel, against an OCXO port.
