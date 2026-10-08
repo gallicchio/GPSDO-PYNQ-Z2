@@ -65,6 +65,7 @@ Priority: **1** = don't order rev B without it; **2** = should be in rev B;
 | 19 | U.FL/MMCX monitor taps | PLANNED | 2 | Every rev A question needed a hand-held probe | 25-35 taps |
 | 20 | Heater and thermal layout | OPEN, RA7 decides | 2 | Heated ~11 K, the unit 1-2 pair moved +27.5/+31.1 ps; the heater runs the left edge 5 K hotter (r45, RA2) | symmetric heating, sensors at the squarers |
 | 21 | pps inputs | **NO CHANGE** | | First real pulses counted; thresholds 1.93 V up, 1.32 V down at the jack (r45) | keep 1k/10k, 51R DNP |
+| 22 | **The helper's distribution** | **NEW**, PLANNED | **1** | OCXO pairs on one helper buffer (U3004: units 1-4; U3006: 9-11): 11-12 ps per transition; across buffers 20 ps with HO off, 53 ps at 8 mA; a channel's state moves its whole buffer group 2-3 ps; the port swap (O8) puts it on the board, not the OCXO (r45.20) | one low-jitter fan-out on its own clean supply, equal-length lines, HO kept off it |
 
 ## Rev A boards: reworks and hand-fitted parts
 
@@ -84,7 +85,7 @@ right hardware. All of it is the bench board.
 | 2026-10-08 (r45.19) | **S2**: 100 kΩ parks on units 3, 6, 7 and 8 (TPx02 to JPx01 pin 2) | item 11 | all quiet 30/30 (O2). Unit 13 then oscillates 29/30 at 582 kHz |
 | 2026-10-08 (r45.19) | **S3**: FB401's bridge → 4.7 Ω (RA3) | item 12 | unit 4 quiet 30/30 undriven (O2) |
 | 2026-10-08 (r45.19) | **S4**: R3001 3k3 → 1k, R3002 1k → 330 Ω (RA1) | item 9 | slips gone in 14 of 15 drive settings (O3) |
-| pending | **S2b**: park unit 13 | item 11 | |
+| 2026-10-08 (r45.20) | **S2b**: 100 kΩ park on unit 13 (TP1302 to JP1301 pin 2), soldered with the board on | item 11 | quiet 10/10. Every channel is now driven or parked |
 | not planned | HIN: R3004 in, R3005 out (an external helper) | | |
 
 CLK0 at 2 mA (round 40) is firmware, not a rework.
@@ -875,6 +876,38 @@ out not to measure crosstalk.
   added ~19 ps rms.
 - So for rev B, the rules about supplies (item 5), parking (11), filters
   (12) and HO's drive (10) matter more than the 10 MHz isolation rules.
+
+---
+
+### 22. The helper's distribution: NEW, PLANNED, priority 1
+
+**Why (r45.20, the OCXO bench).**
+
+- **The helper reaches the thirteen samplers through five 74LVC1G34 buffers**,
+  each driving a block: U3004 units 1-4, U3005 units 5-8, U3006 units 9-11,
+  U3007 unit 12, unit 13 and J4001.
+- **With every unit on one OCXO, a pair sharing a buffer** (2 − 1, 11 − 10) is
+  at 11-12 ps per transition, the DDMTD's own 12.3 ps step.  **A pair across
+  buffers is 20 ps with HO off**, 24 at 2 mA, 33 at 4 mA and 53 at 8 mA.
+- **O8 swapped the OCXO ports of units 1 and 11.**  The quiet pairs stayed
+  quiet, so this is the board, not the source.
+- **O7: a channel switching between driven and undriven moves its own
+  buffer's whole group 2-3 ps** against the other groups.
+- **What it means.**  A comparison between two GPSDOs on different buffers
+  carries ~17 ps per transition of the helper tree's own jitter, plus
+  whatever HO and the neighbours put into each buffer.  Averaging hides it
+  (0.1-0.4 ps at 10 s), but it is the board's floor between any two channels
+  that aren't neighbours.
+
+**What.**
+
+- **One fan-out** for all thirteen samplers, from one low-jitter clock-buffer
+  part, rather than a cascade of single gates.
+- **Its own LDO or filtered supply**, which no squarer's current shares.
+- **Equal-length lines** to every sampler; ground under all of them.
+- **HO's CLK1 trace and output kept away from the fan-out** (item 10).
+- **Check before ordering:** the fan-out's additive jitter (well under 1 ps)
+  and its output skew, which only adds a fixed offset per channel.
 
 ---
 

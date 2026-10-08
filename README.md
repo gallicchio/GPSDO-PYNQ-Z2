@@ -15534,3 +15534,42 @@ mean of the four OCXO units. Thirteen 20 s points, −1 to +1 dB:
   which removes the threshold offset, stays the fix.
 - **For N1:** the OCXO units see ~3.4 Vpp. A port drifting 0.01 dB moves its
   unit 0.2-1.8 ps at these coefficients, so the scope logs each line's RMS.
+
+**After you came in: O8, the DMM, S3, S2b.**
+
+- **O8: the noise between buffer groups is the board's.** You swapped ports 1
+  and 6 at the OCXO, with HO at 2 mA:
+
+  | Pair | Before | Swapped |
+  |---|---|---|
+  | 2 − 1 (now ports 2 and 6) | 11.2 ps | 11.7 ps |
+  | 11 − 10 (now ports 5 and 1) | 12.3 ps | 12.1 ps |
+  | across groups | 23.7-25.1 ps | 22.9-24.3 ps |
+
+  - The quiet pairs stayed quiet across the OCXO's port groups. The extra
+    noise lives in the helper buffers, U3004 for units 1-4 and U3006 for
+    9-11, and HO's drive adds to it. That makes it **rev B item 22, new: one
+    clean fan-out for the helper.**
+  - **Port 6 leads port 1 by ~200 ps** (both pairs moved 199-200 ps). So the
+    2.3 ns the scope saw between ports 5/6 and 1/2 is mostly cable: those two
+    cables are ~45 cm longer.
+  - After you swapped back, the pairs returned to within 1-6 ps.
+- **+3V3_A at J5001 is 3.257 V on your DMM**, against 3.185 V before the
+  reworks: **+72 mV** from the parked squarers. My CG-1 estimate of 110 mV used
+  a calibration factor that has drifted.
+- **S3 is 4.7 Ω**, as planned.
+- **S2b: unit 13 parked**, soldered with the board on. 10 restarts: units 3,
+  5, 6, 7, 8 and 13 all quiet. **Every channel is now driven or parked.**
+  - The floor didn't change with it: at HO 2 mA, 11.5/12.2 ps within groups
+    and 23.3-24.6 ps across, as in O6. The oscillation was a hazard for the
+    night, not a noise source.
+  - **At HO 2 mA the chatter has gone:** units 1, 2, 10 and 11 make 1.001
+    rising edges per transition, against 1.03-1.08 at 8 mA (O0). HO was the
+    chatter's source, and item 15's deglitcher matters less once HO is quiet.
+- **N1 started at 23:22Z (16:22 PDT), for 13 h:**
+  - `overnight_20261008T2322Z/`, with HO at 2 mA;
+  - the heater off 1 h, on 3 h, off 3 h, on 3 h, then off;
+  - the six OCXO pairs, the HP pairs, slips, temperatures with the probe on
+    the OCXO's case, the rails, and each OCXO line's RMS on the scope.
+  - The afternoon's no-heater baseline, 22:24-23:07Z, is
+    `overnight_20261008T2224Z/`.
