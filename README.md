@@ -15462,3 +15462,51 @@ recordings; rms per transition about a line.
   reading will confirm it.
 - **The probe on the OCXO's case reads 27.0 °C,** ~3.5 K above the board's
   sensors: a warm box, though not warm to the hand.
+
+**O5, crosstalk with exact offsets.** A locked HP 0.5 or 5 Hz off 10 MHz on unit
+4, then on unit 9. The tone in each OCXO pair, ps peak (the floor is the same
+fit at ten neighbouring frequencies):
+
+| Aggressor | 2 − 1 | 11 − 10 | across groups (10/11 − 1/2) |
+|---|---|---|---|
+| unit 4, +0.5 Hz | 0.05 (0.09) | 0.12 (0.31) | 0.11-0.27 (1.8-2.1) |
+| unit 4, +5 Hz | 0.18 (0.12) | 0.62 (0.41) | **2.5-2.9 (1.4-1.6)** |
+| unit 9, +0.5 Hz | 0.09 (0.08) | 0.15 (0.21) | 0.52-0.76 (1.3-1.5) |
+| unit 9, +5 Hz | 0.08 (0.07) | 0.45 (0.49) | 1.68-1.72 (1.6-1.8) |
+
+- **No tone stands above about 0.2 ps on the quiet pairs.** T2's floor was
+  0.4 ps.
+- The one hint is unit 4 at +5 Hz, at about twice the floor in all four
+  cross-group pairs, ~2.7 ps. Unit 4 shares its helper buffer with units 1 and
+  2. It is weak, and unit 9 showed nothing like it.
+
+**O7, a neighbour's state.** The top HP switched unit 4 between 10 MHz and
+0 V DC, six cycles of 40 s each way. The step in each pair (driven minus
+undriven), with each undriven reading against the mean of the driven readings
+either side of it:
+
+| Pair | Step |
+|---|---|
+| 2 − 1 (unit 4's own helper group) | **−1.00 ± 0.04 ps** |
+| 11 − 10 (the other group) | −0.16 ± 0.02 ps |
+| 10 − 1, 11 − 1 | +2.02 ± 0.36, +1.89 ± 0.34 ps |
+| 10 − 2, 11 − 2 | +3.02 ± 0.35, +2.89 ± 0.33 ps |
+
+- **Within the group, the step fell from 1.39 ps (T1, with the bridge) to
+  1.00 ps.** That is the 4.7 Ω and the parks, from SDG pairs to OCXO pairs. It
+  is smaller, but it is still there.
+- **New, and bigger: unit 4's state moves its whole helper group, units 1 and
+  2, by 2-3 ps against units 10 and 11.** T1 couldn't see it, because it had
+  only a pair inside one group.
+- **A channel's current reaches the timing of the helper that its neighbours
+  share.** Whether that is through the supply or through the buffer itself,
+  L1 (the +3V3_A strap) will tell.
+- **For rev B:**
+  - item 5's plane;
+  - a supply for the helper distribution that the channels' current can't
+    move;
+  - every unused channel parked, so that no channel ever changes state.
+- **O4, AM-to-PM, had to be repeated.** Each step went through `APPLy`, which
+  restarts the HP's synthesiser, and an Option 001 33120A then comes back at
+  a random phase against its reference. It is running again with `VOLTage`
+  alone.
