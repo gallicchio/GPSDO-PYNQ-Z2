@@ -66,7 +66,8 @@ bead it was before the bridge.
 - **JP201:** one shunt.
 - **S5 (optional):**
   - one **74AUP1GU04GW** (Nexperia, SC-70-5), or an
-    **SN74AHC1GU04DBVR** (SOT-23-5, see S5);
+    **SN74AHC1GU04DBVR** (SOT-23-5, see S5).  Neither is on the board:
+    it has to be bought;
   - one more SMA, 2-pin header and shunt;
   - hot air or Chip Quik for the old chip.
 - Flux and wick.
@@ -177,7 +178,20 @@ point `TPx02` (the pad marked `S`), to pin 2 (GND) of that unit's 50R header
 ### S5 (optional). A lower-current squarer on unit 6, with its own SMA and 50R header
 
 This is T8, which rev B's item 8 had given up on: **one channel's
-74LVC1GU04 replaced by a 74AUP1GU04**.  Unit 6 then becomes a working channel,
+74LVC1GU04 replaced by a 74AUP1GU04**.
+
+**There is no 74AUP1GU04 anywhere on the board to take one from.**  Every
+logic chip on rev A is an LVC part, so S5 needs a bought part.
+
+| Chip | On each unit | What it does |
+|---|---|---|
+| 74LVC1GU04 (unbuffered inverter) | `Ux01` (and U3002) | **the squarer**: the one S5 replaces |
+| 74LVC1G80 (D flip-flop) | `Ux02`, `Ux03` | the DDMTD sampler and the beat |
+| 74LVC1G17 (Schmitt buffer) | `Ux04` | the pps input |
+| 74LVC1G34 (buffer) | U3003-U3007 | the helper's distribution |
+
+Without the part today, **park unit 6 now** (S2).  A leaded 100 kΩ is quick to
+take off when the chip arrives.  Unit 6 then becomes a working channel,
 driven by the spare right HP.  It is compared against unit 4: the same column,
 the same jumper, the same kind of source, and still the LVC part.
 
