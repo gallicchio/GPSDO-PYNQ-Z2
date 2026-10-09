@@ -255,7 +255,11 @@ def rotation_table():
     describe a correction the file does not apply."""
     import make_bom
     rows = bomdata.components()
-    n = collections.Counter(r["fpshort"] for r in rows if r["cls"] == "smt")
+    placed = [r for r in rows if r["cls"] == "smt"
+              or (r["cls"] == "tht" and r["side"] == "top")]
+    n = collections.Counter(r["fpshort"] for r in placed
+                            if r["lcsc"] not in parts_map.JLC_ROTATION_BY_PART)
+    nb = collections.Counter(r["lcsc"] for r in placed)
     def wrap(s):
         return textwrap.fill(s, width=74, initial_indent=" " * 8,
                              subsequent_indent=" " * 8)
@@ -272,6 +276,14 @@ def rotation_table():
     for fp, (who, why) in sorted(parts_map.JLC_ROTATION_OK.items()):
         out.append("    %-36s    0  x%-3d  %s" % (fp, n.get(fp, 0), who))
         out.append(wrap(why))
+    out.append("")
+    out.append("  Rev B, PER PART (these win over the footprint rows above), PREDICTED")
+    out.append("  from JLCPCB's own land pattern of each code; confirm each in the preview:")
+    for code, (corr, how, look) in sorted(parts_map.JLC_ROTATION_BY_PART.items()):
+        d = parts_map.JLC_DATUM.get(code)
+        out.append("    %-9s %+4d  x%-3d  %s%s" % (code, corr, nb.get(code, 0), look,
+                   ("; CPL point moved (%+.2f, %+.2f) mm to their origin" % d) if d else ""))
+        out.append(wrap(how))
     return "\n".join(out)
 
 
@@ -280,8 +292,8 @@ def notes(outdir, m, boards=1):
     vias = ", ".join("%.2f/%.2f" % v for v in m["via_sizes"])
     with open(p, "w", encoding="utf-8") as f:
         f.write("""\
-GPSDO DDMTD FRONT END  --  fabrication notes
-============================================
+GPSDO DDMTD FRONT END, REV B  --  fabrication notes
+====================================================
 
 BOARD
   Outline ............ %(w).2f x %(h).2f mm, rectangular, no cutouts, no slots
@@ -294,8 +306,10 @@ BOARD
 WHAT IS ON EACH LAYER
   F.Cu      components, most routing, and a GND pour
   In1.Cu    solid GND plane
-  In2.Cu    the helper-clock distribution, as stripline between In1 and B.Cu
-  B.Cu      solid GND plane; the Raspberry Pi socket mounts on this side
+  In2.Cu    the helper-clock distribution and the slow buses, between the
+            In1 GND plane and the B.Cu +3V3_A plane
+  B.Cu      the +3V3_A PLANE (rev B item 5; rev A had a second GND pour here);
+            the Raspberry Pi socket mounts on this side
 
 MINIMUMS ACTUALLY USED  (all well inside JLCPCB's 4-layer capability)
   Minimum track ...... %(mt)s mm
@@ -311,38 +325,65 @@ MINIMUMS ACTUALLY USED  (all well inside JLCPCB's 4-layer capability)
       needs a break-away rail -- PLEASE SAY SO RATHER THAN SHIFTING THE PART.
       Everything nearer the edge than this is through hole (the SMA jacks, the
       screw terminals, the barrel jack, the two bench posts and the 2x20
-      socket) and is hand soldered afterwards.
+      socket), fitted by hand at JLCPCB or, for the socket, afterwards.
 
 IMPEDANCE
   No controlled-impedance service is required.  The helper traces on In2.Cu
-  are drawn as nominal 50 ohm stripline against the two adjacent ground
-  planes, but every one of them is source-terminated at its driver and none is
+  are drawn as nominal 50 ohm stripline between the In1 GND plane and the
+  B.Cu +3V3_A plane, but every one of them is source-terminated at its driver and none is
   longer than ~120 mm at 10 MHz, where the electrical length is a small
   fraction of a wavelength.  Build to the standard stackup.
 
-ASSEMBLY
-  Surface mount, TOP SIDE ONLY.  Nothing on the bottom is to be placed:
-  the only bottom-side part is the Raspberry Pi socket, which is through hole
-  and is hand soldered afterwards.
-  See GPSDO-PYNQ-Z2_bom.csv and GPSDO-PYNQ-Z2_cpl_kicad_native.csv.
+ASSEMBLY  (rev B: JLCPCB fits the through-hole parts too)
+  TOP SIDE: every surface-mount part, AND every through-hole part on the top:
+  the 27 SMA jacks, the 13 three-pin 50R/PARK headers, the 2x10 debug header,
+  the two bench pins, the barrel jack and the five screw terminals.  Each
+  header is ordered at its own length (XFCN PZ254V), not as a strip.
+  The ONE bottom-side part, the Raspberry Pi 2x20 socket J4001 (through hole),
+  is NOT in the BOM or CPL: it is on hand_solder_bom.csv and is soldered
+  afterwards, as on rev A -- unless JLCPCB will fit a bottom through-hole part
+  on a top-side order, in which case add it back.
+  See GPSDO-PYNQ-Z2_bom.csv and GPSDO-PYNQ-Z2_cpl_jlcpcb_upload.csv.
   Parts NOT to be fitted are listed in excluded_from_assembly.csv and appear
   in neither file -- please do not add them back.
 
-WHAT TO SET ON THE JLCPCB ORDER FORM
-  Base material ............ FR-4
-  Layers ................... 4
-  Dimensions ............... %(w).0f x %(h).0f mm, 1 piece, single design
-  PCB thickness ............ 1.6 mm
-  Impedance control ........ No
-  Via covering ............. Tented
-  Min via hole size/diameter 0.3 mm / 0.6 mm  (matches this design exactly)
-  Board outline tolerance .. regular (+/-0.2 mm)
-  Surface finish ........... ENIG  (lead-free HASL is acceptable)
-  Remove order number ...... "Specify a location" or "No" -- there is room in
-                             the lower-left margin below the title block
-  PCB assembly ............. Yes, TOP side, %(qty)s boards
-  Tooling holes ............ Added by JLCPCB
-  Confirm parts placement .. Yes  -- NOT OPTIONAL, see ROTATION below
+WHAT TO SET ON THE JLCPCB ORDER FORM, in the form's own order
+(CLAUDE_PCB.md section 8, the form as of 2026-10-09; a field not listed
+stays at its default)
+  PCB
+    Base Material ............ FR-4
+    Layers ................... %(nl)d
+    Dimensions ............... %(w).1f x %(h).1f mm
+    PCB Qty .................. 5 (the minimum)
+    Product Type ............. Industrial/Consumer electronics
+  PCB Specifications
+    Different Design ......... 1
+    Delivery Format .......... Single PCB
+    PCB Thickness ............ 1.6 mm
+    PCB Color ................ Green  (Economic PCBA does 4 layers in green
+                               only; any other colour forces Standard PCBA)
+    Silkscreen ............... White
+    Material Type ............ FR4 TG135 (default)
+    Surface Finish ........... ENIG, 1 U" gold -- NOT the default OSP: QFN-20,
+                               TSSOP-16 and SC-70-6 pads, through-hole parts
+                               soldered after reflow, and test pads to probe
+  High-spec Options
+    Outer / Inner Copper ..... 1 oz / 0.5 oz (defaults)
+    Specify Stackup .......... JLC04161H-7628 (the default 4-layer stackup)
+    Via Covering ............. Tented
+    Min via hole/diameter .... 0.3 mm / (0.4/0.45 mm), the default: this
+                               board's vias are %(vias)s mm
+    Board Outline Tolerance .. +/-0.2 mm (regular)
+    Mark on PCB .............. Remove Mark
+    Electrical Test .......... Flying Probe Fully Test (default)
+  PCB Assembly
+    PCBA Type ................ Economic, if the form keeps the through-hole
+                               parts under it; otherwise Standard
+    Assembly Side ............ Top Side
+    PCBA Qty ................. %(qty)s
+    Tooling holes ............ Added by JLCPCB
+    Confirm Parts Placement .. YES -- NOT OPTIONAL, see ROTATION below
+  Then upload GPSDO-PYNQ-Z2_bom.csv and GPSDO-PYNQ-Z2_cpl_jlcpcb_upload.csv.
 
 ROTATION  (round 33)
   KiCad's footprint zero-orientation and JLCPCB's feeder zero-orientation are
@@ -358,9 +399,9 @@ ROTATION  (round 33)
   board have never been checked against a preview at all, both polarised:
     D2003 (5.6V 5W Zener, SMB)   cathode band
     D6001 (PESD5V0S1BA, SOD-323) cathode band
-  If a preview still disagrees, upload the native file instead and tell the
-  generator: the table is mfg/parts_map.py, JLC_ROTATION, keyed on the exact
-  footprint name.
+  If the preview disagrees, do NOT turn parts in JLCPCB's viewer: say which,
+  and the generator's table changes (mfg/parts_map.py: JLC_ROTATION_BY_PART
+  for a part, JLC_ROTATION for a footprint), so the next upload is right too.
 
 PIN 1, PART BY PART  (round 35)
   Where the preview's pin-1 dot must land.  North is the screw-terminal edge
@@ -380,7 +421,8 @@ FILES
   %(name)s_cpl_jlcpcb_upload.csv  the same with JLCPCB rotation corrections
   %(name)s_assembly_top.pdf ... placement drawing, top
   %(name)s_assembly_bottom.pdf  placement drawing, bottom
-  hand_solder_bom.csv ......... through-hole parts, NOT for assembly
+  hand_solder_bom.csv ......... J4001 (the bottom socket) and the jumper
+                                shunts: NOT for assembly
   excluded_from_assembly.csv .. DNP parts and bare test pads
   annotated_bom.md / .csv ..... prices, stock and notes (for the buyer, not
                                 for the fab)

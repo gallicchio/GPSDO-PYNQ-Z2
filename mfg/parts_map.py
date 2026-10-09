@@ -70,31 +70,33 @@ MAP = {
         ("C908771", "18 V standoff, 20 V VBR, 29.2 V clamp at 13.7 A -- "
                     "matches the datasheet checked in round 21 exactly"),
 
-    # ---- through-hole headers: breakable strips, snapped to length -------
-    # These are hand soldered (see HAND_SOLDER_NOTE), so what matters is that
-    # the code buys the right pitch and enough pins, not that it matches the
-    # footprint's pin count.  One 1x40 strip covers all fifteen single-row
-    # positions with pins to spare.
+    # ---- through-hole headers ---------------------------------------------
+    # Rev B: JLCPCB fits every through-hole part (CLAUDE_PCB.md section 8,
+    # "nothing hand-soldered"), so each header is ordered at its OWN length.
+    # Rev A ordered 1x40 / 2x40 strips to snap by hand; a strip in the CPL is
+    # a 100 mm bar in JLCPCB's preview.
     ("50R/PARK", "PinHeader_1x03_P2.54mm_Vertical"):
-        ("C2337", "2.54 mm 1x40P breakable male strip -- snap to 1x3 (rev B item 11: "
-                  "1-2 = 50R, 2-3 = PARK)"),
+        ("C2937625", "XFCN PZ254V-11-03P, 1x03 2.54 mm (rev B item 11: "
+                     "1-2 = 50R, 2-3 = PARK)"),
     ("50R TERM", "PinHeader_1x02_P2.54mm_Vertical"):
         ("C2337", "2.54 mm 1x40P breakable male strip -- snap to 1x2.  "
                   "13 needed, plus 13 jumper shunts (see EXTRAS)"),
     ("BENCH +5V", "PinHeader_1x01_P2.54mm_Vertical"):
-        ("C2337", "same 1x40P strip, snapped to a single pin"),
+        ("C492400", "XFCN PZ254V-11-01P, a single 2.54 mm pin"),
     ("BENCH GND", "PinHeader_1x01_P2.54mm_Vertical"):
-        ("C2337", "same 1x40P strip, snapped to a single pin"),
+        ("C492400", "XFCN PZ254V-11-01P, a single 2.54 mm pin"),
     ("debug 2x10", "PinHeader_2x10_P2.54mm_Vertical"):
-        ("C29952", "2.54 mm 2x40P double-row strip -- snap to 2x10"),
+        ("C492427", "XFCN PZ254V-12-20P, 2x10 2.54 mm"),
 }
 
 # Things that are NOT on the board but that you cannot use it without.
 EXTRAS = [
-    ("C5305", 13, "2.54 mm open-top jumper shunts for the thirteen 50R TERM "
-                  "headers.  The board ships with them OFF -- fitting one on a "
-                  "ZED-F9T channel destroys its TIMEPULSE output (see the unit "
-                  "sheet warning), so they are a separate decision per channel"),
+    ("C5305", 13, "2.54 mm open-top jumper shunts for the thirteen 50R/PARK "
+                  "headers: 1-2 = 50R for a 50-ohm source, 2-3 = PARK on every "
+                  "channel with nothing plugged in (rev B item 11).  The board "
+                  "ships with them OFF -- 50R on a ZED-F9T channel destroys its "
+                  "TIMEPULSE output (see the unit sheet warning), so each is a "
+                  "decision per channel"),
 ]
 
 # Parts that are DNP on this board but that someone might one day fit.  These
@@ -193,6 +195,51 @@ JLC_ROTATION = {
                                           "mark of its own"),
 }
 
+# ---------------------------------------------------------------------------
+# Rev B: rotation PER PART, which wins over the footprint table above.
+# CLAUDE_PCB.md section 8: JLCPCB draws parts on one footprint differently
+# (the SN75160B lying down, the SN75161B upright), so a footprint's number
+# is only a default.  These are PREDICTED, not read: JLCPCB's own land
+# pattern of the code (EasyEDA, via ECP5's mfg/footprint_check.py), turned
+# until its pads land on ours by pin number; the correction is minus that
+# turn.  The same fit reproduces the two readings this board has for these
+# packages -- X3001's FT5H 270 (rev A's preview) and the QFN-20's 270
+# (Icepi's) -- and it is what says the HO buffer's SOT-23-5 (C23654) wants
+# 270 where rev A's SOT-23-5 flip-flops wanted 180.  Every one is listed in
+# PLACEMENT_CHECKS.txt for the preview.  2026-10-09.
+#   code: (correction, what fitted, what to look at in the preview)
+JLC_ROTATION_BY_PART = {
+    "C116660":  (270, "predicted: fit at 90, 0.003 mm", "74LVC2GU04 SC-70-6: pin 1 = 1A, the input"),
+    "C2868241": (270, "predicted: fit at 90, 0.003 mm", "LMK1C1108 TSSOP-16: pin 1 = CLKIN"),
+    "C3608122": (270, "predicted: fit at 90, 0.051 mm; Icepi read QFN-20 as 270",
+                 "Si5351C QFN-20: pin 1 = XA"),
+    "C23654":   (270, "predicted: fit at 90, 0.019 mm -- NOT the 180 of rev A's SOT-23-5s",
+                 "74LVC1G125: pin 1 = OE (grounded)"),
+    "C88374":   (270, "predicted: fit at 90, 0.001 mm", "U.FL: the centre pad toward the 1k"),
+    "C2937625": (270, "predicted: fit at 90; ECP5 read PZ254V as 270",
+                 "1x03 header lying along the tile, pin 1 at JP's 50R end"),
+    "C492427":  (270, "predicted: fit at 90, 0.000 mm; ECP5 read PZ254V as 270",
+                 "2x10 debug header along the edge"),
+    "C492400":  (0, "one pin: no direction", "a single pin"),
+    "C496549":  (0, "predicted: fit at 0 (their pins are numbered differently; "
+                 "the five holes fit to 0.014 mm)", "SMA: round, five holes"),
+    "C2977589": (0, "predicted: fit at 0 on the bottom", "RPi 2x20 socket, UNDERSIDE: unkeyed"),
+    "C720557":  (0, "predicted: fit at 0, 0.335 mm on pad 3 (a slot)", "barrel jack opening at the edge"),
+    "C880555":  (0, "predicted: fit at 0 by pin number", "1-Wire terminal: wire entry at the board edge"),
+}
+
+# Rev B: where JLCPCB's drawing has its ORIGIN, in our footprint's own frame
+# (mm, KiCad's y down).  The upload CPL puts the part there, turned with it:
+# JLCPCB places THEIR origin at the CPL's Mid X/Y (CLAUDE_PCB.md section 8).
+JLC_DATUM = {
+    "C88374":   (-0.763, 0.000),     # U.FL: the body's middle, not the centre pad
+    "C2937625": (0.000, 2.540),      # 1x03: the middle pin
+    "C492427":  (1.270, 11.430),     # 2x10: the middle of the pins
+    "C2977589": (-24.130, 1.270),    # 2x20 socket: the middle of the pins
+    "C720557":  (-3.166, 2.341),
+    "C880555":  (3.500, 0.000),      # 1x03 terminal: the middle pin
+}
+
 # Looked at in the same preview and needing NO correction.  Listed rather than
 # simply left out, so that "absent from both tables" can mean "nobody has
 # looked at this one", which is what the release reports.
@@ -200,6 +247,12 @@ JLC_ROTATION_OK = {
     "D_SMA": ("D2001", "cathode band points south and the silkscreen's closed "
                        "side is south, so it is already right -- correcting "
                        "it would be the bug"),
+    # Rev B, 2026-10-09: never read in a preview, but rev A was BUILT at
+    # KiCad's native angle for both, and works.
+    "D_SMB": ("D2003", "rev A was built at 0 and its 5 V rail runs: a 5.6 V "
+                       "zener the wrong way round would short it"),
+    "D_SOD-323": ("D6001", "the PESD5V0S1BA is bidirectional: either way round "
+                           "is right"),
 }
 
 # Two-terminal and unpolarised: which way round they go is not a question.

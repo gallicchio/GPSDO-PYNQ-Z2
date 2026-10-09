@@ -40,7 +40,9 @@ def sha(path, n=12):
 def check(outdir, rows, res):
     """Every assertion that has to hold before this is worth uploading."""
     bad = []
-    smt = {r["ref"] for r in rows if r["cls"] == "smt"}
+    # rev B: the top-side through-hole parts are assembled too (make_bom.py)
+    smt = {r["ref"] for r in rows if r["cls"] == "smt"
+           or (r["cls"] == "tht" and r["side"] == "top")}
     dnp = {r["ref"] for r in rows if r["cls"] == "dnp"}
     nop = {r["ref"] for r in rows if r["cls"] == "nopart"}
 
@@ -109,6 +111,73 @@ def check(outdir, rows, res):
     return bad
 
 
+def placement_checks(outdir, rows):
+    """Rev B: JLCPCB's own land pattern of every assembled code, fitted to the
+    board (footprint_check.py, from ECP5), and the CPL's correction against
+    the fit's prediction.  Writes PLACEMENT_CHECKS.txt; returns failures.
+
+    A failure is a part that does not fit (a hole the board lacks, pads that
+    miss by more than LAND_WARN), or a per-part correction in parts_map.py
+    that disagrees with what the fit predicts.  CLAUDE_PCB.md section 8."""
+    import collections
+    import footprint_check as FC
+    import parts_map
+    fps, drills = FC.read_board(bomdata.PCB)
+    by_ref = {f["ref"]: f for f in fps}
+    placed = [r for r in rows if r["cls"] == "smt"
+              or (r["cls"] == "tht" and r["side"] == "top")]
+    groups = collections.defaultdict(list)
+    for r in placed:
+        groups[(r["lcsc"], r["fpshort"], r["side"])].append(r["ref"])
+    lines, bad = [], []
+    lines.append("PLACEMENT CHECKS -- rev %s, %s" % (D.REV, D.DATE))
+    lines.append("JLCPCB's land pattern of each code, fitted to our pads by pin number.")
+    lines.append("'predicted' is the CPL correction the fit implies (minus its turn);")
+    lines.append("'CPL' is what the upload file applies.  Read every PREDICTED row in")
+    lines.append("JLCPCB's placement preview: pin 1 where 'look' says.  Nothing is on the")
+    lines.append("back except J4001, which is hand soldered and not in the CPL.")
+    lines.append("")
+    lines.append("%-9s %-34s %4s %5s %5s  %-9s %s" % ("code", "footprint", "n", "pred", "CPL", "status", "refs / look"))
+    for (code, fp, side), refs in sorted(groups.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+        f = by_ref.get(refs[0])
+        if f is None:
+            bad.append("%s: not on the board" % refs[0]); continue
+        if fp in parts_map.JLC_ROTATION_NA:
+            continue
+        try:
+            probs, lp, ts = FC.check(code, [by_ref[r] for r in refs if r in by_ref], drills)
+        except Exception as e:          # no land pattern published, or offline
+            lines.append("%-9s %-34s %4d %5s %5s  %-9s %s" % (code, fp[:34], len(refs), "?", "?", "NO FIT", e))
+            continue
+        fit = FC.FITS.get((code, side == "bottom"), {})
+        pred = (-int(fit.get("deg", 0))) % 360
+        e = parts_map.JLC_ROTATION_BY_PART.get(code) or parts_map.JLC_ROTATION.get(fp)
+        cpl = (e[0] % 360) if e else 0
+        how = ("read" if code not in parts_map.JLC_ROTATION_BY_PART and fp in parts_map.JLC_ROTATION
+               else "PREDICTED" if code in parts_map.JLC_ROTATION_BY_PART else "none")
+        hard = [p for p in probs if p[0] in ("HOLE", "LAND", "PADS")]
+        status = how
+        if hard:
+            status = "FAIL"
+            bad.append("%s (%s): %s" % (code, refs[0], "; ".join("%s %s" % p for p in hard)))
+        elif how == "PREDICTED" and pred != cpl:
+            status = "DISAGREES"
+            bad.append("%s (%s): parts_map gives %d, the fit predicts %d" % (code, refs[0], cpl, pred))
+        elif how == "read" and pred != cpl:
+            status = "read/fit"     # a preview reading wins; say they differ
+        look = (parts_map.JLC_ROTATION_BY_PART.get(code) or (0, "", ""))[2] or (e[2] if e else "")
+        lines.append("%-9s %-34s %4d %5d %5d  %-9s %s%s" % (
+            code, fp[:34], len(refs), pred, cpl, status,
+            ",".join(sorted(refs, key=lambda x: (len(x), x))[:6]) + ("..." if len(refs) > 6 else ""),
+            ("  -- " + look) if look else ""))
+        for p in probs:
+            if p[0] not in ("HOLE", "LAND", "PADS"):
+                lines.append("          %s: %s" % p)
+    with open(os.path.join(outdir, "PLACEMENT_CHECKS.txt"), "w", encoding="utf-8") as fo:
+        fo.write("\n".join(lines) + "\n")
+    return bad
+
+
 def undated():
     """Why this revision is not yet for upload, or '' if it is.
 
@@ -149,6 +218,8 @@ def main():
 
     print("\nchecks")
     bad = check(outdir, rows, res)
+    bad += placement_checks(outdir, rows)
+    print("  %-34s written" % "PLACEMENT_CHECKS.txt")
     draft = undated()
     for b in bad:
         print("  FAIL  %s" % b)

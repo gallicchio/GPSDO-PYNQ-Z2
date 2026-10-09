@@ -6,7 +6,11 @@ hand-solder list for everything it will not fit.
   <out>/GPSDO-PYNQ-Z2_cpl_kicad_native.csv   Designator, Mid X, Mid Y, Layer, Rotation
   <out>/hand_solder_bom.csv     the through-hole parts, to order loose
 
-Only surface-mount, non-DNP parts with a part number go into the first two.
+Rev B: every non-DNP part with a part number goes into the first two,
+THROUGH-HOLE INCLUDED -- JLCPCB fits the SMAs, headers, socket, jack and
+terminals (CLAUDE_PCB.md section 8: nothing hand-soldered), so the hand-solder
+list carries only what is not on the board (the jumper shunts).
+Rev A put only surface-mount parts in them.
 That matters: KiCad does NOT copy the schematic's DNP flag into the board, so
 `kicad-cli pcb export pos --exclude-dnp` silently exports all 27 do-not-populate
 parts on this design.  Everything here is filtered from bomdata.components()
@@ -54,17 +58,38 @@ def norm_rot(r):
 # diodes, SOD-323, the FT5H oscillator, all passives) are left at KiCad's
 # native rotation in both files.
 # ---------------------------------------------------------------------------
-def jlc_rotation(fpshort, rot):
+def jlc_rotation(fpshort, rot, lcsc=None, side="top"):
     """(corrected rotation, correction applied) for one placement.
 
-    The table lives in parts_map.py, keyed on the EXACT footprint name and
-    read off JLCPCB's own placement preview -- see the long note there.  A
-    footprint with no entry is left alone, and `unchecked()` below is what
-    stops that being silent."""
-    e = parts_map.JLC_ROTATION.get(fpshort)
+    Rev B: the PART's entry (parts_map.JLC_ROTATION_BY_PART) first, then the
+    footprint's.  A bottom-side part is mirrored first, rot -> 180 - rot
+    (CLAUDE_PCB.md section 8, confirmed on Icepi's ten), then corrected.  A
+    part with no entry is left alone, and `unchecked()` below is what stops
+    that being silent."""
+    base = (180.0 - float(rot)) if side == "bottom" else float(rot)
+    e = parts_map.JLC_ROTATION_BY_PART.get(lcsc) or parts_map.JLC_ROTATION.get(fpshort)
     if e is None:
-        return norm_rot(rot), 0
-    return norm_rot(float(rot) + e[0]), e[0]
+        return norm_rot(base), 0
+    return norm_rot(base + e[0]), e[0]
+
+
+def jlc_datum(r):
+    """Where JLCPCB's origin of this part lands on the board (x, y; y down).
+
+    parts_map.JLC_DATUM gives it in our footprint's frame AS THE FILE STORES
+    IT -- a bottom part's pads are already mirrored there, and footprint_check
+    fits in that frame -- so it is only turned with the footprint, as KiCad
+    does (angle counter-clockwise on screen, y down).  Checked against the
+    board: every shifted point lands on the middle of its own pads, J4001's on
+    the bottom included (a second mirror put it 48.26 mm off)."""
+    import math
+    d = parts_map.JLC_DATUM.get(r["lcsc"])
+    if not d:
+        return r["x"], r["y"]
+    dx, dy = d
+    a = math.radians(float(r["rot"]))
+    return (r["x"] + dx * math.cos(a) + dy * math.sin(a),
+            r["y"] - dx * math.sin(a) + dy * math.cos(a))
 
 
 def unchecked(smt):
@@ -75,15 +100,23 @@ def unchecked(smt):
     five rounds, which is the same thing as being silently wrong."""
     known = (set(parts_map.JLC_ROTATION) | set(parts_map.JLC_ROTATION_OK)
              | set(parts_map.JLC_ROTATION_NA))
-    n = collections.Counter(r["fpshort"] for r in smt)
+    n = collections.Counter(r["fpshort"] for r in smt
+                            if r["lcsc"] not in parts_map.JLC_ROTATION_BY_PART)
     return sorted((fp, c) for fp, c in n.items() if fp not in known)
 
 
 def write(outdir, rows=None, quiet=False):
     rows = rows or bomdata.components()
     os.makedirs(outdir, exist_ok=True)
-    smt = [r for r in rows if r["cls"] == "smt"]
-    tht = [r for r in rows if r["cls"] == "tht"]
+    # Rev B: through-hole parts are assembled too; `smt` is now "placed".
+    # Except the one through-hole part on the BOTTOM, the Raspberry Pi socket:
+    # whether JLCPCB fits a bottom-side through-hole part on a top-side
+    # assembly order, or needs the dearer both-sides service, is not
+    # established, so it stays on the hand-solder list (as on rev A) until
+    # somebody asks them.  FABRICATION_NOTES says so.
+    smt = [r for r in rows if r["cls"] == "smt"
+           or (r["cls"] == "tht" and r["side"] == "top")]
+    tht = [r for r in rows if r["cls"] == "tht" and r["side"] == "bottom"]
     dnp = [r for r in rows if r["cls"] == "dnp"]
 
     # ---- BOM: one line per distinct part, designators joined --------------
@@ -150,10 +183,11 @@ def write(outdir, rows=None, quiet=False):
         w = csv.writer(f)
         w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
         for r in sorted(smt, key=lambda r: r["ref"]):
-            rot, corr = jlc_rotation(r["fpshort"], r["rot"])
+            rot, corr = jlc_rotation(r["fpshort"], r["rot"], r["lcsc"], r["side"])
             if corr:
                 ncorr[(r["fpshort"], corr)] += 1
-            w.writerow([r["ref"], "%.4f" % r["x"], "%.4f" % (-r["y"]),
+            jx, jy = jlc_datum(r)
+            w.writerow([r["ref"], "%.4f" % jx, "%.4f" % (-jy),
                         r["side"].capitalize(), "%.4f" % rot])
 
     # ---- hand-solder list --------------------------------------------------

@@ -398,7 +398,11 @@ def hand_placed(G):
     # The margins tell you about the gradient across the array; this one tells
     # you about the thing whose drift actually moves the measurement, and
     # round 15 left it out.
-    temps["U5007"] = (G.XC, 25.0)
+    # Rev B (item 20, Jason 2026-10-09: option A, a thermostat on the 24
+    # heaters as they are): it moves BESIDE THE FAN-OUT, between the two
+    # LMK1C1108s on the block's right side, as the thermostat's sensor --
+    # the one thing whose temperature every channel's timing shares.
+    temps["U5007"] = (G.XC - 0.2 + 6.7, 102.0)   # clear of U3004 by 0.17
     temps["U5008"] = (6.5, 168.0)   # a fourth down the left margin;
                                     # at (70, BH-6) its support stack ran
                                     # off the bottom edge
@@ -1376,7 +1380,7 @@ def build():
     # millimetres below it, but its SDA and SCL pins are pins 1 and 2, with the
     # ALERT and GND pins between them and the links.  Step west clear of the
     # package first, then drop.
-    if "U5007" in placed:
+    if "U5007" in placed and placed["U5007"][1] < 40.0:    # rev A's spot only
         cx, cy, _r7 = placed["U5007"]
         for pin, nm7, dx7 in (("2", "I2C_SCL", 4.6), ("1", "I2C_SDA", 5.6)):
             n7 = nets.get("U5007", {}).get(pin)
