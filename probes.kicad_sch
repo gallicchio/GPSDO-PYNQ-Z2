@@ -2453,7 +2453,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 320.04 135.89 90)
+		(at 342.9 138.43 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2461,9 +2461,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "1e617ff7-c495-a777-df28-a33308ad21b7")
-		(property "Reference" "R6006"
-			(at 320.04 127 270)
+		(uuid "17834353-337d-56a0-74f5-94bfbea45fa9")
+		(property "Reference" "R6004"
+			(at 342.9 129.54 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2474,7 +2474,7 @@
 			)
 		)
 		(property "Value" "47R"
-			(at 320.04 130.81 270)
+			(at 342.9 133.35 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2484,8 +2484,8 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 320.04 135.89 270)
+		(property "Footprint" "Resistor_SMD:R_1206_3216Metric"
+			(at 342.9 138.43 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2497,7 +2497,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 320.04 135.89 270)
+			(at 342.9 138.43 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2509,7 +2509,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 320.04 135.89 270)
+			(at 342.9 138.43 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2521,99 +2521,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "4c2e379a-6648-46f3-2ea0-3885a2168206")
+			(uuid "6d20fc2d-7485-9a0d-faea-b1d162a74eb9")
 		)
 		(pin "2"
-			(uuid "8d4f96f1-f5ed-17e1-0253-6dce31d728cb")
+			(uuid "80ecbed2-cd82-0f7c-60e0-4ab0edf654db")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6006")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 107.95 97.79 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "23176b79-453d-9ad1-344d-d728261b048d")
-		(property "Reference" "R6002"
-			(at 107.95 88.9 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "22R"
-			(at 107.95 92.71 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 107.95 97.79 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 107.95 97.79 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 107.95 97.79 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "0e8d06d0-ccd9-5a2c-611c-1d2d49158ed6")
-		)
-		(pin "2"
-			(uuid "e0ab2496-5049-e3ae-8c71-f7391950fb5a")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6002")
+					(reference "R6004")
 					(unit 1)
 				)
 			)
@@ -2791,174 +2707,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
 					(reference "D6001")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 320.04 212.09 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "3b9e2b66-fa69-b10c-1674-cab5a208a6f3")
-		(property "Reference" "R6010"
-			(at 320.04 203.2 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "47R"
-			(at 320.04 207.01 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 320.04 212.09 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 320.04 212.09 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 320.04 212.09 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "a3fa1ae7-e186-39c5-2e78-1fa0e55aa995")
-		)
-		(pin "2"
-			(uuid "15b68b2c-403e-0205-7827-31dc773df57b")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6010")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 320.04 97.79 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "3daa61c8-5a42-654e-1f58-2f74305f91cb")
-		(property "Reference" "R6004"
-			(at 320.04 88.9 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "47R"
-			(at 320.04 92.71 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 320.04 97.79 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 320.04 97.79 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 320.04 97.79 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "2610132f-e745-afa4-1aa9-77e16abf5d80")
-		)
-		(pin "2"
-			(uuid "eaac7e5a-81a7-50c9-6a93-067432290be4")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6004")
 					(unit 1)
 				)
 			)
@@ -3326,7 +3074,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 342.9 100.33 90)
+		(at 342.9 176.53 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3334,9 +3082,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "63fd354f-28c8-314e-dd3c-4941bdeb61d3")
-		(property "Reference" "R6003"
-			(at 342.9 91.44 270)
+		(uuid "684a4677-1080-d300-5d8d-063611bcd962")
+		(property "Reference" "R6006"
+			(at 342.9 167.64 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3347,7 +3095,7 @@
 			)
 		)
 		(property "Value" "47R"
-			(at 342.9 95.25 270)
+			(at 342.9 171.45 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3358,7 +3106,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_1206_3216Metric"
-			(at 342.9 100.33 270)
+			(at 342.9 176.53 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3370,7 +3118,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 342.9 100.33 270)
+			(at 342.9 176.53 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3382,7 +3130,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 342.9 100.33 270)
+			(at 342.9 176.53 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3394,15 +3142,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "92fce6df-0dbc-d18f-bc30-191b2cffaf07")
+			(uuid "28130869-cf1e-1eb4-8cc4-21ccef6ef27c")
 		)
 		(pin "2"
-			(uuid "dd8955cd-7966-408a-627d-fa2632c54647")
+			(uuid "ad224b15-37df-b260-b60b-68f840a4f4b3")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6003")
+					(reference "R6006")
 					(unit 1)
 				)
 			)
@@ -3410,7 +3158,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 90.17 60.96 0)
+		(at 320.04 212.09 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3418,9 +3166,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "6da7484b-d71d-b10f-51e6-e7e983c15888")
-		(property "Reference" "R6001"
-			(at 93.98 59.69 0)
+		(uuid "6abd1b96-ee65-102a-5582-fc9859d07eac")
+		(property "Reference" "R6009"
+			(at 320.04 203.2 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3430,8 +3178,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "4R7"
-			(at 93.98 63.5 0)
+		(property "Value" "47R"
+			(at 320.04 207.01 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3442,7 +3190,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 90.17 60.96 0)
+			(at 320.04 212.09 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3454,7 +3202,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 90.17 60.96 0)
+			(at 320.04 212.09 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3466,7 +3214,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 90.17 60.96 0)
+			(at 320.04 212.09 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3478,15 +3226,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "69092e9a-1fbe-5865-53a4-e78b88d2b28c")
+			(uuid "957f9504-b91e-0a03-a301-52ec26aba457")
 		)
 		(pin "2"
-			(uuid "1865a339-5604-1265-6458-28ccbc5282ac")
+			(uuid "7057269f-c01c-dabb-adfd-6bfb433f7a0c")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6001")
+					(reference "R6009")
 					(unit 1)
 				)
 			)
@@ -3592,6 +3340,90 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 320.04 250.19 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "720fb8f9-984f-3c58-0354-e1c6d8fd4a19")
+		(property "Reference" "R6011"
+			(at 320.04 241.3 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "47R"
+			(at 320.04 245.11 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 320.04 250.19 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 320.04 250.19 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 320.04 250.19 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "93551cf7-eda1-3001-9579-bd8149d92806")
+		)
+		(pin "2"
+			(uuid "db1472ca-b6af-3f69-ea98-a3aa58865914")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
+					(reference "R6011")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 250.19 55.88 0)
 		(unit 1)
@@ -3668,6 +3500,90 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
 					(reference "#PWR6008")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 107.95 97.79 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "86e429e1-8463-c2ed-b40a-b32d63b474fd")
+		(property "Reference" "R6001"
+			(at 107.95 88.9 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "22R"
+			(at 107.95 92.71 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 107.95 97.79 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 107.95 97.79 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 107.95 97.79 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "f9b9927c-a4f0-2c99-b572-d31d2e632303")
+		)
+		(pin "2"
+			(uuid "0974c20f-e455-2fdf-8d19-f1fd9e040568")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
+					(reference "R6001")
 					(unit 1)
 				)
 			)
@@ -4021,90 +3937,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:R")
-		(at 342.9 176.53 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "a33c24a2-aa65-a54f-70d4-1afab1ebd206")
-		(property "Reference" "R6007"
-			(at 342.9 167.64 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "47R"
-			(at 342.9 171.45 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_1206_3216Metric"
-			(at 342.9 176.53 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 342.9 176.53 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 342.9 176.53 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "1338ae50-fdb7-e852-4374-425993ac02a2")
-		)
-		(pin "2"
-			(uuid "30c8f69d-9a43-7648-9256-9ddc3a263948")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6007")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "Connector_Generic:Conn_01x03")
 		(at 378.46 252.73 0)
 		(unit 1)
@@ -4288,90 +4120,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:R")
-		(at 342.9 252.73 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "a64ccf2a-b39a-c503-50b5-2e274ba41cbc")
-		(property "Reference" "R6011"
-			(at 342.9 243.84 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "47R"
-			(at 342.9 247.65 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_1206_3216Metric"
-			(at 342.9 252.73 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 342.9 252.73 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 342.9 252.73 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "9ac59fbc-0d2e-caa0-610f-e2baead00c2a")
-		)
-		(pin "2"
-			(uuid "98d31f3c-bb63-d10e-e875-1a19fb202a28")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6011")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "Connector_Generic:Conn_01x03")
 		(at 378.46 138.43 0)
 		(unit 1)
@@ -4465,6 +4213,90 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
 					(reference "J6002")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 342.9 100.33 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "a713e052-fc3e-c20f-8601-6dcd00b46f63")
+		(property "Reference" "R6002"
+			(at 342.9 91.44 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "47R"
+			(at 342.9 95.25 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_1206_3216Metric"
+			(at 342.9 100.33 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 342.9 100.33 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 342.9 100.33 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "4fbf56ae-b5e4-7841-68ab-b01c28c2775d")
+		)
+		(pin "2"
+			(uuid "d10eb63d-4344-c236-16be-37ea15c46106")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
+					(reference "R6002")
 					(unit 1)
 				)
 			)
@@ -4735,7 +4567,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 342.9 138.43 90)
+		(at 342.9 252.73 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -4743,9 +4575,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "af4c949e-c9cc-2abc-1798-e3d4b161ef2c")
-		(property "Reference" "R6005"
-			(at 342.9 129.54 270)
+		(uuid "b8a81958-7850-54e6-e332-b975111ce376")
+		(property "Reference" "R6010"
+			(at 342.9 243.84 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4756,7 +4588,7 @@
 			)
 		)
 		(property "Value" "47R"
-			(at 342.9 133.35 270)
+			(at 342.9 247.65 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4767,7 +4599,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_1206_3216Metric"
-			(at 342.9 138.43 270)
+			(at 342.9 252.73 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4779,7 +4611,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 342.9 138.43 270)
+			(at 342.9 252.73 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4791,7 +4623,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 342.9 138.43 270)
+			(at 342.9 252.73 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4803,15 +4635,99 @@
 			)
 		)
 		(pin "1"
-			(uuid "d9e353b7-9b1b-c450-5bc1-2811512953f5")
+			(uuid "d6a9086b-5f24-142a-417e-4d7bf1b2057d")
 		)
 		(pin "2"
-			(uuid "e623a31d-aeb4-56ac-09cc-6489c4a96aba")
+			(uuid "056944a5-eeb0-fd17-d943-74bf1ffd44e2")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6005")
+					(reference "R6010")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 320.04 97.79 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "c44dce5e-46a1-a670-2c08-9f8dae60eb09")
+		(property "Reference" "R6003"
+			(at 320.04 88.9 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "47R"
+			(at 320.04 92.71 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 320.04 97.79 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 320.04 97.79 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 320.04 97.79 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "1e4082d1-2b09-08b5-0a21-4f9be2edc129")
+		)
+		(pin "2"
+			(uuid "7ff434cf-9fdb-9f21-ecca-1236a4fbe58e")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
+					(reference "R6003")
 					(unit 1)
 				)
 			)
@@ -4827,8 +4743,8 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "bcd8eb8e-f646-6f31-5f16-85a013673da8")
-		(property "Reference" "R6008"
+		(uuid "e16751eb-0e64-d8e6-7745-54555342e0c5")
+		(property "Reference" "R6007"
 			(at 320.04 165.1 270)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4887,15 +4803,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "3f129a88-7a5d-eb6a-ff73-f3fbddc316d9")
+			(uuid "3e12a5f1-406d-7fd5-90c6-1182eebcd58b")
 		)
 		(pin "2"
-			(uuid "6c116478-28d1-e0af-c034-21ff663720db")
+			(uuid "b9fcfe49-7260-02b6-1d86-80e02f704bae")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6008")
+					(reference "R6007")
 					(unit 1)
 				)
 			)
@@ -4903,7 +4819,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 320.04 250.19 90)
+		(at 90.17 60.96 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -4911,9 +4827,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "c9071f99-5dbe-3d0f-f208-963349d2535b")
-		(property "Reference" "R6012"
-			(at 320.04 241.3 270)
+		(uuid "ec61b986-2ae6-13e4-88cd-9ff4f7f1e841")
+		(property "Reference" "R6051"
+			(at 93.98 59.69 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4923,8 +4839,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "47R"
-			(at 320.04 245.11 270)
+		(property "Value" "4R7"
+			(at 93.98 63.5 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -4935,7 +4851,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 320.04 250.19 270)
+			(at 90.17 60.96 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4947,7 +4863,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 320.04 250.19 270)
+			(at 90.17 60.96 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4959,7 +4875,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 320.04 250.19 270)
+			(at 90.17 60.96 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4971,15 +4887,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "3708e509-5a11-ddc0-8c8f-a761b0f32e0d")
+			(uuid "d6079d45-057a-98eb-5d66-b635e8d2d997")
 		)
 		(pin "2"
-			(uuid "952243b6-346e-5c49-7013-feec69ae6968")
+			(uuid "18900a46-898a-61da-12c6-119c201d7850")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6012")
+					(reference "R6051")
 					(unit 1)
 				)
 			)
@@ -4995,8 +4911,8 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "f7e5e94c-b21b-fa73-81e7-6553a8871c68")
-		(property "Reference" "R6009"
+		(uuid "f4c19999-0b9c-aab3-5845-91c773abbbfb")
+		(property "Reference" "R6008"
 			(at 342.9 205.74 270)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5055,15 +4971,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "d70ba3be-c722-23cd-6900-00087594d51f")
+			(uuid "e5b46738-65ec-cc2c-13e6-5ca6eb6679c4")
 		)
 		(pin "2"
-			(uuid "d98f17d0-bae0-c824-03cc-e69f817d19d7")
+			(uuid "808e528a-9b4a-3f6b-318b-79db3c9f63eb")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
-					(reference "R6009")
+					(reference "R6008")
 					(unit 1)
 				)
 			)
@@ -5146,6 +5062,90 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
 					(reference "#PWR6002")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 320.04 135.89 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "fd290fcf-91ac-2844-6e3a-db24e3ddee13")
+		(property "Reference" "R6005"
+			(at 320.04 127 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "47R"
+			(at 320.04 130.81 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 320.04 135.89 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 320.04 135.89 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 320.04 135.89 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "24320bd0-8b97-ccb7-3aa0-b86e6596b1d7")
+		)
+		(pin "2"
+			(uuid "09ea1033-1840-6453-89b5-3993c4b98dd6")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/a8daa41d-6107-d0e2-43e6-cdfd374e2798"
+					(reference "R6005")
 					(unit 1)
 				)
 			)

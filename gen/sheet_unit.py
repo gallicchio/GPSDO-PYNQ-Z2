@@ -146,9 +146,11 @@ def _ten_mhz(s, R, beat, hclk, rser, rsh2, term, L):
     # item 19: a U.FL tap through 1k, the resistor at the node
     s.junction(156.21, y)
     s.wire(156.21, y, 156.21, y - 5.08)
-    r_v(s, 156.21, y - 8.89, R("R"), "1k", left=True)
+    r_v(s, 156.21, y - 8.89, "R%d21" % R.block, "1k", left=True)    # rev B: new parts from 21
     pu = D.P["UFL"]
-    tap = s.sym(pu["lib"], 156.21, y - 15.24, 90, ref=R("J"), value="TAP IN", footprint=pu["fp"],
+    # Jx03, not the next number: Jx01 (10 MHz) and Jx02 (pps) keep rev A's names
+    tap = s.sym(pu["lib"], 156.21, y - 15.24, 90, ref="J%d03" % R.block, value="TAP IN",
+                footprint=pu["fp"],
                 lcsc=pu["lcsc"], ref_dxy=(5.08, -2.54), val_dxy=(5.08, 0.0))
     s.wire(156.21, y - 12.7, *tap.pin(1))
     gnd(s, *tap.pin(2), drop=3.81, R=R)
@@ -180,7 +182,7 @@ def _ten_mhz(s, R, beat, hclk, rser, rsh2, term, L):
     # PARK (item 11): 100k from the gate to the header's pin 3, its body at the gate
     s.junction(186.69, y)
     s.wire(186.69, y, 186.69, y + 5.08)
-    r_v(s, 186.69, y + 8.89, R("R"), "100k", left=True)
+    r_v(s, 186.69, y + 8.89, "R%d22" % R.block, "100k", left=True)
     s.wire(186.69, y + 12.7, 186.69, y + 16.51)
     s.label(186.69, y + 16.51, "PARK", justify="right bottom")
     s.note(134.62, y + 60.96, 62.23, 0,

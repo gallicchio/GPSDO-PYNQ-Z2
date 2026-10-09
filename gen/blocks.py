@@ -30,6 +30,14 @@ class RefGen:
     def pwr(self):
         return self("#PWR")
 
+    def filt(self):
+        """Rev B item 12: a gate's supply resistor, where rev A had a bead (FBnn).
+        Numbered from 51 in the block, so that every part rev A had keeps its
+        number (R6001-R6011 under the 1-Wire terminals, say) instead of moving up
+        one for each bead ahead of it."""
+        self.n["_filt"] = self.n.get("_filt", 0) + 1
+        return "R%d%02d" % (self.block, 50 + self.n["_filt"])
+
 
 def gnd(s, x, y, drop=6.35, ref=None, R=None):
     """GND symbol `drop` below (x,y), wired up to it.  drop=0 places the symbol
@@ -136,7 +144,7 @@ def decouple(s, x_vcc, y_vcc, rail_net, R, note="", tall=True,
     pin (datasheet section 7.1), and it has two of them, so it passes
     ("100n", "100n") and the layout puts one at pin 1 and one at pin 7.
     """
-    fb_ref, c1_ref, c2_ref = R("R"), R("C"), R("C")
+    fb_ref, c1_ref, c2_ref = R.filt(), R("C"), R("C")
     y_node = y_vcc - (22.86 if tall else 10.16)   # decoupled node, above the gate
     y_fb = y_node - 6.35
     r_v(s, x_vcc, y_fb, fb_ref, D.P["RFILT"]["val"])
