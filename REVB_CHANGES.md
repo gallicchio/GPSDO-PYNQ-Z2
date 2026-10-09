@@ -37,7 +37,7 @@ Do this on the day it is ordered:
    `mfg/release/`, the handbook, the README and `SHA256SUMS.txt`.
 5. Set `REV = "C"`, `DATE = "unreleased"`, and start `REVC_CHANGES.md`.
 
-## Rev B in the generator: where it stands (2026-10-09, 08:30)
+## Rev B in the generator: where it stands (2026-10-09, 09:50)
 
 Started from rev A's generator on the morning after N1.  `revB_progress/` holds
 renders of the placement (the whole board, unit 1's tile, the helper block, the
@@ -59,7 +59,12 @@ rail taps) and the draft schematic as PDF.
 | yes | **the tile's hand tracks** (all 13 units): U01's filter on the LEFT (the SC-70-6 has VCC between its outputs), its R51 to +3V3_A by a via; 1Y straight to U02; ground out between the rows; tap and park lanes through the 0.84 mm gaps in JP01's column. DRC: no clearance errors, shorts or crossings | 11, 18, 19 |
 | yes | the tile's silk designators: J03, R21, R22, R51 and JP01 get preferred spots in the TILE's frame (same on both sides); on unit 1 every new name is beside its part | 1, 2 |
 | no | on the right-hand units R22's name is crowded out by the heater's (R20xx) and lands by R05; J03's name goes to F.Fab on units 2-12 (even), 11, 13 (the unit numeral fills its spot), and R21's on units 10 and 12 | 1, 2 |
-| no | the helper block's hand tracks, then the router | |
+| yes | **the helper block re-placed for routing and every track drawn by hand** (`pcb/helper.py`): the first routed build left 37 nets in pieces there (a 0.5 mm-grid router cannot enter a 0.5 mm QFN or a 0.65 mm TSSOP). VDDOA hops CLK0 on In2, CLK2 reaches the HO buffer on In2, each LMK1C1108's VDD runs under its body and its grounds drop to vias there, every output's 33R sits level with its pin, HELPER_SQ reaches both LMKs on In2, +3V3_D runs along the block's top edge, HO and EXT HELPER IN cross the margin lanes on F.Cu. Unrouted DRC: no clearance errors, every in-block net whole | 9, 10, 22 |
+| yes | the DNP crystal Y3001 removed: XA/XB float (Si5351 datasheet 7.5); RA1 settled CLKIN | 9 |
+| yes | U5007 (the thermostat's sensor) at the far end of U3005, local (96.5, -7.6): between the LMKs is where their 33Rs fan out | 20 |
+| yes | B.Cu's +3V3_A pour kept 3.6 mm from every mounting hole and the PYNQ slot (a standoff on the bottom face no longer meets +3V3_A) | 5 |
+| yes | **release pipeline for rev B**: JLCPCB fits every top-side through-hole part, headers at their own lengths; per-part rotations and origins predicted from JLCPCB's land patterns (reproducing all 8 of rev A's preview readings); `PLACEMENT_CHECKS.txt` gate; FABRICATION_NOTES with the order form field by field | |
+| no | the full routed build of the new helper block, DRC 0, then the dated release | |
 | no | INA3221; TPS3700 LEDs; the heater away from the tiles; the squarer-supply and squarer-output taps on units 1 and 4 | 6, 7, 19, 20 |
 | no | JLC stock check of the new ICs (74LVC2GU04, LMK1C1108, U.FL) at order time; the 74AUP2GU04 had 0 stock | 8 |
 
