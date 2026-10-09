@@ -153,10 +153,11 @@ def pps_box():
 W_SIG, W_PWR = 0.25, 0.5
 
 def _ic_power_routes(fb, y, rail):
-    """rail -> ferrite -> Vcc, and the two capacitors hanging off that lane."""
+    """4R7 -> Vcc, and the two capacitors hanging off that lane.  Rev B: the
+    4R7's +3V3_A end (pad 1) takes its own via to the B.Cu plane, found by
+    build_pcb's plane-via search; rev A ran it to a rail in the gutter."""
     vy = y + 1.1375
     return [
-        ((fb, "1"), W_PWR, [(rail, vy), (7.662, vy)]),
         ((fb, "2"), W_SIG, [(5.538, vy), (0.95, vy)]),
         ((fb, "2"), W_SIG, [(2.9, vy), (2.9, y + 3.05)]),
         ((fb, "2"), W_SIG, [(5.3, vy), (5.3, y + 3.05)]),
@@ -194,8 +195,8 @@ def routes_10m(head=RAIL_HEAD):
     R.append((("C01", "2"), W_SIG, [(0, 11.912), (0, 14.088)]))
     R.append((("C01", "2"), W_SIG, [(0, 13.0), (2.962, 13.0)]))
     # SOT-23 at rot 180 puts pad 1 BELOW the centre and pad 2 above it, so the
-    # +3V3_A tap is the lower pad and the ground pad is the upper one.
-    R.append((("D01", "1"), W_PWR, [(4.838, 13.95), (RAIL_10M, 13.95)]))
+    # +3V3_A tap is the lower pad and the ground pad is the upper one.  Rev B:
+    # that pad reaches the B.Cu plane by its own via, like every +3V3_A pad.
     # --- the squarer input node: 330R down the spine, test point right, the
     #     1M up from the left, and in to 1A (pin 1, top right).  Every SC-70-6
     #     track leaves its pad by the END: the pads are 0.35 mm wide with
@@ -230,8 +231,7 @@ def routes_10m(head=RAIL_HEAD):
                                     (BEAT_VIA[0], 39.8)]))
     for fb, y in (("R52", Y_U2), ("R53", Y_U3)):
         R += _ic_power_routes(fb, y, RAIL_10M)
-    # --- the rail itself, down the gutter past all three ferrites
-    R.append((("D01", "1"), W_PWR, [(RAIL_10M, head), (RAIL_10M, RAIL_FOOT)]))
+    # Rev A's rail down the gutter is gone: the B.Cu plane (item 5).
     return R
 
 
@@ -246,7 +246,6 @@ def routes_pps():
     R.append((("U04", "4"), W_SIG, [(-0.95, Y_U4 + 1.1375), (-0.95, 16.6),
                                     (PPS_VIA[0], 16.6)]))
     vy = Y_U4 + 1.1375
-    R.append((("R54", "1"), W_PWR, [(RAIL_PPS, vy), (4.862, vy)]))
     R.append((("R54", "2"), W_SIG, [(2.738, vy), (0.95, vy)]))
     R.append((("R54", "2"), W_SIG, [(2.85, vy), (2.85, 17.0)]))
     R.append((("R54", "2"), W_SIG, [(2.85, vy), (2.85, 10.8)]))

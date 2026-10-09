@@ -26,10 +26,16 @@ HELPER_CLK beside HTR_DRIVE for 33 mm at 0.73 mm.  Neither can move a sampling
 edge.  A keep-out that gives the helper branches their own corridor is the
 right thing for a Rev B router and is not attempted here.
 
-There is no power plane.  The whole board draws about 100 mA, and the rail is
-deliberately shared, so +3V3_A and +3V3_D are poured on L1 in the space between
-tiles.  Trading a power plane for a second ground reference is the right way
-round for a board whose product is timing, not current.
+Rev B (REVB_CHANGES item 5, decided 2026-10-09): B.Cu is a +3V3_A PLANE.
+Rev A had none -- "trading a power plane for a second ground reference is the
+right way round for a board whose product is timing" -- and rev A then showed
+the cost: 109 mV lost in the rail's tracks, and one channel's state moving its
+neighbours 1-3 ps through the shared rail (r45 T1, O7).  Rev A's B.Cu carried
+no tracks, only that second GND pour, so the plane costs no routing room.
+In1 stays a solid GND plane under F.Cu.  Every +3V3_A pad reaches the plane
+through its own via (the same search that gives every GND pad its via), the
+gutter rails and the two margin spines are gone, and the router leaves
++3V3_A alone as it leaves GND.
 """
 import os, sys, math, re, hashlib
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -699,12 +705,8 @@ def build():
                        28.0)
             put(hr, hx, hy, (90 + urot) % 360)
 
-    # One +3V3_A spine per side, straight up the margin outside the 1 pps
-    # jacks, picking up every unit's rail where it runs out of the gutter.
-    for urot, pts in railends.items():
-        xs = pts[0][0]
-        ys = sorted(p[1] for p in pts)
-        tracks.append((xs, ys[0], xs, ys[-1], "F.Cu", "+3V3_A", T.W_PWR))
+    # Rev A ran one +3V3_A spine per side up the margin, picking up every
+    # unit's gutter rail.  Rev B: the B.Cu plane (item 5) replaces both.
 
     # ---- the helper oscillator and its fan-out ---------------------------
     # At rot 270 so its chain, which runs +x locally, runs DOWN the centre
@@ -1466,16 +1468,25 @@ def build():
             u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - x0) * dx +
                                                        (py - y0) * dy) / L2))
             qx, qy = x0 + u * dx, y0 + u * dy
-            if (px - qx) ** 2 + (py - qy) ** 2 < (rad + w / 2.0 + CLR) ** 2:
+            # The board's real 0.2, not CLR's 0.15: a plane via has 96 places
+            # to try, so the full rule costs it nothing, and at 0.15 rev B put
+            # two GND vias 0.185 from the In2 I2C_SCL ring (KiCad: 0.2).
+            if (px - qx) ** 2 + (py - qy) ** 2 < (rad + w / 2.0 + 0.2) ** 2:
                 return False
         for tx, ty, _n in tile_vias:
             if (px - tx) ** 2 + (py - ty) ** 2 < (rad + 0.45) ** 2:
                 return False
         return True
 
-    vias, nvia, skipped = [], 0, 0
+    # Rev B: the same search gives every +3V3_A pad its via to the B.Cu plane
+    # (item 5), except a pad that a tile already drops to it by hand (R51).
+    PLANE_NETS = ("GND", "+3V3_A")
+    vias, nvia, skipped = [], {n: 0 for n in PLANE_NETS}, {n: 0 for n in PLANE_NETS}
     for ref, pn, ax, ay, tht, net, _hd, _rc in allpads:
-        if net != "GND" or tht:
+        if net not in PLANE_NETS or tht:
+            continue
+        if any(_n == net and (ax - tx) ** 2 + (ay - ty) ** 2 < 2.0 ** 2
+               for tx, ty, _n in tile_vias):
             continue
         best = None
         # Sixteen directions and six radii, not eight and four.  The margin
@@ -1520,19 +1531,27 @@ def build():
             if best:
                 break
         if not best:
-            skipped += 1
+            skipped[net] += 1
+            if net != "GND":
+                print("PLANE VIA: no room for %s pad %s (%s)" % (ref, pn, net),
+                      file=sys.stderr)
             continue
         vx, vy = best
         vias.append((vx, vy))
-        out.append(track(ax, ay, vx, vy, "F.Cu", gnd_no, ref + pn, 0.35))
-        out.append(via(vx, vy, gnd_no, ref + pn))
+        out.append(track(ax, ay, vx, vy, "F.Cu", numof[net], ref + pn, 0.35))
+        out.append(via(vx, vy, numof[net], ref + pn))
         # ...and into `tracks`, so the routers know this copper exists.  They
         # did not: only the VIAS were being registered, so every F.Cu route
         # was free to run straight over a ground stub.
-        tracks.append((ax, ay, vx, vy, "F.Cu", "GND", 0.35))
-        nvia += 1
-    out.append(text(4.0, G.BH - 2.0, "%d ground vias (%d pads had no room)"
-                    % (nvia, skipped), "Cmts.User", 1.2, 0.2))
+        tracks.append((ax, ay, vx, vy, "F.Cu", net, 0.35))
+        nvia[net] += 1
+    out.append(text(4.0, G.BH - 2.0, "%d ground vias (%d pads had no room); "
+                    "%d +3V3_A plane vias (%d had no room)"
+                    % (nvia["GND"], skipped["GND"], nvia["+3V3_A"], skipped["+3V3_A"]),
+                    "Cmts.User", 1.2, 0.2))
+    print("plane vias: GND %d (%d no room), +3V3_A %d (%d no room)"
+          % (nvia["GND"], skipped["GND"], nvia["+3V3_A"], skipped["+3V3_A"]),
+          file=sys.stderr)
 
     # ---- In2.Cu: helper branches, beat/pulse returns, helper SMAs ---------
     # Routed by a maze router (pcb/maze.py) rather than by hand-assigned lanes.
@@ -1934,7 +1953,7 @@ def build():
     # a rail has a thousand, so the rail must be the one that bends round it.
     MULTI = sorted(((nm, W_DIST if nm in PWRNETS else T.W_SIG)
                     for nm in numof
-                    if nm and nm != "GND" and not nm.startswith("unconnected-")
+                    if nm and nm not in PLANE_NETS and not nm.startswith("unconnected-")
                     and len(_npads.get(nm, ())) > 1),
                    key=lambda q: _span(q[0]))
 
@@ -2326,7 +2345,7 @@ def build():
 
     split = [] if _NOROUTE else sorted(
         nm for nm in numof
-        if nm and nm != "GND" and not nm.startswith("unconnected-")
+        if nm and nm not in PLANE_NETS and not nm.startswith("unconnected-")
         and net_pieces(nm) > 1)
     print("approximate connectivity check (stricter than KiCad's, and NOT "
           "what gates the build): %d net(s) look split %s"
@@ -2336,10 +2355,10 @@ def build():
     for vx, vy, nm in tile_vias[_nvias0:]:
         out.append(via(vx, vy, numof[nm], "rv%s%g%g" % (nm, vx, vy)))
 
-    # ---- ground planes on both inner-adjacent layers ----------------------
+    # ---- the planes: GND on In1, +3V3_A on B.Cu (rev B item 5) -------------
     poly = [(0.3, 0.3), (G.BW - 0.3, 0.3), (G.BW - 0.3, G.BH - 0.3), (0.3, G.BH - 0.3)]
-    for lyr in ("In1.Cu", "B.Cu"):
-        out.append(zone(numof["GND"], "GND", lyr, poly, "GND-" + lyr))
+    out.append(zone(numof["GND"], "GND", "In1.Cu", poly, "GND-In1.Cu"))
+    out.append(zone(numof["+3V3_A"], "+3V3_A", "B.Cu", poly, "+3V3_A-B.Cu"))
     # ...and a pour on F.Cu as well.  That is what actually clears the ground
     # ratsnest: 32 SMD ground pads never found room for a via, and a pad sitting
     # in a ground pour does not need one.  It costs a little capacitance on the
