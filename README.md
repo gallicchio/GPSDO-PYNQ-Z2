@@ -15808,3 +15808,43 @@ the cost table (its README).
   - it would only matter for references better than ~3e-12 at 1 s, which
     the GPSDOs here are not.
 
+
+### 45.26 Rev B routed, DRC clean, and dated for the order
+
+**The first dated build failed** (`cebca16`) with six DRC errors: five unrouted
+connections (unit 12's BEAT, PPS and HCLK, the +3V3_D tap R2029, J5001's
+SCL) and a solder-mask bridge at J3004.
+
+**Why the five failed.** The helper block's right side was walled in on
+both routing layers for its whole length: the +3V3_D spine on F.Cu, and
+U5007's I2C on In2 beside it. Every branch leaves on the left. So the six
+branches for the right-hand column (units 1, 3, 5, 7, 9, 11) had to go round
+the block:
+- 171-319 mm and 6-14 vias each, against rev A's 39-115 mm and 2;
+- HCLK_11 could not get round at all;
+- the detours filled the bottom of the board.
+
+**The fix** (`pcb/helper.py`):
+- Those six branches leave on the right, under the spine, into the corridor
+  beside their tiles.
+- U3004's four come down on F.Cu, so FO_VDD's bridge between the two LMKs
+  moved to In2.
+- U5007's I2C moved to F.Cu beside the spine, straight onto the margin lanes.
+- **Every HCLK is now 49-98 mm with 2-4 vias.**
+- J5001's SCL is drawn by hand (`pcb/build_pcb.py`).
+
+**The mask bridge was not real.** Every copy of a footprint carried its
+library's uuids: 97 of them shared, on 1491 items. KiCad 10's solder-mask
+check keys apertures by uuid, so it compared J3004's U.FL opening with a
+track of J2005's tap 125 mm away. Whether it flagged it depended on the
+order it met them. Each footprint item now gets its own deterministic uuid.
+
+**Result, `DATE = "2026-10-10"`:**
+- DRC on the poured board: 0 errors, 0 unconnected. The warnings left are
+  199 silk overlaps (KiCad's report cap) and 27 dangling tracks, almost all
+  the far ends of the lanes and rails.
+- `mfg/release/` is dated, not a draft: 2 boards, $105.37 parts plus about
+  $88 fees = $193.24.
+- **Known:** PPS_09 runs 317 mm round the right and bottom edges (rev A:
+  135 mm). A 1 pps line, so the cost is a fixed ~2 ns.
+- To order on another day, set `DATE` to that day and rebuild.

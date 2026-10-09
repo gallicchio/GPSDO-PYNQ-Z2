@@ -166,6 +166,21 @@ def footprint(libdir, name, ref, value, x, y, rot, layer, pads, numof,
     node.insert(2, A("layer", S(layer)))
     node.insert(3, A("uuid", S(uid("fp", ref))))
     node.insert(4, A("at", x, y, rot) if rot else A("at", x, y))
+    # Every item INSIDE the footprint gets its own uuid too.  The library's
+    # are the same in every copy (97 of them, on 1491 items), and KiCad 10's
+    # solder-mask check keys apertures by uuid: with all nineteen U.FL mask
+    # rectangles sharing one, it reported J3004's as bridging a track of
+    # J2005's tap 125 mm away (2026-10-09).  Rev A's board had the same 65.
+    def _reuid(n):
+        for c in n:
+            if isinstance(c, list):
+                if head(c) == "uuid":
+                    c[1] = S(uid("fpi", ref, val(c)))
+                else:
+                    _reuid(c)
+    for c in node[5:]:
+        if isinstance(c, list):
+            _reuid(c)
     _fatten_silk(node)
     for prop in kids(node, "property"):
         if val(prop) == "Reference":
@@ -802,6 +817,18 @@ def build():
             in2_term.setdefault(nm, []).append((sx, sy))
         else:
             in2_term.setdefault(nm, []).append(vp)
+    # Rev B: the right-hand column's branches are drawn out to the corridor
+    # beside those tiles on In2 (helper.EAST); the router starts where they end.
+    for slot, pad, ex_, ey_ in H.EDGE_TERMS:
+        nm = hnet(slot, pad)
+        if not nm:
+            continue
+        ep = hf(ex_, ey_)
+        sx = round(ep[0] / MZ.PITCH) * MZ.PITCH
+        sy = round(ep[1] / MZ.PITCH) * MZ.PITCH
+        if abs(sx - ep[0]) + abs(sy - ep[1]) > 1e-6:
+            tracks.append(ep + (sx, sy) + ("In2.Cu", nm, T.W_SIG))
+        in2_term.setdefault(nm, []).append((sx, sy))
 
     # ---- the power input block -------------------------------------------
     for ref, (px, py, prot) in sorted(PW.PARTS.items()):
@@ -1253,6 +1280,17 @@ def build():
         spine(nm, [(lx, ly), (rx, ly)])                    # the top link
         spine(nm, [(lx, ly), (lx, by)])                    # left margin
         spine(nm, [(rx, ly), (rx, by)])                    # right margin
+    # J5001 pin 13, the debug header's SCL, is boxed in by its neighbours'
+    # links above and the +3V3_D run below, and the router left it stranded
+    # (2026-10-09).  By hand on In2: down between pins 12 and 14, along under
+    # the header 1 mm in from the edge, and up onto the foot of the SCL lane.
+    for ref, pn, ax, ay, _t, net, _hd, _rc in allpads:
+        if ref == "J5001" and pn == "13" and net == "I2C_SCL":
+            gx, ey = ax + 1.27, G.BH - 1.0
+            pts = [(ax, ay), (gx, ay + 1.27), (gx, ey), (LANE_X["I2C_SCL"], ey),
+                   (LANE_X["I2C_SCL"], G.BH - 4.0)]
+            for qa, qb in zip(pts, pts[1:]):
+                tracks.append(qa + qb + ("In2.Cu", net, T.W_SIG))
 
     # ---- the heater rails down the tile columns ---------------------------
     # Each in-tile heater is a 2010 lying across the tile's outboard strip with

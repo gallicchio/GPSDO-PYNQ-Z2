@@ -33,9 +33,13 @@ one that lets them be drawn without crossing:
     between its pin rows, which leaves it upward to the 4R7 and capacitors;
     the three ground pins drop to vias under the body; every output has its
     33R level with its own pin on its own side, so no output crosses another,
-    then a via to In2.  The 1G pull-up sits level with pin 2.
+    then a via to In2.  The 1G pull-up sits level with pin 2.  The branches
+    to the right-hand column of tiles (EAST) leave on the right, everything
+    else on the left; FO_VDD's bridge between the two LMKs is on In2 so that
+    U3004's right-hand branches can come down past it on F.Cu.
   * +3V3_D runs along the block's top edge (y = SPINE_Y) and drops to each
-    4R7; the one below the signal line (VDDOB's) reaches it on In2.
+    4R7; the one below the signal line (VDDOB's) reaches it on In2.  U5007's
+    I2C runs beside it on F.Cu, so In2 under both is free for the branches.
   * the two SMAs sit above the margin lanes (board y 25-29, all In2), so HO
     and EXT HELPER IN cross those on F.Cu and drop to In2 below them.
 """
@@ -108,6 +112,17 @@ LMKS = (
 # each output's 33R row, by pin, and how far out its via sits from the LMK
 OUT_ROW = {3: -0.4, 6: 1.8, 8: 4.0, 16: -4.4, 15: -2.2, 13: 0.0, 11: 2.2, 9: 4.4}
 OUT_VIA = {3: 8.6, 6: 9.6, 8: 10.6, 16: 8.6, 15: 9.6, 13: 10.6, 11: 11.6, 9: 12.6}
+# The branches to the odd units, whose tiles are the board's right-hand column,
+# leave the block on the RIGHT (-y), under the +3V3_D spine and U5007's I2C,
+# and end in the corridor beside those tiles (EDGE_TERMS), where the router
+# takes them up or down to their tile.  The even units' leave on the left as
+# before.  The first dated build (2026-10-09) sent all fourteen left, and the
+# six for the right-hand column went round the block: 171-319 mm and 6-14
+# vias each against rev A's 39-115 mm and 2, and HCLK_11 not at all.
+EAST = {("U3004", 16), ("U3004", 15), ("U3004", 11), ("U3004", 9),     # 01 03 05 07
+        ("U3005", 16), ("U3005", 15)}                                  # 09 11
+EAST_VIA_Y = -10.8      # U3004's: down to here on F.Cu, past HELPER_SQ's In2 run
+EDGE_Y = -15.7          # board x 119.0, on the router's 0.5 mm grid
 
 for _u, _x, _pu, _ca, _cb, _rf, _outs in LMKS:
     PARTS[_u] = (_x, 0.0, 0)                       # TSSOP-16
@@ -177,6 +192,7 @@ def P(ref, pad):
 VIAS = []
 LOCAL_VIAS = []
 IN2_ROUTES = []
+EDGE_TERMS = []         # (ref, pad, x, y): where a hand route hands over to the router
 # Ground pads the plane-via search must leave alone: U3001's paddle is tied
 # to pin 7, whose own via is drawn above.
 NO_PLANE_VIA = {("U3001", "21")}
@@ -185,7 +201,7 @@ NO_PLANE_VIA = {("U3001", "21")}
 def routes():
     """Every F.Cu track inside the block, as ((ref, pad), width, [points])."""
     R, I2 = [], []
-    del VIAS[:], LOCAL_VIAS[:]
+    del VIAS[:], LOCAL_VIAS[:], EDGE_TERMS[:]
 
     def f(ref, pad, w, *pts):
         R.append(((ref, str(pad)), w, list(pts)))
@@ -328,11 +344,31 @@ def routes():
                 f(r, 2, SIG, far, (far[0], 5.8), P("J3003", 1))
                 continue
             vx = X + side * OUT_VIA[pin]
+            if (u, pin) in EAST and u == "U3004":
+                # the staircase carries on down on F.Cu (no output crosses
+                # another), over HELPER_SQ, and In2 from there to the corridor
+                f(r, 2, SIG, P(r, 2), (vx, row), (vx, EAST_VIA_Y))
+                lv(r, 2, vx, EAST_VIA_Y)
+                n(r, 2, SIG, (vx, EAST_VIA_Y), (vx, EDGE_Y))
+                EDGE_TERMS.append((r, "2", vx, EDGE_Y))
+                continue
             f(r, 2, SIG, P(r, 2), (vx, row))
+            if (u, pin) in EAST:
+                # U3005's: U5007's V+ crosses below on F.Cu, so In2 from the via
+                lv(r, 2, vx, row)
+                n(r, 2, SIG, (vx, row), (vx, EDGE_Y))
+                EDGE_TERMS.append((r, "2", vx, EDGE_Y))
+                continue
             VIAS.append((r, "2", vx, row))
 
-    # FO_VDD is one net: the two clusters joined, above U3004's outputs
-    f("U3004", 5, PWR, (P("R3055", 2)[0], -5.6), (X_LMK2 - 7.4125, -5.6))
+    # FO_VDD is one net: the two clusters joined, above U3004's outputs, on
+    # In2 -- F.Cu there is where U3004's right-hand branches come down
+    fv0, fv1 = 63.6, 75.8
+    f("U3004", 5, PWR, (P("R3055", 2)[0], -5.6), (fv0, -5.6))
+    lv("U3004", 5, fv0, -5.6)
+    n("U3004", 5, PWR, (fv0, -5.6), (fv1, -5.6))
+    lv("U3004", 5, fv1, -5.6)
+    f("U3004", 5, PWR, (fv1, -5.6), (X_LMK2 - 7.4125, -5.6))
 
     # ---- +3V3_D along the top edge, and down to each 4R7 ------------------
     # fed from the +3V3_D margin lane by a via onto it
@@ -349,18 +385,29 @@ def routes():
     lv("R3053", 1, 30.6, SPINE_Y)
 
     # ---- U5007's I2C, by hand all the way: past U3005's HCLK stubs (a fence
-    # at x 92.6-95.6), down to In2, back along the block's top edge (outside
-    # every other In2 run here), and into the Si5351's own I2C vias at
-    # (-9, -0.4) and (-9, 1.0), which already reach the lanes.  The router left
-    # both stranded (2026-10-09), and a lane crossing of their own landed on
-    # TP2003.  SDA takes the outer run both ways round, so the two never cross.
+    # at x 92.6-95.6), on In2 under its own V+ and the spine's end, then up the
+    # block's top edge on F.Cu beside the spine, and a via straight onto each
+    # I2C lane (board y 25.0 and 25.8).  The router left both stranded
+    # (2026-10-09), and a lane crossing of their own landed on TP2003.
+    # F.Cu, not In2, along the edge: In2 there is where the right-hand
+    # column's branches (EAST) pass under the spine, and the first dated build
+    # had this pair on In2 the whole length of the block -- with the spine on
+    # F.Cu beside it, nothing could cross out of the block's right side at all.
+    # SDA takes the inner run and lands 1 mm clear of TP2003 (board 118.5,
+    # 25.86); SCL, outside it, passes TP2003 0.4 mm clear to the upper lane.
     sda, scl = U5007_PIN[1], U5007_PIN[2]
     f("U5007", 1, SIG, sda, (sda[0], -2.5), (99.6, -2.5))
     lv("U5007", 1, 99.6, -2.5)
-    n("U5007", 1, SIG, (99.6, -2.5), (99.6, -14.4), (-10.8, -14.4), (-10.8, 1.0), (-9.0, 1.0))
+    n("U5007", 1, SIG, (99.6, -2.5), (99.6, -13.1))
+    lv("U5007", 1, 99.6, -13.1)
+    f("U5007", 1, SIG, (99.6, -13.1), (LANE_X["I2C_SDA"], -13.1))
+    lv("U5007", 1, LANE_X["I2C_SDA"], -13.1)
     f("U5007", 2, SIG, scl, (scl[0], -3.3), (97.6, -3.3))
     lv("U5007", 2, 97.6, -3.3)
-    n("U5007", 2, SIG, (97.6, -3.3), (97.6, -13.6), (-10.0, -13.6), (-10.0, -0.4), (-9.0, -0.4))
+    n("U5007", 2, SIG, (97.6, -3.3), (97.6, -13.9))
+    lv("U5007", 2, 97.6, -13.9)
+    f("U5007", 2, SIG, (97.6, -13.9), (LANE_X["I2C_SCL"], -13.9))
+    lv("U5007", 2, LANE_X["I2C_SCL"], -13.9)
 
     IN2_ROUTES[:] = I2
     return R

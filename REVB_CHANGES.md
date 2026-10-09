@@ -12,13 +12,14 @@ of logging, a crosstalk matrix, AM-to-PM, and three reworks.
 | rev | state | what it is | where |
 |---|---|---|---|
 | **A** | **LOCKED** 2026-09-15 | the two boards JLCPCB built | git tag `GPSDO-PYNQ-Z2-revA` (commit `0f9a4dd`, pushed to origin), and `GPSDO-PYNQ-Z2-revA.zip` |
-| **B** | open | all work since: this list | the working tree; `gen/design.py` has `REV = "B"`, `DATE = "unreleased"` |
+| **B** | **built and dated 2026-10-10, to be uploaded that day** | all work since: this list | the working tree; `gen/design.py` has `REV = "B"`, `DATE = "2026-10-10"`; `mfg/release/` is the upload. Locked (tagged) once it is ordered |
 
 - **Rev A.** Round 42 re-checked the archive: all 58 of its SHA-256 sums
   hold, and its 57 design files are byte-identical to the tag.
 - **The committed `GPSDO-PYNQ-Z2.kicad_pcb`, the schematics and
-  `mfg/release/`** are still rev A's files until rev B's board is built.
-  `HANDBOOK.md` already says rev B, and says the bench boards are rev A.
+  `mfg/release/` are rev B's** since 2026-10-09: routed, DRC clean, dated
+  2026-10-10. If the order goes in on another day, set `DATE` to that day
+  and rebuild. The bench boards are rev A.
 
 ### Locking rev B
 
@@ -37,7 +38,7 @@ Do this on the day it is ordered:
    `mfg/release/`, the handbook, the README and `SHA256SUMS.txt`.
 5. Set `REV = "C"`, `DATE = "unreleased"`, and start `REVC_CHANGES.md`.
 
-## Rev B in the generator: where it stands (2026-10-09, 09:50)
+## Rev B in the generator: where it stands (2026-10-09, 11:30: routed, DRC clean, dated 2026-10-10)
 
 Started from rev A's generator on the morning after N1.  `revB_progress/` holds
 renders of the placement (the whole board, unit 1's tile, the helper block, the
@@ -64,7 +65,11 @@ rail taps) and the draft schematic as PDF.
 | yes | U5007 (the thermostat's sensor) at the far end of U3005, local (96.5, -7.6): between the LMKs is where their 33Rs fan out | 20 |
 | yes | B.Cu's +3V3_A pour kept 3.6 mm from every mounting hole and the PYNQ slot (a standoff on the bottom face no longer meets +3V3_A) | 5 |
 | yes | **release pipeline for rev B**: JLCPCB fits every top-side through-hole part, headers at their own lengths; per-part rotations and origins predicted from JLCPCB's land patterns (reproducing all 8 of rev A's preview readings); `PLACEMENT_CHECKS.txt` gate; FABRICATION_NOTES with the order form field by field | |
-| no | the full routed build of the new helper block, DRC 0, then the dated release | |
+| yes | **the helper's branches to the right-hand column leave on the right** (`helper.EAST`: HCLK_01, 03, 05, 07, 09, 11). The first dated build (cebca16) sent all fourteen out on the left, and the right side of the block was fenced on both layers (the +3V3_D spine on F.Cu, U5007's I2C on In2, the whole length of the block). So those six went round the block: 171-319 mm with 6-14 vias each, and HCLK_11 not at all. Their detours also stranded unit 12's BEAT/PPS, the +3V3_D tap and J5001's SCL. Now: U3004's four come down on F.Cu past HELPER_SQ and cross under the spine on In2; FO_VDD's bridge between the LMKs moved to In2 to let them; U5007's I2C runs on F.Cu beside the spine onto the margin lanes. **Every HCLK is now 49-98 mm with 2-4 vias** (rev A: 39-115 mm, 2) | 22 |
+| yes | J5001 pin 13 (the debug header's SCL) by hand on In2: between pins 12 and 14, under the header, onto the SCL lane | |
+| yes | **every item inside a footprint has its own uuid.** The library's uuids were copied into every instance (97 shared, on 1491 items; rev A had 65), and KiCad 10's solder-mask check keys apertures by uuid. With all nineteen U.FL mask rectangles sharing one, it reported J3004's as bridging a track of J2005's tap 125 mm away. Whether it did so depended on the order it met them: one build flagged it, the next did not | |
+| yes | **the full routed build, DRC 0 errors and 0 unconnected on the poured board, and the dated release** (`DATE = "2026-10-10"`, the order day) | |
+| known | PPS_09 runs 317 mm round the right and bottom edges (rev A: 135 mm), and its tile's 53 mm In2 escape is left as an open stub. It is a 1 pps line: the cost is a fixed ~2 ns and, at worst, crosstalk once a second. The other long returns are as long as rev A's (PPS_00 239 mm, BEAT_01 215 mm; rev A 243 and 223) | |
 | no | INA3221; TPS3700 LEDs; the heater away from the tiles; the squarer-supply and squarer-output taps on units 1 and 4 | 6, 7, 19, 20 |
 | no | JLC stock check of the new ICs (74LVC2GU04, LMK1C1108, U.FL) at order time; the 74AUP2GU04 had 0 stock | 8 |
 

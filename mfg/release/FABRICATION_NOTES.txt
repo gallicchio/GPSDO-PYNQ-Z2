@@ -1,66 +1,96 @@
-GPSDO DDMTD FRONT END  --  fabrication notes
-============================================
+GPSDO DDMTD FRONT END, REV B  --  fabrication notes
+====================================================
 
 BOARD
   Outline ............ 207.00 x 180.00 mm, rectangular, no cutouts, no slots
   Copper layers ...... 4   (F.Cu / In1.Cu / In2.Cu / B.Cu)
   Suggested stackup .. 1.6 mm FR-4, 1 oz outer, 0.5 oz inner  (JLC04161H-7628)
-  Surface finish ..... ENIG preferred (lead-free HASL acceptable)
-  Soldermask ......... any colour; silkscreen white
+  Surface finish ..... ENIG, 1 U" gold (see the order form below)
+  Soldermask ......... green (Economic PCBA does 4 layers in green only);
+                       silkscreen white
   Impedance control .. NOT required.  See the note below.
 
 WHAT IS ON EACH LAYER
   F.Cu      components, most routing, and a GND pour
   In1.Cu    solid GND plane
-  In2.Cu    the helper-clock distribution, as stripline between In1 and B.Cu
-  B.Cu      solid GND plane; the Raspberry Pi socket mounts on this side
+  In2.Cu    the helper-clock distribution and the slow buses, between the
+            In1 GND plane and the B.Cu +3V3_A plane
+  B.Cu      the +3V3_A PLANE (rev B item 5; rev A had a second GND pour here);
+            the Raspberry Pi socket mounts on this side
 
 MINIMUMS ACTUALLY USED  (all well inside JLCPCB's 4-layer capability)
-  Minimum track ...... 0.25 mm
-  Track widths used .. 0.25, 0.30, 0.35, 0.50
-  Via pad/drill ...... 0.60/0.30 mm      (595 vias)
+  Minimum track ...... 0.2 mm
+  Track widths used .. 0.20, 0.25, 0.30, 0.35, 0.50
+  Via pad/drill ...... 0.60/0.30 mm      (674 vias)
   Minimum via drill .. 0.3 mm
   Pad drill sizes .... 1.00, 1.20, 1.50, 1.70, 3.20
   Minimum pad drill .. 1.0 mm
-  Closest SMT pad to the board edge .. 1.19 mm  (FB5009)
+  Closest SMT pad to the board edge .. 1.2 mm  (Q2003)
       An ASSEMBLY number, not a fabrication one, and no KiCad rule checks it:
       `copper_edge_clearance` is about copper, not about whether a nozzle and
       a clamp can both reach.  If it is inside your rail allowance the panel
       needs a break-away rail -- PLEASE SAY SO RATHER THAN SHIFTING THE PART.
       Everything nearer the edge than this is through hole (the SMA jacks, the
       screw terminals, the barrel jack, the two bench posts and the 2x20
-      socket) and is hand soldered afterwards.
+      socket), fitted by hand at JLCPCB or, for the socket, afterwards.
 
 IMPEDANCE
   No controlled-impedance service is required.  The helper traces on In2.Cu
-  are drawn as nominal 50 ohm stripline against the two adjacent ground
-  planes, but every one of them is source-terminated at its driver and none is
+  are drawn as nominal 50 ohm stripline between the In1 GND plane and the
+  B.Cu +3V3_A plane, but every one of them is source-terminated at its driver and none is
   longer than ~120 mm at 10 MHz, where the electrical length is a small
   fraction of a wavelength.  Build to the standard stackup.
 
-ASSEMBLY
-  Surface mount, TOP SIDE ONLY.  Nothing on the bottom is to be placed:
-  the only bottom-side part is the Raspberry Pi socket, which is through hole
-  and is hand soldered afterwards.
-  See GPSDO-PYNQ-Z2_bom.csv and GPSDO-PYNQ-Z2_cpl_kicad_native.csv.
+ASSEMBLY  (rev B: JLCPCB fits the through-hole parts too)
+  TOP SIDE: every surface-mount part, AND every through-hole part on the top:
+  the 27 SMA jacks, the 13 three-pin 50R/PARK headers, the 2x10 debug header,
+  the two bench pins, the barrel jack and the five screw terminals.  Each
+  header is ordered at its own length (XFCN PZ254V), not as a strip.
+  The ONE bottom-side part, the Raspberry Pi 2x20 socket J4001 (through hole),
+  is NOT in the BOM or CPL: it is on hand_solder_bom.csv and is soldered
+  afterwards, as on rev A -- unless JLCPCB will fit a bottom through-hole part
+  on a top-side order, in which case add it back.
+  See GPSDO-PYNQ-Z2_bom.csv and GPSDO-PYNQ-Z2_cpl_jlcpcb_upload.csv.
   Parts NOT to be fitted are listed in excluded_from_assembly.csv and appear
   in neither file -- please do not add them back.
 
-WHAT TO SET ON THE JLCPCB ORDER FORM
-  Base material ............ FR-4
-  Layers ................... 4
-  Dimensions ............... 207 x 180 mm, 1 piece, single design
-  PCB thickness ............ 1.6 mm
-  Impedance control ........ No
-  Via covering ............. Tented
-  Min via hole size/diameter 0.3 mm / 0.6 mm  (matches this design exactly)
-  Board outline tolerance .. regular (+/-0.2 mm)
-  Surface finish ........... ENIG  (lead-free HASL is acceptable)
-  Remove order number ...... "Specify a location" or "No" -- there is room in
-                             the lower-left margin below the title block
-  PCB assembly ............. Yes, TOP side, 1 boards
-  Tooling holes ............ Added by JLCPCB
-  Confirm parts placement .. Yes  -- NOT OPTIONAL, see ROTATION below
+WHAT TO SET ON THE JLCPCB ORDER FORM, in the form's own order
+(CLAUDE_PCB.md section 8, the form as of 2026-10-09; a field not listed
+stays at its default)
+  PCB
+    Base Material ............ FR-4
+    Layers ................... 4
+    Dimensions ............... 207.0 x 180.0 mm
+    PCB Qty .................. 5 (the minimum)
+    Product Type ............. Industrial/Consumer electronics
+  PCB Specifications
+    Different Design ......... 1
+    Delivery Format .......... Single PCB
+    PCB Thickness ............ 1.6 mm
+    PCB Color ................ Green  (Economic PCBA does 4 layers in green
+                               only; any other colour forces Standard PCBA)
+    Silkscreen ............... White
+    Material Type ............ FR4 TG135 (default)
+    Surface Finish ........... ENIG, 1 U" gold -- NOT the default OSP: QFN-20,
+                               TSSOP-16 and SC-70-6 pads, through-hole parts
+                               soldered after reflow, and test pads to probe
+  High-spec Options
+    Outer / Inner Copper ..... 1 oz / 0.5 oz (defaults)
+    Specify Stackup .......... JLC04161H-7628 (the default 4-layer stackup)
+    Via Covering ............. Tented
+    Min via hole/diameter .... 0.3 mm / (0.4/0.45 mm), the default: this
+                               board's vias are 0.60/0.30 mm
+    Board Outline Tolerance .. +/-0.2 mm (regular)
+    Mark on PCB .............. Remove Mark
+    Electrical Test .......... Flying Probe Fully Test (default)
+  PCB Assembly
+    PCBA Type ................ Economic, if the form keeps the through-hole
+                               parts under it; otherwise Standard
+    Assembly Side ............ Top Side
+    PCBA Qty ................. 2
+    Tooling holes ............ Added by JLCPCB
+    Confirm Parts Placement .. YES -- NOT OPTIONAL, see ROTATION below
+  Then upload GPSDO-PYNQ-Z2_bom.csv and GPSDO-PYNQ-Z2_cpl_jlcpcb_upload.csv.
 
 ROTATION  (round 33)
   KiCad's footprint zero-orientation and JLCPCB's feeder zero-orientation are
@@ -71,7 +101,7 @@ ROTATION  (round 33)
   Round 28 built the corrections from the JLCKicadTools table.  Round 33
   rebuilt them from YOUR OWN placement preview, which is the only authority,
   and two of the five were wrong -- one of them on 59 parts:
-    MSOP-10_3x3mm_P0.5mm                 +270  x1    U3001
+    MSOP-10_3x3mm_P0.5mm                 +270  x0    U3001
         on U3001, pad 1 is at the north-east corner of its own body
         pin 1 dot
     Oscillator_SMD_Fox_FT5H_5.0x3.2mm    +270  x1    X3001
@@ -85,7 +115,7 @@ ROTATION  (round 33)
     SOT-223-3_TabPin2                    +180  x3    Q2001
         on Q2001, pad 1 is at the north-west corner of its own body
         tab = drain, the wide pad
-    SOT-23-5                             +180  x59   U102 + 58 others
+    SOT-23-5                             +180  x40   U102 + 58 others
         on U102, pad 1 is at the north-west corner of its own body
         pin 1 = the D input
     SOT-23-6                             +270  x1    U5009
@@ -94,13 +124,46 @@ ROTATION  (round 33)
     D_SMA                                   0  x4    D2001
         cathode band points south and the silkscreen's closed side is
         south, so it is already right -- correcting it would be the bug
+    D_SMB                                   0  x1    D2003
+        rev A was built at 0 and its 5 V rail runs: a 5.6 V zener the
+        wrong way round would short it
+    D_SOD-323                               0  x1    D6001
+        the PESD5V0S1BA is bidirectional: either way round is right
+
+  Rev B, PER PART (these win over the footprint rows above), PREDICTED
+  from JLCPCB's own land pattern of each code; confirm each in the preview:
+    C116660   +270  x14   74LVC2GU04 SC-70-6: pin 1 = 1A, the input
+        predicted: fit at 90, 0.003 mm
+    C23654    +270  x1    74LVC1G125: pin 1 = OE (grounded)
+        predicted: fit at 90, 0.019 mm -- NOT the 180 of rev A's SOT-23-5s
+    C2868241  +270  x2    LMK1C1108 TSSOP-16: pin 1 = CLKIN
+        predicted: fit at 90, 0.003 mm
+    C2937625  +270  x13   1x03 header lying along the tile, pin 1 at JP's 50R end; CPL point moved (+0.00, +2.54) mm to their origin
+        predicted: fit at 90; ECP5 read PZ254V as 270
+    C2977589    +0  x0    RPi 2x20 socket, UNDERSIDE: unkeyed; CPL point moved (-24.13, +1.27) mm to their origin
+        predicted: fit at 0 on the bottom
+    C3608122  +270  x1    Si5351C QFN-20: pin 1 = XA
+        predicted: fit at 90, 0.051 mm; Icepi read QFN-20 as 270
+    C492400     +0  x2    a single pin
+        one pin: no direction
+    C492427   +270  x1    2x10 debug header along the edge; CPL point moved (+1.27, +11.43) mm to their origin
+        predicted: fit at 90, 0.000 mm; ECP5 read PZ254V as 270
+    C496549     +0  x27   SMA: round, five holes
+        predicted: fit at 0 (their pins are numbered differently; the five
+        holes fit to 0.014 mm)
+    C720557     +0  x1    barrel jack opening at the edge; CPL point moved (-3.17, +2.34) mm to their origin
+        predicted: fit at 0, 0.335 mm on pad 3 (a slot)
+    C880555     +0  x5    1-Wire terminal: wire entry at the board edge; CPL point moved (+3.50, +0.00) mm to their origin
+        predicted: fit at 0 by pin number
+    C88374    +270  x19   U.FL: the centre pad toward the 1k; CPL point moved (-0.76, +0.00) mm to their origin
+        predicted: fit at 90, 0.001 mm
   Still confirm them in the preview before approving.  Two footprints on this
   board have never been checked against a preview at all, both polarised:
     D2003 (5.6V 5W Zener, SMB)   cathode band
     D6001 (PESD5V0S1BA, SOD-323) cathode band
-  If a preview still disagrees, upload the native file instead and tell the
-  generator: the table is mfg/parts_map.py, JLC_ROTATION, keyed on the exact
-  footprint name.
+  If the preview disagrees, do NOT turn parts in JLCPCB's viewer: say which,
+  and the generator's table changes (mfg/parts_map.py: JLC_ROTATION_BY_PART
+  for a part, JLC_ROTATION for a footprint), so the next upload is right too.
 
 PIN 1, PART BY PART  (round 35)
   Where the preview's pin-1 dot must land.  North is the screw-terminal edge
@@ -114,8 +177,6 @@ PIN 1, PART BY PART  (round 35)
       rot  180 -> pin 1 east        x1   D2003
     D_SOD-323  (1)
       rot    0 -> pin 1 west        x1   D6001
-    MSOP-10_3x3mm_P0.5mm  (1)
-      rot  -90 -> pin 1 north-east  x1   U3001
     Oscillator_SMD_Fox_FT5H_5.0x3.2mm  (1)
       rot  -90 -> pin 1 north-east  x1   X3001
     SOIC-8_3.9x4.9mm_P1.27mm  (9)
@@ -123,16 +184,14 @@ PIN 1, PART BY PART  (round 35)
       rot  180 -> pin 1 south-east  x3   U5002, U5004, U5006
     SOT-223-3_TabPin2  (3)
       rot    0 -> pin 1 north-west  x3   Q2001, Q2002, Q2003
-    SOT-23-5  (59)
-      rot  -90 -> pin 1 north-east  x6   U3002, U3003, U3004, U3005, U3006 ... +1 more
-      rot    0 -> pin 1 north-west  x27  U101, U102, U103, U104, U301 ... +22 more
+    SOT-23-5  (41)
+      rot  -90 -> pin 1 north-east  x1   U3002
+      rot    0 -> pin 1 north-west  x20  U102, U103, U104, U302, U303 ... +15 more
       rot   90 -> pin 1 south-west  x2   U2001, U2002
-      rot  180 -> pin 1 south-east  x24  U201, U202, U203, U204, U401 ... +19 more
+      rot  180 -> pin 1 south-east  x18  U202, U203, U204, U402, U403 ... +13 more
     SOT-23-6  (1)
       rot    0 -> pin 1 north-west  x1   U5009
-    ORIENTATION-FREE, ignore the pin-1 dot on these: D6001
-      their terminals are interchangeable (a bidirectional TVS: pins A1/A2, no cathode), so no rotation of any multiple of 180 can be wrong.
-    79 polarised parts; the other 379 are unpolarised two-terminal passives.
+    61 polarised parts; the other 397 are unpolarised two-terminal passives.
   Every polarised footprint above carries a filled pin-1 triangle of its own
   EXCEPT the FT5H oscillator, which ships with none; round 35 prints a 0.8 mm
   dot beside its pin 1.  The SS34s, the Zener and the SMAJ18A mark the
@@ -145,7 +204,8 @@ FILES
   GPSDO-PYNQ-Z2_cpl_jlcpcb_upload.csv  the same with JLCPCB rotation corrections
   GPSDO-PYNQ-Z2_assembly_top.pdf ... placement drawing, top
   GPSDO-PYNQ-Z2_assembly_bottom.pdf  placement drawing, bottom
-  hand_solder_bom.csv ......... through-hole parts, NOT for assembly
+  hand_solder_bom.csv ......... J4001 (the bottom socket) and the jumper
+                                shunts: NOT for assembly
   excluded_from_assembly.csv .. DNP parts and bare test pads
   annotated_bom.md / .csv ..... prices, stock and notes (for the buyer, not
                                 for the fab)

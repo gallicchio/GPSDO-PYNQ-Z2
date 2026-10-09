@@ -8,7 +8,7 @@ section 3 of ../README.md; if you change one, change both.
 
 PROJECT = "GPSDO-PYNQ-Z2"
 REV     = "B"
-DATE    = "unreleased"     # printed on the silkscreen beside the revision.
+DATE    = "2026-10-10"     # printed on the silkscreen beside the revision.
 # Rev A (2026-09-14) is LOCKED as the board JLCPCB built: git tag
 # GPSDO-PYNQ-Z2-revA and GPSDO-PYNQ-Z2-revA.zip.  Everything since is rev B.
 # Set DATE to the order date when rev B is locked (REVB_CHANGES.md, "Locking

@@ -1,0 +1,45 @@
+PLACEMENT CHECKS -- rev B, 2026-10-10
+JLCPCB's land pattern of each code, fitted to our pads by pin number.
+'predicted' is the CPL correction the fit implies (minus its turn);
+'CPL' is what the upload file applies.  Read every PREDICTED row in
+JLCPCB's placement preview: pin 1 where 'look' says.  Nothing is on the
+back except J4001, which is hand soldered and not in the CPL.
+
+code      footprint                             n  pred   CPL  status    refs / look
+C720557   BarrelJack_Horizontal                 1     0     0  PREDICTED J2003  -- barrel jack opening at the edge
+          land: worst pad-centre miss 0.335 mm (pad 3) at 0 deg, 3 pad(s) matched by name
+          datum: their origin sits at (-3.166, +2.341) mm in our footprint; the JLCPCB CPL is moved there
+C8678     D_SMA                                 3     0     0  none      D2001,D2002,D2004
+          land: worst pad-centre miss 0.200 mm (pad 2) at 0 deg, 2 pad(s) matched by name
+C908771   D_SMA                                 1     0     0  none      D2005
+          land: worst pad-centre miss 0.201 mm (pad 1) at 0 deg, 2 pad(s) matched by name
+C19077494 D_SMB                                 1     0     0  none      D2003
+          land: worst pad-centre miss 0.263 mm (pad 1) at 0 deg, 2 pad(s) matched by name
+C2827694  D_SOD-323                             1     0     0  none      D6001
+          land: worst pad-centre miss 0.155 mm (pad 2) at 0 deg, 2 pad(s) matched by name
+C5742665  Oscillator_SMD_Fox_FT5H_5.0x3.2mm     1   270   270  read      X3001  -- pin 1 is the NORTH-EAST pad; a 0.8 mm dot is printed beside it from round 35, because this footprint ships with no pin-1 mark of its own
+C492400   PinHeader_1x01_P2.54mm_Vertical       2     0     0  PREDICTED J2001,J2002  -- a single pin
+C2937625  PinHeader_1x03_P2.54mm_Vertical      13   270   270  PREDICTED JP101,JP201,JP301,JP401,JP501,JP601...  -- 1x03 header lying along the tile, pin 1 at JP's 50R end
+          datum: their origin sits at (+0.000, +2.540) mm in our footprint; the JLCPCB CPL is moved there
+C492427   PinHeader_2x10_P2.54mm_Vertical       1   270   270  PREDICTED J5001  -- 2x10 debug header along the edge
+          datum: their origin sits at (+1.270, +11.430) mm in our footprint; the JLCPCB CPL is moved there
+C3608122  QFN-20-1EP_4x4mm_P0.5mm_EP2.7x2.7m    1   270   270  PREDICTED U3001  -- Si5351C QFN-20: pin 1 = XA
+C496549   SMA_Vertical_THT_Universal           27     0     0  PREDICTED J101,J102,J201,J202,J301,J302...  -- SMA: round, five holes
+          names: the land pattern fits to 0.014 mm but the two libraries number the pins differently -- by name the worst miss is 1.80 mm at pad 1.  Placement is fine; the NET on each pin is the thing to look at
+C143306   SOIC-8_3.9x4.9mm_P1.27mm              1   270   270  read      U6001  -- pin 1 dot
+C2878381  SOIC-8_3.9x4.9mm_P1.27mm              8   270   270  read      U5001,U5002,U5003,U5004,U5005,U5006...  -- pin 1 dot
+C209902   SOT-223-3_TabPin2                     3   180   180  read      Q2001,Q2002,Q2003  -- tab = drain, the wide pad
+          datum: their origin sits at (-0.179, +0.001) mm in our footprint; the JLCPCB CPL is moved there
+C23654    SOT-23-5                              1   270   270  PREDICTED U3002  -- 74LVC1G125: pin 1 = OE (grounded)
+C2862740  SOT-23-5                              2   180   180  read      U2001,U2002  -- pin 1 = the D input
+C42879    SOT-23-5                             26   180   180  read      U102,U103,U202,U203,U302,U303...  -- pin 1 = the D input
+          land: worst pad-centre miss 0.196 mm (pad 4) at 180 deg, 5 pad(s) matched by name
+C7836     SOT-23-5                             12   180   180  read      U104,U204,U304,U404,U504,U604...  -- pin 1 = the D input
+          land: worst pad-centre miss 0.196 mm (pad 4) at 180 deg, 5 pad(s) matched by name
+C144198   SOT-23-6                              1   270   270  read      U5009  -- pin 1 dot
+C116660   SOT-363_SC-70-6                      14   270   270  PREDICTED U101,U201,U301,U401,U501,U601...  -- 74LVC2GU04 SC-70-6: pin 1 = 1A, the input
+C2868241  TSSOP-16_4.4x5mm_P0.65mm              2   270   270  PREDICTED U3004,U3005  -- LMK1C1108 TSSOP-16: pin 1 = CLKIN
+C880555   TerminalBlock_Phoenix_PT-1,5-3-3.5    5     0     0  PREDICTED J6001,J6002,J6003,J6004,J6005  -- 1-Wire terminal: wire entry at the board edge
+          datum: their origin sits at (+3.500, +0.000) mm in our footprint; the JLCPCB CPL is moved there
+C88374    U.FL_Hirose_U.FL-R-SMT-1_Vertical    19   270   270  PREDICTED J103,J203,J303,J403,J503,J603...  -- U.FL: the centre pad toward the 1k
+          datum: their origin sits at (-0.763, +0.000) mm in our footprint; the JLCPCB CPL is moved there

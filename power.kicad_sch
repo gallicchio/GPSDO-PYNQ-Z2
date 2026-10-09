@@ -2824,7 +2824,7 @@
 		)
 		(uuid "2c01ec73-4c74-715d-28dd-32e62f2e7f68")
 	)
-	(text "+3V3_A's tap is placed at the rail's FAR end, by J5001, where the squarers' current has done its damage."
+	(text "+3V3_A's tap is placed at the rail's FAR end, below unit 13, where the squarers' current has done its damage."
 		(exclude_from_sim no)
 		(at 421.64 88.9 0)
 		(effects

@@ -1,17 +1,3 @@
 Comment,Designator,Footprint,LCSC,Qty,Note
-10MHz IN,"J101,J201,J301,J401,J501,J601,J701,J801,J901,J1001,J1101,J1201,J1301",SMA_Vertical_THT_Universal,C496549,13,
-50R TERM,"JP101,JP201,JP301,JP401,JP501,JP601,JP701,JP801,JP901,JP1001,JP1101,JP1201,JP1301",PinHeader_1x02_P2.54mm_Vertical,C2337,13,"2.54 mm 1x40P breakable male strip -- snap to 1x2.  13 needed, plus 13 jumper shunts (see EXTRAS)"
-1pps IN,"J102,J202,J302,J402,J502,J602,J702,J802,J902,J1002,J1102,J1202",SMA_Vertical_THT_Universal,C496549,12,
-BENCH +5V,J2001,PinHeader_1x01_P2.54mm_Vertical,C2337,1,"same 1x40P strip, snapped to a single pin"
-BENCH GND,J2002,PinHeader_1x01_P2.54mm_Vertical,C2337,1,"same 1x40P strip, snapped to a single pin"
-15V 1A DC IN,J2003,BarrelJack_Horizontal,C720557,1,
-CLK1 OUT 10.000000MHz,J3001,SMA_Vertical_THT_Universal,C496549,1,
-EXT HELPER IN,J3002,SMA_Vertical_THT_Universal,C496549,1,
 2x20 socket 2.54mm,J4001,RPiHeader_2x20_Socket_Underside,C2977589,1,
-debug 2x10,J5001,PinHeader_2x10_P2.54mm_Vertical,C29952,1,2.54 mm 2x40P double-row strip -- snap to 2x10
-PROBE 1,J6001,"TerminalBlock_Phoenix_PT-1,5-3-3.5-H_1x03_P3.50mm_Horizontal",C880555,1,
-PROBE 2,J6002,"TerminalBlock_Phoenix_PT-1,5-3-3.5-H_1x03_P3.50mm_Horizontal",C880555,1,
-PROBE 3,J6003,"TerminalBlock_Phoenix_PT-1,5-3-3.5-H_1x03_P3.50mm_Horizontal",C880555,1,
-PROBE 4,J6004,"TerminalBlock_Phoenix_PT-1,5-3-3.5-H_1x03_P3.50mm_Horizontal",C880555,1,
-PROBE 5,J6005,"TerminalBlock_Phoenix_PT-1,5-3-3.5-H_1x03_P3.50mm_Horizontal",C880555,1,
-(not on the board),,,C5305,13,"2.54 mm open-top jumper shunts for the thirteen 50R TERM headers.  The board ships with them OFF -- fitting one on a ZED-F9T channel destroys its TIMEPULSE output (see the unit sheet warning), so they are a separate decision per channel"
+(not on the board),,,C5305,13,"2.54 mm open-top jumper shunts for the thirteen 50R/PARK headers: 1-2 = 50R for a 50-ohm source, 2-3 = PARK on every channel with nothing plugged in (rev B item 11).  The board ships with them OFF -- 50R on a ZED-F9T channel destroys its TIMEPULSE output (see the unit sheet warning), so each is a decision per channel"
