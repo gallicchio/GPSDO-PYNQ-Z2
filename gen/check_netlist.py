@@ -53,7 +53,7 @@ def check(path):
     import design as D
     required = {"GND", "+3V3_A", "+3V3_D", "+5V_HDR", "+15V_HTR",
                 "I2C_SCL", "I2C_SDA", "ONEWIRE", "HTR_DRIVE",
-                "HELPER_CLK", "HELPER_SRC", "SI_XA", "SI_XB"}
+                "HELPER_CLK", "HELPER_SRC"}     # rev B: SI_XA/SI_XB gone (XA, XB float)
     for u in D.UNITS:
         required.add(u[1])
         if u[2]:

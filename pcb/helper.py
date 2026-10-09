@@ -53,7 +53,6 @@ PARTS = {
     "R3053": (18.6, -8.4, 270),      # SI_VDDOB (HO's bank)
     "C3005": (18.6, -5.0, 90),
     "C3006": (21.0, -5.0, 90),
-    "Y3001": (16.0, 5.6, 0),         # DNP crystal, XA/XB
     "R3026": (21.0, -1.4, 90),       # 1k, item 19: TAP CLK0, at the pin
     "J3005": (25.0, -6.0, 0),
     # ---- HO: CLK2 -> buffer -> 33R -> the SMA at the top ---------------

@@ -509,11 +509,12 @@ def helper(s):
     s.nc(*si.pin(3))                            # INTR, unused
     for pn in (12, 8, 19, 17, 16, 15):          # CLK1, CLK3..7 unused
         s.nc(*si.pin(pn))
-    # XA/XB: the DNP crystal, as a fallback only
-    for pn, nm, j in ((1, "SI_XA", "right"), (2, "SI_XB", "right")):
-        px, py = si.pin(pn)
-        s.wire(px, py, px - 7.62, py)
-        s.glabel(px - 7.62, py, nm, shape="passive", justify=j)
+    # XA/XB unused: the reference is the TCXO on CLKIN.  Datasheet section
+    # 7.5: "Unused XA/XB pins should be left floating."  Rev B's draft had a
+    # DNP crystal here as a fallback; RA1 settled CLKIN, and the crystal's two
+    # tracks were what boxed in the QFN's corner (2026-10-09).
+    for pn in (1, 2):
+        s.nc(*si.pin(pn))
     for pn, nm in ((4, "I2C_SCL"), (5, "I2C_SDA")):
         px, py = si.pin(pn)
         s.wire(px - 20.32, py, px, py)
@@ -576,17 +577,8 @@ def helper(s):
            "unrelated pairs (T2) and 53 ps per transition between helper groups (O6); at 2 mA, 24.",
            size=1.4, color=INFO, cols=90)
 
-    # --- DNP crystal alternative on XA/XB -----------------------------------------
-    xt = s.sym("Device:Crystal_GND24", 330.2, 66.04, 0, ref=R("Y"), value="25MHz",
-               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm", dnp=True,
-               ref_dxy=(-3.81, -8.89), val_dxy=(-3.81, -6.35))
-    gnd(s, *xt.pin(2), drop=6.35, R=R)
-    s.wire(*xt.pin(1), xt.pin(1)[0] - 12.7, xt.pin(1)[1])
-    s.glabel(xt.pin(1)[0] - 12.7, xt.pin(1)[1], "SI_XA", shape="passive", justify="right")
-    s.wire(*xt.pin(3), xt.pin(3)[0] + 12.7, xt.pin(3)[1])
-    s.glabel(xt.pin(3)[0] + 12.7, xt.pin(3)[1], "SI_XB", shape="passive", justify="left")
-    s.text(303.53, 80.0, "DNP fallback: a plain 25 MHz crystal on XA/XB (PLL source = XTAL).",
-           size=1.3, italic=True)
+    s.text(303.53, 80.0, "XA, XB: unused and floating (datasheet 7.5); the reference is "
+           "the TCXO on CLKIN.", size=1.3, italic=True)
 
     # =================== band 2: source select and squarer ================
     ys = 205.0
