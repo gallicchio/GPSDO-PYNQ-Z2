@@ -210,6 +210,19 @@ P = dict(
                fp="Inductor_SMD:L_0805_2012Metric"),
   JMP2  = dict(lib="Connector_Generic:Conn_01x02", val="jumper",
                fp="Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical"),
+  # --- rev B (REVB_CHANGES.md) ---
+  # item 18: the squarer and its replica, one die (TI DCK / Nexperia GW pinout:
+  # 1 1A, 2 GND, 3 2A, 4 2Y, 5 VCC, 6 1Y; 74AUP2GU04GW fits the same pads, item 8)
+  INV2  = dict(lib="GPSDO-PYNQ-Z2:74LVC2GU04", val="74LVC2GU04", lcsc="C116660",
+               fp="Package_TO_SOT_SMD:SOT-363_SC-70-6"),
+  # item 11: 1-2 = 50R, 2-3 = PARK (100k from the gate to ground)
+  JMP3  = dict(lib="Connector_Generic:Conn_01x03", val="50R/PARK",
+               fp="Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"),
+  # item 12: every gate's supply through a resistor, no bead
+  RFILT = dict(val="4R7"),
+  # item 19: a monitor tap
+  UFL   = dict(lib="Connector:Conn_Coaxial", val="U.FL", lcsc="C88374",
+               fp="Connector_Coaxial:U.FL_Hirose_U.FL-R-SMT-1_Vertical"),
   CLAMP = dict(lib="Diode:BAV99", val="BAV99", lcsc="C916421",
                fp="Package_TO_SOT_SMD:SOT-23"),
   TP    = dict(lib="Connector:TestPoint", val="TP",

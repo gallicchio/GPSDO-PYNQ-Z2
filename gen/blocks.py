@@ -117,8 +117,14 @@ def testpoint(s, x, y, ref, name):
 def decouple(s, x_vcc, y_vcc, rail_net, R, note="", tall=True,
              values=("100n", "10n")):
     """
-    Per-gate supply: a ferrite bead in this gate's own Vcc feed off the shared
-    rail, then 100 nF X7R + 10 nF C0G right at the pin.  Drawn above the gate so
+    Per-gate supply: a 4.7 ohm resistor in this gate's own Vcc feed off the
+    shared rail, then 100 nF X7R + 10 nF C0G right at the pin.
+
+    Rev B, item 12: rev A had a 600R@100MHz bead here, and the bead with its
+    110 nF was the tank every unplugged squarer oscillated in (557-583 kHz).
+    Bridging FB401 stopped unit 4 (30/30, round 45), and 4.7 ohm in its place
+    kept it quiet (O2, round 45.20).  4.7 ohm with 110 nF is a 0.31 MHz RC
+    corner with no resonance.  Drawn above the gate so
     power always comes from the top, and drawn TALL so that the capacitors'
     ground symbols sit clear above the gate body instead of landing on its pins.
 
@@ -130,12 +136,10 @@ def decouple(s, x_vcc, y_vcc, rail_net, R, note="", tall=True,
     pin (datasheet section 7.1), and it has two of them, so it passes
     ("100n", "100n") and the layout puts one at pin 1 and one at pin 7.
     """
-    fb_ref, c1_ref, c2_ref = R("FB"), R("C"), R("C")
+    fb_ref, c1_ref, c2_ref = R("R"), R("C"), R("C")
     y_node = y_vcc - (22.86 if tall else 10.16)   # decoupled node, above the gate
     y_fb = y_node - 6.35
-    p = D.P["FB"]
-    s.sym(p["lib"], x_vcc, y_fb, 0, ref=fb_ref, value=p["val"], footprint=p["fp"],
-          ref_dxy=(3.81, -1.27), val_dxy=(3.81, 2.54))
+    r_v(s, x_vcc, y_fb, fb_ref, D.P["RFILT"]["val"])
     s.wire(x_vcc, y_fb + 3.81, x_vcc, y_vcc)          # bead -> node -> Vcc pin
     rail(s, x_vcc, y_fb - 3.81, rail_net, rise=6.35, R=R)
     s.junction(x_vcc, y_node)

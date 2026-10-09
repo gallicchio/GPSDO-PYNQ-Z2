@@ -15,7 +15,20 @@ Power always enters from the top of a symbol; signal always flows left to right;
 every wire is orthogonal.
 """
 import design as D
+import kigen
 from blocks import RefGen, gnd, rail, r_h, r_v, c_h, c_v, testpoint, decouple
+
+# Rev B item 18: one body for both halves of the 74LVC2GU04, drawn the way the
+# circuit flows (the stock symbol is three units).  Pinout from Nexperia's
+# 74LVC2GU04 (SOT363) and TI's SN74LVC2GU04 (DCK), which agree:
+# 1 1A, 2 GND, 3 2A, 4 2Y, 5 VCC, 6 1Y.
+INV2_SYM = kigen.SYMS.define(
+    "GPSDO-PYNQ-Z2:74LVC2GU04",
+    [(1, "1A", "input", "l", 0.0), (3, "2A", "input", "l", -5.08),
+     (6, "1Y", "output", "r", 0.0), (4, "2Y", "output", "r", -5.08),
+     (5, "VCC", "power_in", "t", 0.0), (2, "GND", "power_in", "b", 0.0)],
+    datasheet="datasheets/Nexperia_74LVC2GU04.pdf",
+    description="Dual unbuffered inverter: half 1 squares, half 2 is its replica bias")
 
 Y10 = 105.41
 YPP = 296.00
@@ -92,13 +105,19 @@ def _ten_mhz(s, R, beat, hclk, rser, rsh2, term, L):
     # --- 50 ohm terminator, jumpered --------------------------------------
     r_v(s, 66.04, y + 10.16, R("R"), "51R 1%", left=True)
     s.wire(66.04, y, 66.04, y + 6.35)
-    pj = D.P["JMP2"]
-    jp = s.sym(pj["lib"], 71.12, y + 20.32, 0, ref=R("JP"), value="50R TERM",
-               footprint=pj["fp"], ref_dxy=(3.81, -1.27), val_dxy=(3.81, 1.27))
+    pj = D.P["JMP3"]
+    jp = s.sym(pj["lib"], 71.12, y + 22.86, 0, ref=R("JP"), value="50R/PARK",
+               footprint=pj["fp"], ref_dxy=(3.81, -3.81), val_dxy=(3.81, 3.81))
     s.wire(66.04, y + 13.97, *jp.pin(1))
-    gnd(s, *jp.pin(2), drop=8.89, R=R)
-    s.text(78.74, y + 26.67, "50 ohm terminate.", size=1.4, italic=True)
-    s.text(78.74, y + 30.48, "Jumper ON except ZED-F9T.", size=1.4, italic=True)
+    g2 = jp.pin(2)
+    s.wire(g2[0], g2[1], 53.34, g2[1])
+    gnd(s, 53.34, g2[1], drop=6.35, R=R)
+    p3 = jp.pin(3)
+    s.wire(p3[0], p3[1], p3[0] - 2.54, p3[1])
+    s.label(p3[0] - 2.54, p3[1], "PARK", justify="right bottom")
+    s.text(78.74, y + 33.02, "1-2 = 50 ohm terminate (ON except ZED-F9T)", size=1.4, italic=True)
+    s.text(78.74, y + 36.83, "2-3 = PARK: an unused channel, quiet", size=1.4, italic=True)
+    s.text(78.74, y + 40.64, "neither = a driven, unterminated input", size=1.4, italic=True)
 
     # --- shunt: current limit + defined DC level ---------------------------
     s.wire(66.04, y, 96.52, y)
@@ -124,6 +143,15 @@ def _ten_mhz(s, R, beat, hclk, rser, rsh2, term, L):
     c_h(s, 140.97, y, R("C"), "10n C0G")
     s.wire(144.78, y, 160.02, y)
     s.text(132.08, y - 6.35, "AC couple", size=1.4, italic=True)
+    # item 19: a U.FL tap through 1k, the resistor at the node
+    s.junction(156.21, y)
+    s.wire(156.21, y, 156.21, y - 5.08)
+    r_v(s, 156.21, y - 8.89, R("R"), "1k", left=True)
+    pu = D.P["UFL"]
+    tap = s.sym(pu["lib"], 156.21, y - 15.24, 90, ref=R("J"), value="TAP IN", footprint=pu["fp"],
+                lcsc=pu["lcsc"], ref_dxy=(5.08, -2.54), val_dxy=(5.08, 0.0))
+    s.wire(156.21, y - 12.7, *tap.pin(1))
+    gnd(s, *tap.pin(2), drop=3.81, R=R)
 
     # --- optional clamp (DNP) ---------------------------------------------
     s.junction(160.02, y)
@@ -141,40 +169,51 @@ def _ten_mhz(s, R, beat, hclk, rser, rsh2, term, L):
     # --- squarer ------------------------------------------------------------
     s.wire(160.02, y, 176.53, y)
     r_h(s, 180.34, y, R("R"), "330R")
-    pi = D.P["INV"]
+    pi = D.P["INV2"]
     inv = s.sym(pi["lib"], 215.90, y, 0, ref=R("U"), value=pi["val"], footprint=pi["fp"],
-                lcsc=pi["lcsc"], ref_dxy=(3.81, 12.7), val_dxy=(3.81, 15.24))
-    s.wire(184.15, y, *inv.pin(2))
-    s.nc(*inv.pin(1))
-    gnd(s, *inv.pin(3), drop=6.35, R=R)
+                lcsc=pi["lcsc"], ref_dxy=(-7.62, -12.7), val_dxy=(-7.62, -10.16))
+    s.wire(184.15, y, *inv.pin(1))
+    gnd(s, *inv.pin(2), drop=6.35, R=R)
     decouple(s, inv.pin(5)[0], inv.pin(5)[1], RAIL_A, R)
-    a = inv.pin(2); b = inv.pin(4)
+    a = inv.pin(1); b = inv.pin(6)
     testpoint(s, 193.04, y, R("TP"), "TP_SQ")
+    # PARK (item 11): 100k from the gate to the header's pin 3, its body at the gate
+    s.junction(186.69, y)
+    s.wire(186.69, y, 186.69, y + 5.08)
+    r_v(s, 186.69, y + 8.89, R("R"), "100k", left=True)
+    s.wire(186.69, y + 12.7, 186.69, y + 16.51)
+    s.label(186.69, y + 16.51, "PARK", justify="right bottom")
     s.note(134.62, y + 60.96, 62.23, 0,
-           "WHY THE 74LVC1GU04\n"
-           "U = UNBUFFERED, one gain stage.  A buffered inverter is three cascaded stages, and "
-           "three poles inside a feedback loop oscillate; one pole cannot.  That is what makes "
-           "the 1M self-bias safe here.\n"
-           "LVC = 5.5 V tolerant inputs on a 3.3 V rail (there is no clamp diode to Vcc), so a "
-           "5 V source survives contact.\n"
-           "It also has no input slew-rate limit in its Recommended Operating Conditions - "
-           "unlike the buffered G04 - because it is meant to be run in its linear region.",
+           "WHY THE 74LVC2GU04 (rev B)\n"
+           "TWO unbuffered inverters on one die: half 1 squares, half 2 is its replica bias "
+           "(item 18).  U = UNBUFFERED, one gain stage: three cascaded stages inside a "
+           "feedback loop oscillate, one cannot.\n"
+           "LVC = 5.5 V tolerant inputs on a 3.3 V rail, so a 5 V source survives contact, "
+           "and no input slew-rate limit: it is meant to run in its linear region.\n"
+           "SC-70-6 (DCK): Nexperia's 74AUP2GU04GW fits the same pads (item 8).",
            size=1.4, color=INFO, cols=44)
     s.note(172.72, y - 26.67, 46.99, 0,
            "AT THE GATE, at TP_SQ\n%s\n%s\nslew %s"
            % (L["at_gate"], L["gate_range"], L["slew"]), size=1.4, color=LEVEL, cols=38)
     s.arrow(193.04, y - 13.97, 193.04, y - 7.62)
 
-    # 1M self-bias, tucked just under the gate's own ground symbol
+    # REPLICA BIAS (item 18): half 2's input tied to its own output sits exactly
+    # at its threshold, and feeds half 1's input through the 1M
+    s.junction(200.66, y)
+    s.wire(200.66, y, 200.66, y + 5.08)
+    r_v(s, 200.66, y + 8.89, R("R"), "1M 1%", left=True)
+    a2 = inv.pin(3); y2 = inv.pin(4)
+    s.wires((200.66, y + 12.7), (200.66, y + 16.51), (a2[0], y + 16.51), a2)
+    s.label(a2[0] - 2.54, y + 16.51, "REPLICA", justify="right bottom")
+    s.wire(y2[0], y2[1], y2[0] + 5.08, y2[1])
+    s.label(y2[0] + 5.08, y2[1], "REPLICA", justify="left bottom")
     yfb = y + 27.94
-    s.wires((a[0], y), (a[0], yfb), (207.01, yfb))
-    r_h(s, 210.82, yfb, R("R"), "1M 1%", below=True)
-    s.wires((214.63, yfb), (b[0], yfb), (b[0], y))
-    s.text(220.98, yfb + 6.35, "SELF BIAS.  The 1M parks the gate's input at its own switching",
+    s.text(220.98, yfb + 6.35, "REPLICA BIAS.  Half 2, its input tied to its output, sits at",
            size=1.4, italic=True)
-    s.text(220.98, yfb + 10.16, "threshold, so the decision point tracks this gate's own supply",
+    s.text(220.98, yfb + 10.16, "its own threshold; the 1M carries that to half 1.  One die, one",
            size=1.4, italic=True)
-    s.text(220.98, yfb + 13.97, "and temperature instead of a fixed divider.", size=1.4, italic=True)
+    s.text(220.98, yfb + 13.97, "supply pin: it decides at its threshold, not 70 mV off (item 18).",
+           size=1.4, italic=True)
 
     # --- sampler + retimer ---------------------------------------------------
     pf = D.P["FF"]

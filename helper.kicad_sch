@@ -1137,171 +1137,6 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Device:FerriteBead"
-			(pin_numbers
-				(hide yes)
-			)
-			(pin_names
-				(offset 0)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(in_pos_files yes)
-			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "FB"
-				(at -3.81 0.635 90)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Value" "FerriteBead"
-				(at 3.81 0 90)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Footprint" ""
-				(at -1.778 0 90)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Datasheet" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Description" "Ferrite bead"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_keywords" "L ferrite bead inductor filter"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_fp_filters" "Inductor_* L_* *Ferrite*"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "FerriteBead_0_1"
-				(polyline
-					(pts
-						(xy -2.7686 0.4064) (xy -1.7018 2.2606) (xy 2.7686 -0.3048) (xy 1.6764 -2.159) (xy -2.7686 0.4064)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 1.27) (xy 0 1.2954)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 -1.27) (xy 0 -1.2192)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-			)
-			(symbol "FerriteBead_1_1"
-				(pin passive line
-					(at 0 3.81 270)
-					(length 2.54)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 -3.81 90)
-					(length 2.54)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
 		(symbol "Device:R"
 			(pin_numbers
 				(hide yes)
@@ -5044,90 +4879,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:FerriteBead")
-		(at 157.48 177.8 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "035b8f2c-3b5e-5a82-9984-c83e2da595aa")
-		(property "Reference" "FB3003"
-			(at 161.29 176.53 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "600R@100MHz"
-			(at 161.29 180.34 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Inductor_SMD:L_0805_2012Metric"
-			(at 157.48 177.8 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 157.48 177.8 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 157.48 177.8 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "73ddba21-b99f-bb7e-9c38-9fde5f97a564")
-		)
-		(pin "2"
-			(uuid "58c4bc2a-e8d4-71d0-b921-e060d80f221e")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "FB3003")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 63.5 85.09 0)
 		(unit 1)
@@ -5288,90 +5039,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
 					(reference "C3010")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 367.03 312.42 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "0afc5a1e-a00f-94ff-0b5e-c2164bbb38fd")
-		(property "Reference" "R3017"
-			(at 370.84 311.15 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "33R"
-			(at 370.84 314.96 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 367.03 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 367.03 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 367.03 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "5ec60aa3-2678-4b34-33d7-2623de72a399")
-		)
-		(pin "2"
-			(uuid "dc5a9c84-4787-fc1b-c1da-a050c8544a55")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3017")
 					(unit 1)
 				)
 			)
@@ -6038,6 +5705,90 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 77.47 110.49 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "2b89e5aa-9e29-ae88-6e2f-80ba1b549365")
+		(property "Reference" "R3003"
+			(at 81.28 109.22 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "1k"
+			(at 81.28 113.03 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 77.47 110.49 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 77.47 110.49 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 77.47 110.49 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "82c14444-edbb-35e7-e2bd-df171aeb558d")
+		)
+		(pin "2"
+			(uuid "f48568ce-f17f-c90e-dd84-0d80a95cb7ff")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3003")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Oscillator:FT5HN")
 		(at 45.72 101.6 0)
 		(unit 1)
@@ -6140,6 +5891,90 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 490.22 312.42 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "32d7208b-8716-3d30-c04a-f20ab7a1c030")
+		(property "Reference" "R3029"
+			(at 494.03 311.15 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "33R"
+			(at 494.03 314.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 490.22 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 490.22 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 490.22 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "d5c176cb-1286-7c0c-6472-5dd8284bfb71")
+		)
+		(pin "2"
+			(uuid "89ba3946-4786-b977-369a-7cdcfe81a37d")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3029")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 467.36 284.48 0)
 		(unit 1)
@@ -6225,17 +6060,17 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 66.04 204.47 90)
+		(at 464.82 312.42 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(in_pos_files yes)
-		(dnp yes)
-		(uuid "36158abc-ae1d-6c15-9b74-fe794bbb9b3e")
-		(property "Reference" "R3004"
-			(at 66.04 195.58 270)
+		(dnp no)
+		(uuid "361f5c17-0437-d59d-de86-6395225eab82")
+		(property "Reference" "R3027"
+			(at 468.63 311.15 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6245,8 +6080,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "0R DNP"
-			(at 66.04 199.39 270)
+		(property "Value" "33R"
+			(at 468.63 314.96 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6257,7 +6092,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 66.04 204.47 270)
+			(at 464.82 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6269,7 +6104,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 66.04 204.47 270)
+			(at 464.82 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6281,7 +6116,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 66.04 204.47 270)
+			(at 464.82 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6293,15 +6128,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "15fdef6e-975f-da79-8cc2-42215c7f6693")
+			(uuid "ec5944fa-aa30-55fa-3110-3f663388eff7")
 		)
 		(pin "2"
-			(uuid "3a1a2b17-8fa4-06f1-17e0-d038c618f37d")
+			(uuid "4c976fc6-3cc6-df0f-fbec-9f9996f4155a")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3004")
+					(reference "R3027")
 					(unit 1)
 				)
 			)
@@ -6495,6 +6330,90 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 66.04 204.47 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp yes)
+		(uuid "3c3c7819-3a18-5c13-5176-08a2c71bbaa7")
+		(property "Reference" "R3006"
+			(at 66.04 195.58 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "0R DNP"
+			(at 66.04 199.39 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 66.04 204.47 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 66.04 204.47 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 66.04 204.47 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "9a4d2449-bfb3-6372-7b3b-4c9fa22a584e")
+		)
+		(pin "2"
+			(uuid "70e89759-df2f-c34c-13d3-c88f05350617")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3006")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 195.58 73.66 0)
 		(unit 1)
@@ -6579,8 +6498,8 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:FerriteBead")
-		(at 210.82 177.8 0)
+		(lib_id "Device:R")
+		(at 157.48 177.8 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -6588,9 +6507,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "3ea7ad34-4c6c-65ed-ebd9-87be34b6f1d0")
-		(property "Reference" "FB3004"
-			(at 214.63 176.53 0)
+		(uuid "43f7993c-6fc6-e246-4cd1-e71836ed203d")
+		(property "Reference" "R3009"
+			(at 161.29 176.53 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6600,8 +6519,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "600R@100MHz"
-			(at 214.63 180.34 0)
+		(property "Value" "4R7"
+			(at 161.29 180.34 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6611,8 +6530,8 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Inductor_SMD:L_0805_2012Metric"
-			(at 210.82 177.8 0)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 157.48 177.8 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6624,7 +6543,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 210.82 177.8 0)
+			(at 157.48 177.8 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6636,7 +6555,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 210.82 177.8 0)
+			(at 157.48 177.8 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6648,15 +6567,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "c2b6ef21-8f9f-4256-b597-4ed800736d1d")
+			(uuid "e80f3159-cb8f-18fe-f194-38da22d96de6")
 		)
 		(pin "2"
-			(uuid "f1e9eaca-5d67-1b7f-4ea6-6d407e6a6091")
+			(uuid "2bf2e37b-4b22-a585-41df-5841506a1455")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "FB3004")
+					(reference "R3009")
 					(unit 1)
 				)
 			)
@@ -6739,6 +6658,90 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
 					(reference "#PWR3029")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 210.82 177.8 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "4a188ae0-04f0-dcf8-80c5-29d83aec631e")
+		(property "Reference" "R3011"
+			(at 214.63 176.53 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "4R7"
+			(at 214.63 180.34 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 210.82 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 210.82 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 210.82 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "56486441-54ff-455f-5aea-2ac6ba3823c6")
+		)
+		(pin "2"
+			(uuid "36ebbf6f-a51e-9a48-e3f0-070211c8ca83")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3011")
 					(unit 1)
 				)
 			)
@@ -6912,7 +6915,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 477.52 312.42 0)
+		(at 175.26 62.23 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -6920,9 +6923,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "4c5b46aa-4012-1bd2-ed88-ba5dfe0c31f2")
-		(property "Reference" "R3020"
-			(at 481.33 311.15 0)
+		(uuid "4ba5f5a8-e7a2-fc38-5fc9-c93dfc6b04d3")
+		(property "Reference" "R3004"
+			(at 179.07 60.96 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6932,8 +6935,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "33R"
-			(at 481.33 314.96 0)
+		(property "Value" "4R7"
+			(at 179.07 64.77 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6944,7 +6947,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 477.52 312.42 0)
+			(at 175.26 62.23 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6956,7 +6959,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 477.52 312.42 0)
+			(at 175.26 62.23 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6968,7 +6971,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 477.52 312.42 0)
+			(at 175.26 62.23 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6980,15 +6983,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "bd9f1ca4-e5ad-df03-8511-22718308f731")
+			(uuid "090ad67d-3f60-1bc6-7af7-1be60e026352")
 		)
 		(pin "2"
-			(uuid "00de11e3-319b-f4e7-9c7a-6a3c08e2613f")
+			(uuid "640b1bff-5a18-2aca-ee81-1a7bf5d47298")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3020")
+					(reference "R3004")
 					(unit 1)
 				)
 			)
@@ -7153,90 +7156,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
 					(reference "#PWR3034")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 256.54 312.42 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "4f18c131-b4b9-db7c-b194-45818c417b68")
-		(property "Reference" "R3013"
-			(at 260.35 311.15 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "33R"
-			(at 260.35 314.96 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 256.54 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 256.54 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 256.54 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "f1cb8fdc-f70d-7b4d-3e68-d91611ffbddd")
-		)
-		(pin "2"
-			(uuid "4301dac2-08ba-6377-1d1e-bd7c5612a2e0")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3013")
 					(unit 1)
 				)
 			)
@@ -7771,7 +7690,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 55.88 213.36 0)
+		(at 66.04 189.23 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -7779,93 +7698,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "611e2b9d-37c3-a429-a1e6-33c43493ec9e")
-		(property "Reference" "R3003"
-			(at 52.07 212.09 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Value" "51R"
-			(at 52.07 215.9 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 55.88 213.36 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Datasheet" ""
-			(at 55.88 213.36 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Description" ""
-			(at 55.88 213.36 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(pin "1"
-			(uuid "45d6bb90-6647-834b-b831-ad8081d5c2fa")
-		)
-		(pin "2"
-			(uuid "36fc912c-ab31-1cc2-f313-3d869a7f3920")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3003")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 146.05 312.42 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "61babfad-ee9a-4a3a-e6be-b0a1d4f7da78")
-		(property "Reference" "R3009"
-			(at 149.86 311.15 0)
+		(uuid "61b9ee08-4ba7-3c35-96c3-ba3f1ae021b4")
+		(property "Reference" "R3007"
+			(at 66.04 180.34 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7875,8 +7710,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "33R"
-			(at 149.86 314.96 0)
+		(property "Value" "0R"
+			(at 66.04 184.15 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7887,7 +7722,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 146.05 312.42 0)
+			(at 66.04 189.23 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7899,7 +7734,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 146.05 312.42 0)
+			(at 66.04 189.23 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7911,7 +7746,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 146.05 312.42 0)
+			(at 66.04 189.23 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7923,99 +7758,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "7cd028e9-25bf-1cad-4c82-e8496229b057")
+			(uuid "8a172e13-19e3-8e8d-7c35-2e2648e2746b")
 		)
 		(pin "2"
-			(uuid "59e68b9b-27a1-6d28-830a-7d21ea575053")
+			(uuid "bfc5db06-f00c-7a78-3a77-6bca7908d9af")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3009")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:FerriteBead")
-		(at 175.26 62.23 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "62dfb4ae-3c95-73a2-94d1-083aa9a933d5")
-		(property "Reference" "FB3002"
-			(at 179.07 60.96 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "600R@100MHz"
-			(at 179.07 64.77 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Inductor_SMD:L_0805_2012Metric"
-			(at 175.26 62.23 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 175.26 62.23 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 175.26 62.23 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "7c8d3bb2-3171-6d00-3200-3acc6d8edd27")
-		)
-		(pin "2"
-			(uuid "1fa529f8-edf2-b844-ae7f-2c451e5c87c4")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "FB3002")
+					(reference "R3007")
 					(unit 1)
 				)
 			)
@@ -8105,7 +7856,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 129.54 204.47 90)
+		(at 354.33 312.42 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8113,177 +7864,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "6700f6b8-8b72-0309-b5e8-051402ab7ec6")
-		(property "Reference" "R3006"
-			(at 129.54 195.58 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "330R"
-			(at 129.54 199.39 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 129.54 204.47 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 129.54 204.47 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 129.54 204.47 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "f2bbcb37-d6b0-e8c1-4717-c6604408f2a8")
-		)
-		(pin "2"
-			(uuid "98336189-eecf-0389-b7bd-e84b5c772f2c")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3006")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 66.04 101.6 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "674d2531-cc06-5d3f-6207-1f4cdcde5545")
-		(property "Reference" "R3001"
-			(at 66.04 92.71 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "3k3"
-			(at 66.04 96.52 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 66.04 101.6 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 66.04 101.6 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 66.04 101.6 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "826841a4-f415-3053-3c2f-1630341c87a5")
-		)
-		(pin "2"
-			(uuid "6311df0a-e731-2009-4d7a-d4daaf15f073")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3001")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 243.84 312.42 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "6fbca103-4df1-0ee3-00b9-1f5bf66e4788")
-		(property "Reference" "R3012"
-			(at 247.65 311.15 0)
+		(uuid "6ad79cc9-995e-2a26-7fcf-9145080210d3")
+		(property "Reference" "R3023"
+			(at 358.14 311.15 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8294,7 +7877,7 @@
 			)
 		)
 		(property "Value" "33R"
-			(at 247.65 314.96 0)
+			(at 358.14 314.96 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8305,7 +7888,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 243.84 312.42 0)
+			(at 354.33 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8317,7 +7900,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 243.84 312.42 0)
+			(at 354.33 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8329,7 +7912,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 243.84 312.42 0)
+			(at 354.33 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8341,15 +7924,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "2320b6c9-f085-0e34-b3bb-899814b8a673")
+			(uuid "5506f026-7e7e-c216-2868-478692b3982b")
 		)
 		(pin "2"
-			(uuid "354aa05b-b1c2-ded0-c273-e2e5dc4567e3")
+			(uuid "b303423c-020d-b55d-bb90-4926c97d862c")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3012")
+					(reference "R3023")
 					(unit 1)
 				)
 			)
@@ -8543,90 +8126,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:FerriteBead")
-		(at 226.06 273.05 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "73662350-cd8b-319e-dc31-cc0f4cf5d134")
-		(property "Reference" "FB3006"
-			(at 229.87 271.78 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "600R@100MHz"
-			(at 229.87 275.59 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Inductor_SMD:L_0805_2012Metric"
-			(at 226.06 273.05 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 226.06 273.05 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 226.06 273.05 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "4316d073-1819-1516-925d-77d4fe4bdd2a")
-		)
-		(pin "2"
-			(uuid "80148cb2-2d57-773d-50a4-8b3d283cabb7")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "FB3006")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 356.87 293.37 0)
 		(unit 1)
@@ -8792,7 +8291,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 171.45 312.42 0)
+		(at 379.73 312.42 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8800,9 +8299,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "77a4b12c-c7c7-37a2-89ff-68307ab6d761")
-		(property "Reference" "R3011"
-			(at 175.26 311.15 0)
+		(uuid "77af00bf-359b-929b-9078-6c8833255239")
+		(property "Reference" "R3025"
+			(at 383.54 311.15 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8813,7 +8312,7 @@
 			)
 		)
 		(property "Value" "33R"
-			(at 175.26 314.96 0)
+			(at 383.54 314.96 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -8824,7 +8323,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 171.45 312.42 0)
+			(at 379.73 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8836,7 +8335,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 171.45 312.42 0)
+			(at 379.73 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8848,7 +8347,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 171.45 312.42 0)
+			(at 379.73 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8860,15 +8359,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "9a0daccc-051c-f5f4-d8ac-97befed655be")
+			(uuid "621ecbc4-9e24-acb6-54f8-04be2aadb046")
 		)
 		(pin "2"
-			(uuid "1b896552-a58c-bc02-465e-079a95151850")
+			(uuid "46e7e768-5ac3-13c1-55f3-5f81a13e47c1")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3011")
+					(reference "R3025")
 					(unit 1)
 				)
 			)
@@ -8876,7 +8375,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 490.22 312.42 0)
+		(at 55.88 213.36 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -8884,31 +8383,31 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "7b4e11a9-a9df-9e9a-39db-8fd510dd09dc")
-		(property "Reference" "R3021"
-			(at 494.03 311.15 0)
+		(uuid "7e5cd1f4-d180-7b72-cc96-c4be2b8b7567")
+		(property "Reference" "R3005"
+			(at 52.07 212.09 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
-		(property "Value" "33R"
-			(at 494.03 314.96 0)
+		(property "Value" "51R"
+			(at 52.07 215.9 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 490.22 312.42 0)
+			(at 55.88 213.36 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8916,11 +8415,11 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(property "Datasheet" ""
-			(at 490.22 312.42 0)
+			(at 55.88 213.36 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8928,11 +8427,11 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(property "Description" ""
-			(at 490.22 312.42 0)
+			(at 55.88 213.36 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8940,19 +8439,19 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "1"
-			(uuid "7697887d-9669-72b0-402a-5e882bdc6381")
+			(uuid "5c70fa83-f584-ec93-f112-c715e1af431f")
 		)
 		(pin "2"
-			(uuid "e20b5645-335f-0d6f-9f3b-608700cebeb5")
+			(uuid "c0b48670-aa54-8487-88e8-0a6af034937d")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3021")
+					(reference "R3005")
 					(unit 1)
 				)
 			)
@@ -9617,6 +9116,90 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 158.75 312.42 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "8fb9d13a-ccad-84d9-a7da-afee92ae4c9e")
+		(property "Reference" "R3015"
+			(at 162.56 311.15 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "33R"
+			(at 162.56 314.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 158.75 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 158.75 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 158.75 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "56887eae-7720-b707-97ca-a141c3f1234b")
+		)
+		(pin "2"
+			(uuid "6f00800c-85d5-9ef9-2ca9-764868b7e74b")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3015")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "74xGxx:74LVC1G34")
 		(at 215.9 204.47 0)
 		(unit 1)
@@ -9722,90 +9305,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:R")
-		(at 77.47 110.49 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "91941fd4-335d-bc46-85b2-60eae3d66703")
-		(property "Reference" "R3002"
-			(at 81.28 109.22 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "1k"
-			(at 81.28 113.03 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 77.47 110.49 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 77.47 110.49 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 77.47 110.49 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "ed2fdce3-0bb2-a84b-c433-d9a8ebc96691")
-		)
-		(pin "2"
-			(uuid "b8aac0e2-7019-e8b3-1761-f0e10664ec42")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3002")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:+3V3")
 		(at 226.06 262.89 0)
 		(unit 1)
@@ -9888,90 +9387,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:R")
-		(at 66.04 189.23 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "95681408-98df-81e4-9c82-96e0d5a35985")
-		(property "Reference" "R3005"
-			(at 66.04 180.34 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "0R"
-			(at 66.04 184.15 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 66.04 189.23 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 66.04 189.23 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 66.04 189.23 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "6f05b450-386e-b5ae-0936-1c19e9e317c5")
-		)
-		(pin "2"
-			(uuid "3018ab5a-63f3-b6bf-ed3c-9870b043de7c")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3005")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 226.06 111.76 0)
 		(unit 1)
@@ -10048,6 +9463,174 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
 					(reference "#PWR3010")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 129.54 204.47 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "95fadfc8-3f97-eafb-8b0a-af9794206dc4")
+		(property "Reference" "R3008"
+			(at 129.54 195.58 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "330R"
+			(at 129.54 199.39 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 129.54 204.47 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 129.54 204.47 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 129.54 204.47 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "591e6d59-ae0d-98e3-c6b8-380df8880145")
+		)
+		(pin "2"
+			(uuid "30aff82d-7d70-4264-fdff-5f9e1b3a62ce")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3008")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 115.57 273.05 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "96674f0f-ae75-56c0-e724-d066a5ae0cf8")
+		(property "Reference" "R3012"
+			(at 119.38 271.78 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "4R7"
+			(at 119.38 275.59 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 115.57 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 115.57 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 115.57 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "5d9ecdbd-7226-4102-471d-10ad28489e3e")
+		)
+		(pin "2"
+			(uuid "b5efa0ca-f703-db8d-cb5d-5027400b0cbd")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3012")
 					(unit 1)
 				)
 			)
@@ -10256,8 +9839,8 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "9c97198a-2113-7273-47b0-eaa8f495a280")
-		(property "Reference" "R3007"
+		(uuid "9c63f22f-e587-baad-3ad5-8c756b90563a")
+		(property "Reference" "R3010"
 			(at 160.02 233.68 270)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10316,99 +9899,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "f23e78cb-3ea7-5a64-1df5-523d20be05aa")
+			(uuid "5dd2203e-970f-3a0a-9093-687e930a7d7b")
 		)
 		(pin "2"
-			(uuid "3f59970a-04dd-4b8a-fe04-bb3c67809034")
+			(uuid "5bd02dca-2c5e-b90e-b971-056779a80e7f")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3007")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:FerriteBead")
-		(at 336.55 273.05 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "9d2521f1-5f24-7f40-c213-5d30d82c8867")
-		(property "Reference" "FB3007"
-			(at 340.36 271.78 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "600R@100MHz"
-			(at 340.36 275.59 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Inductor_SMD:L_0805_2012Metric"
-			(at 336.55 273.05 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 336.55 273.05 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 336.55 273.05 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "dae0170c-832d-f6f7-d17c-b954090f5eb1")
-		)
-		(pin "2"
-			(uuid "55162d74-06b2-b065-f2e2-4c341884d7c6")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "FB3007")
+					(reference "R3010")
 					(unit 1)
 				)
 			)
@@ -10665,90 +10164,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:FerriteBead")
-		(at 115.57 273.05 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "a44b5d86-48cf-150a-67e4-81cb5aa03e55")
-		(property "Reference" "FB3005"
-			(at 119.38 271.78 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "600R@100MHz"
-			(at 119.38 275.59 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Inductor_SMD:L_0805_2012Metric"
-			(at 115.57 273.05 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 115.57 273.05 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 115.57 273.05 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "6714a7f3-5709-1ad2-298f-a9e5de7c62af")
-		)
-		(pin "2"
-			(uuid "521ff31a-fead-feac-8b3b-52b673ba8b8f")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "FB3005")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "Device:C")
 		(at 52.07 76.2 0)
 		(unit 1)
@@ -10827,6 +10242,90 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
 					(reference "C3001")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 43.18 64.77 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "b02eb839-f104-9fa8-baf2-66b13371f376")
+		(property "Reference" "R3001"
+			(at 46.99 63.5 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "4R7"
+			(at 46.99 67.31 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 43.18 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 43.18 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 43.18 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "be13a1c2-b200-430a-be8c-a52c1a9d122b")
+		)
+		(pin "2"
+			(uuid "704adb0c-1ef8-31ae-4ca6-a6a45c32471b")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3001")
 					(unit 1)
 				)
 			)
@@ -10999,6 +10498,90 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 256.54 312.42 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "b40e3eee-bc69-facc-0f43-f30a0cdb95dc")
+		(property "Reference" "R3019"
+			(at 260.35 311.15 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "33R"
+			(at 260.35 314.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 256.54 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 256.54 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 256.54 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "73257f54-31b0-d698-ac8b-7d5229a727b0")
+		)
+		(pin "2"
+			(uuid "b94d9ccc-b167-8f54-5364-18f36389647d")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3019")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 109.22 204.47 90)
 		(unit 1)
@@ -11083,90 +10666,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:R")
-		(at 281.94 312.42 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "b54bbe40-7c71-4b5a-d24a-57059c018d47")
-		(property "Reference" "R3015"
-			(at 285.75 311.15 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "33R"
-			(at 285.75 314.96 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 281.94 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 281.94 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 281.94 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "ddab735b-db33-6897-d1e7-e1ae7423d733")
-		)
-		(pin "2"
-			(uuid "3f54e470-b798-78c7-022f-c66570f57bb1")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3015")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 345.44 293.37 0)
 		(unit 1)
@@ -11243,90 +10742,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
 					(reference "#PWR3032")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 158.75 312.42 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "b982b50b-77fb-6786-83f5-1849ccfa3a52")
-		(property "Reference" "R3010"
-			(at 162.56 311.15 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "33R"
-			(at 162.56 314.96 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 158.75 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 158.75 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 158.75 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "b53b5ac2-daf6-9514-67d8-a6a748a2bc63")
-		)
-		(pin "2"
-			(uuid "e1027e37-74f7-5aba-931b-c501d0b73593")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3010")
 					(unit 1)
 				)
 			)
@@ -11606,6 +11021,90 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 281.94 312.42 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "bf3f5e91-e1ad-853d-5ac3-7623d2ab81b5")
+		(property "Reference" "R3021"
+			(at 285.75 311.15 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "33R"
+			(at 285.75 314.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 281.94 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 281.94 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 281.94 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "c422fd75-b06e-5d08-4388-04da9a28fa42")
+		)
+		(pin "2"
+			(uuid "f0db9282-42b9-90a4-6e12-57aba6d27c9c")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3021")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 336.55 317.5 0)
 		(unit 1)
@@ -11769,8 +11268,8 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:FerriteBead")
-		(at 43.18 64.77 0)
+		(lib_id "Device:R")
+		(at 269.24 312.42 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -11778,9 +11277,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "cb1479a4-0490-543a-1f37-068ce0788227")
-		(property "Reference" "FB3001"
-			(at 46.99 63.5 0)
+		(uuid "c81411a9-1165-981a-950b-eac32590bc7c")
+		(property "Reference" "R3020"
+			(at 273.05 311.15 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11790,8 +11289,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "600R@100MHz"
-			(at 46.99 67.31 0)
+		(property "Value" "33R"
+			(at 273.05 314.96 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11801,8 +11300,8 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Inductor_SMD:L_0805_2012Metric"
-			(at 43.18 64.77 0)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 269.24 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11814,7 +11313,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 43.18 64.77 0)
+			(at 269.24 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11826,7 +11325,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 43.18 64.77 0)
+			(at 269.24 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11838,15 +11337,99 @@
 			)
 		)
 		(pin "1"
-			(uuid "670cde1e-0ca4-8928-fe78-71a8ae76d1c3")
+			(uuid "eb632533-2c21-0d8b-e44d-637ba2af0d77")
 		)
 		(pin "2"
-			(uuid "4c3a9635-7f58-4ce0-3b78-a85bc17ea62a")
+			(uuid "e4e47d46-62cb-7e7f-d448-6ade35dfc508")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "FB3001")
+					(reference "R3020")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 133.35 312.42 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "cb47c9e9-0535-f991-e736-0dc257db2e1e")
+		(property "Reference" "R3013"
+			(at 137.16 311.15 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "33R"
+			(at 137.16 314.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 133.35 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 133.35 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 133.35 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "ae4ae2cf-22bc-41a0-24b5-5713ff9f5ea2")
+		)
+		(pin "2"
+			(uuid "cd955eb3-5359-e323-ed44-ac88b63c2018")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3013")
 					(unit 1)
 				)
 			)
@@ -12040,90 +11623,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:R")
-		(at 269.24 312.42 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "cd25a9c5-947f-10ee-d80d-e5340fb2d116")
-		(property "Reference" "R3014"
-			(at 273.05 311.15 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "33R"
-			(at 273.05 314.96 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 269.24 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 269.24 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 269.24 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "8a57e49c-db4c-c387-6a87-59fa32e840db")
-		)
-		(pin "2"
-			(uuid "482f5af3-a2f1-269e-42a2-ad7471ce2054")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3014")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 33.02 214.63 0)
 		(unit 1)
@@ -12206,8 +11705,8 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:FerriteBead")
-		(at 447.04 273.05 0)
+		(lib_id "Device:R")
+		(at 367.03 312.42 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -12215,9 +11714,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "d0c29bd5-478e-2454-3517-ba515b0b0193")
-		(property "Reference" "FB3008"
-			(at 450.85 271.78 0)
+		(uuid "d056a0cd-0f86-65a7-0f81-b400f9fef4ca")
+		(property "Reference" "R3024"
+			(at 370.84 311.15 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12227,8 +11726,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "600R@100MHz"
-			(at 450.85 275.59 0)
+		(property "Value" "33R"
+			(at 370.84 314.96 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12238,8 +11737,8 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Inductor_SMD:L_0805_2012Metric"
-			(at 447.04 273.05 0)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 367.03 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12251,7 +11750,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 447.04 273.05 0)
+			(at 367.03 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12263,7 +11762,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 447.04 273.05 0)
+			(at 367.03 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12275,15 +11774,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "9a39a4d5-5b88-7607-1b41-53b6f1a658f2")
+			(uuid "84eef911-32b4-e24b-d2b9-972f5e40d8ab")
 		)
 		(pin "2"
-			(uuid "39b237f6-4adc-2134-5446-2d02d5cf576b")
+			(uuid "8177af6c-72a0-ffca-4460-1438527f3c5d")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "FB3008")
+					(reference "R3024")
 					(unit 1)
 				)
 			)
@@ -12455,7 +11954,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 133.35 312.42 0)
+		(at 66.04 101.6 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -12463,9 +11962,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "d6eb2951-f047-b48d-03ac-4805d300d156")
-		(property "Reference" "R3008"
-			(at 137.16 311.15 0)
+		(uuid "d995489c-3f9e-426d-1145-919b94e2597a")
+		(property "Reference" "R3002"
+			(at 66.04 92.71 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12475,8 +11974,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "33R"
-			(at 137.16 314.96 0)
+		(property "Value" "3k3"
+			(at 66.04 96.52 270)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12487,7 +11986,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 133.35 312.42 0)
+			(at 66.04 101.6 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12499,7 +11998,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 133.35 312.42 0)
+			(at 66.04 101.6 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12511,7 +12010,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 133.35 312.42 0)
+			(at 66.04 101.6 270)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12523,99 +12022,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "b5244dda-5b54-c6f9-1038-8d0f3524ef0b")
+			(uuid "9b5cea9b-4aa8-2e22-50ef-52b0edff5515")
 		)
 		(pin "2"
-			(uuid "96453ef8-4935-7c7e-e54e-2ebea6c35a48")
+			(uuid "15c803a3-d867-96f4-4950-2012cf50b32f")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3008")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 464.82 312.42 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "d97841fd-76db-6026-30ac-3e3551461b29")
-		(property "Reference" "R3019"
-			(at 468.63 311.15 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "33R"
-			(at 468.63 314.96 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 464.82 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 464.82 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 464.82 312.42 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "7986b613-4f3e-4c18-1959-436f64685986")
-		)
-		(pin "2"
-			(uuid "e1c5939c-409a-5015-7db1-865b2c9219a3")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3019")
+					(reference "R3002")
 					(unit 1)
 				)
 			)
@@ -12698,6 +12113,90 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
 					(reference "#PWR3018")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 477.52 312.42 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "ddb11473-96cf-91d9-5a03-1320264c3deb")
+		(property "Reference" "R3028"
+			(at 481.33 311.15 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "33R"
+			(at 481.33 314.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 477.52 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 477.52 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 477.52 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "67ce4d0f-f4ef-a669-9cab-90f8bb241061")
+		)
+		(pin "2"
+			(uuid "594a3b0c-2c92-d710-8c60-2dda4c2daf88")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3028")
 					(unit 1)
 				)
 			)
@@ -12908,6 +12407,90 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 226.06 273.05 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "e09d3adb-8e1f-c4f4-be91-5cb58c9c8f28")
+		(property "Reference" "R3017"
+			(at 229.87 271.78 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "4R7"
+			(at 229.87 275.59 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 226.06 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 226.06 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 226.06 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "47155668-04ab-7bc9-1315-3ffea429a94e")
+		)
+		(pin "2"
+			(uuid "94706fcc-594d-3491-be9c-c07ad29e0d42")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3017")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 320.04 113.03 0)
 		(unit 1)
@@ -13075,7 +12658,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 354.33 312.42 0)
+		(at 243.84 312.42 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -13083,9 +12666,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "fc7ee236-6de7-1097-e47d-27b3b1120262")
-		(property "Reference" "R3016"
-			(at 358.14 311.15 0)
+		(uuid "ecb61c74-9de7-2c35-adde-6f54e92f3d8c")
+		(property "Reference" "R3018"
+			(at 247.65 311.15 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13096,7 +12679,7 @@
 			)
 		)
 		(property "Value" "33R"
-			(at 358.14 314.96 0)
+			(at 247.65 314.96 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13107,7 +12690,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 354.33 312.42 0)
+			(at 243.84 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13119,7 +12702,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 354.33 312.42 0)
+			(at 243.84 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13131,7 +12714,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 354.33 312.42 0)
+			(at 243.84 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13143,10 +12726,178 @@
 			)
 		)
 		(pin "1"
-			(uuid "2be199fd-ba86-fb94-a691-8f309ea751df")
+			(uuid "aaa2df7f-f657-3928-70bf-fe47cc8286e9")
 		)
 		(pin "2"
-			(uuid "72f89342-74ba-11d4-ad67-d03610a444ab")
+			(uuid "b9e34300-fbc1-69f5-3ce2-d4e81aefaad3")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3018")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 447.04 273.05 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "f29d3daa-ba2a-dcb4-e3e2-39582e1fb0b3")
+		(property "Reference" "R3026"
+			(at 450.85 271.78 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "4R7"
+			(at 450.85 275.59 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 447.04 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 447.04 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 447.04 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "bc5be77c-4069-7ce5-40e6-b5d4bd0dbf0f")
+		)
+		(pin "2"
+			(uuid "355be2ec-b47d-937d-0b18-323f027c4f1c")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3026")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 171.45 312.42 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "f52b88ac-af5e-1295-8123-57f715d171af")
+		(property "Reference" "R3016"
+			(at 175.26 311.15 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "33R"
+			(at 175.26 314.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 171.45 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 171.45 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 171.45 312.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "f0709bdd-519b-91c7-0001-e124cd072834")
+		)
+		(pin "2"
+			(uuid "6a2c17fc-ca6f-f9b2-29c3-b0abbcfc00dd")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
@@ -13159,7 +12910,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 379.73 312.42 0)
+		(at 146.05 312.42 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -13167,9 +12918,9 @@
 		(on_board yes)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "fc8655fb-a63f-52fd-cb10-47cbb7e0c63f")
-		(property "Reference" "R3018"
-			(at 383.54 311.15 0)
+		(uuid "feef414c-f45c-bf85-806d-0ba1a71974a5")
+		(property "Reference" "R3014"
+			(at 149.86 311.15 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13180,7 +12931,7 @@
 			)
 		)
 		(property "Value" "33R"
-			(at 383.54 314.96 0)
+			(at 149.86 314.96 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13191,7 +12942,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 379.73 312.42 0)
+			(at 146.05 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13203,7 +12954,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 379.73 312.42 0)
+			(at 146.05 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13215,7 +12966,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 379.73 312.42 0)
+			(at 146.05 312.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13227,15 +12978,99 @@
 			)
 		)
 		(pin "1"
-			(uuid "f60a0053-cdd9-a8be-01c7-5043c2138400")
+			(uuid "ddcf3151-5e7d-5521-5330-2d00e97bf128")
 		)
 		(pin "2"
-			(uuid "862914b1-b26c-80c3-6230-5ae9e58407b6")
+			(uuid "8495a3c6-edc1-56d6-7efd-ece3d3f3f76d")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
-					(reference "R3018")
+					(reference "R3014")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 336.55 273.05 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "ff792b01-8ffc-429a-95fa-3607f06644bf")
+		(property "Reference" "R3022"
+			(at 340.36 271.78 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "4R7"
+			(at 340.36 275.59 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 336.55 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 336.55 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 336.55 273.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "7cff26e5-5789-9200-5aa8-d10fd18c42e0")
+		)
+		(pin "2"
+			(uuid "fe670f06-c56a-86ea-cdc2-e4e290ff7c72")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/08b55b1d-ac06-4eed-5dfc-a2686a75aae6"
+					(reference "R3022")
 					(unit 1)
 				)
 			)
