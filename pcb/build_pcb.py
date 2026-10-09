@@ -417,7 +417,9 @@ def hand_placed(G):
     # heaters as they are): it moves BESIDE THE FAN-OUT, between the two
     # LMK1C1108s on the block's right side, as the thermostat's sensor --
     # the one thing whose temperature every channel's timing shares.
-    temps["U5007"] = (G.XC - 0.2 + 6.7, 102.0)   # clear of U3004 by 0.17
+    # (2026-10-09 afternoon) at the far end of U3005, local (96.5, -7.6):
+    # between the LMKs is where their outputs' 33Rs now fan out.
+    temps["U5007"] = (G.XC - 0.2 + 7.6, 40.0 + 96.5)
     temps["U5008"] = (6.5, 168.0)   # a fourth down the left margin;
                                     # at (70, BH-6) its support stack ran
                                     # off the bottom edge
@@ -758,7 +760,8 @@ def build():
     def hnet(slot, pad):
         return nets.get(slot, {}).get(pad)
 
-    for lst, lyr in ((H.routes(), "F.Cu"), (H.IN2_ROUTES, "In2.Cu")):
+    _hroutes = H.routes()        # rev B: also fills IN2_ROUTES, VIAS, LOCAL_VIAS
+    for lst, lyr in ((_hroutes, "F.Cu"), (H.IN2_ROUTES, "In2.Cu")):
         for (slot, pad), w, pts in lst:
             nm = hnet(slot, pad)
             if not nm or nm.startswith("unconnected-"):
@@ -770,6 +773,11 @@ def build():
     # No escape stubs here.  The fourteen branch vias sit in a neat column 2.4 mm
     # apart down the block's edge, already in the open lane; a stub sideways
     # only walked into the left-hand units' hand-off column 1.8 mm away.
+    # Rev B: hops inside the block, with no stub to the edge.
+    for slot, pad, vx, vy in H.LOCAL_VIAS:
+        nm = hnet(slot, pad)
+        if nm:
+            tile_vias.append(hf(vx, vy) + (nm,))
     for slot, pad, vx, vy in H.VIAS:
         nm = hnet(slot, pad)
         if not nm:
@@ -1502,7 +1510,7 @@ def build():
     PLANE_NETS = ("GND", "+3V3_A")
     vias, nvia, skipped = [], {n: 0 for n in PLANE_NETS}, {n: 0 for n in PLANE_NETS}
     for ref, pn, ax, ay, tht, net, _hd, _rc in allpads:
-        if net not in PLANE_NETS or tht:
+        if net not in PLANE_NETS or tht or (ref, pn) in H.NO_PLANE_VIA:
             continue
         if any(_n == net and (ax - tx) ** 2 + (ay - ty) ** 2 < 2.0 ** 2
                for tx, ty, _n in tile_vias):
