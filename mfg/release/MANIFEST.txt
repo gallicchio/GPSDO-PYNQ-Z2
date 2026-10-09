@@ -7,8 +7,8 @@ FABRICATION_NOTES.txt                         8024 bytes  sha256:0bdf4a6f11ac
 GPSDO-PYNQ-Z2_assembly_bottom.pdf           303246 bytes  sha256:af5341e349c8
 GPSDO-PYNQ-Z2_assembly_top.pdf              679103 bytes  sha256:a5bc18eb6c05
 GPSDO-PYNQ-Z2_bom.csv                         3897 bytes  sha256:8c83e9220955
-GPSDO-PYNQ-Z2_cpl.csv                        16876 bytes  sha256:d896820376ff
-GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv          16895 bytes  sha256:eabe33114bbb
+GPSDO-PYNQ-Z2_cpl_kicad_native.csv                        16876 bytes  sha256:d896820376ff
+GPSDO-PYNQ-Z2_cpl_jlcpcb_upload.csv          16895 bytes  sha256:eabe33114bbb
 GPSDO-PYNQ-Z2_gerbers.zip                  1222598 bytes  sha256:2f666daab0ec
 annotated_bom.csv                            15788 bytes  sha256:19c3a3ab9b2a
 annotated_bom.md                             10610 bytes  sha256:deb76c3be714

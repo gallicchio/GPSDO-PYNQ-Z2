@@ -148,7 +148,7 @@ NO_PART = {
 # The only authority is their "Confirm parts placement" preview.
 #
 # ROUND 33.  Every number below was read off that preview and is a correction
-# to the KiCad-NATIVE rotation in GPSDO-PYNQ-Z2_cpl.csv.  Positive is
+# to the KiCad-NATIVE rotation in GPSDO-PYNQ-Z2_cpl_kicad_native.csv.  Positive is
 # counter-clockwise, which is KiCad's sign and JLCPCB's sign.
 #
 # Round 28 took these from the JLCKicadTools table rather than from a preview,

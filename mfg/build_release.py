@@ -179,7 +179,7 @@ def main():
     print("\nupload to JLCPCB:")
     print("  PCB   ...... GPSDO-PYNQ-Z2_gerbers.zip")
     print("  BOM   ...... GPSDO-PYNQ-Z2_bom.csv")
-    print("  CPL   ...... GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv  (see FABRICATION_NOTES: ROTATION)")
+    print("  CPL   ...... GPSDO-PYNQ-Z2_cpl_jlcpcb_upload.csv  (see FABRICATION_NOTES: ROTATION)")
     print("  and read FABRICATION_NOTES.txt into the order notes.")
     if draft and not bad:
         print("\nDRAFT: do not upload this one -- rev %s is not dated yet." % D.REV)

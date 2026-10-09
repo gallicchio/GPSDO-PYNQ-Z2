@@ -324,7 +324,7 @@ ASSEMBLY
   Surface mount, TOP SIDE ONLY.  Nothing on the bottom is to be placed:
   the only bottom-side part is the Raspberry Pi socket, which is through hole
   and is hand soldered afterwards.
-  See GPSDO-PYNQ-Z2_bom.csv and GPSDO-PYNQ-Z2_cpl.csv.
+  See GPSDO-PYNQ-Z2_bom.csv and GPSDO-PYNQ-Z2_cpl_kicad_native.csv.
   Parts NOT to be fitted are listed in excluded_from_assembly.csv and appear
   in neither file -- please do not add them back.
 
@@ -348,8 +348,8 @@ ROTATION  (round 33)
   KiCad's footprint zero-orientation and JLCPCB's feeder zero-orientation are
   not the same, and the offset is a property of JLCPCB's library.  Two
   placement files are supplied:
-    %(name)s_cpl.csv ............... KiCad-native rotations
-    %(name)s_cpl_jlc_corrected.csv . the same, corrected.  UPLOAD THIS ONE.
+    %(name)s_cpl_kicad_native.csv ............... KiCad-native rotations
+    %(name)s_cpl_jlcpcb_upload.csv . the same, corrected.  UPLOAD THIS ONE.
   Round 28 built the corrections from the JLCKicadTools table.  Round 33
   rebuilt them from YOUR OWN placement preview, which is the only authority,
   and two of the five were wrong -- one of them on 59 parts:
@@ -376,8 +376,8 @@ PIN 1, PART BY PART  (round 35)
 FILES
   %(name)s_gerbers.zip ........ Gerber RS-274X + Excellon drill + drill map
   %(name)s_bom.csv ............ assembly BOM
-  %(name)s_cpl.csv ............ assembly placement file, KiCad-native rotations
-  %(name)s_cpl_jlc_corrected.csv  the same with JLCPCB rotation corrections
+  %(name)s_cpl_kicad_native.csv ............ assembly placement file, KiCad-native rotations
+  %(name)s_cpl_jlcpcb_upload.csv  the same with JLCPCB rotation corrections
   %(name)s_assembly_top.pdf ... placement drawing, top
   %(name)s_assembly_bottom.pdf  placement drawing, bottom
   hand_solder_bom.csv ......... through-hole parts, NOT for assembly

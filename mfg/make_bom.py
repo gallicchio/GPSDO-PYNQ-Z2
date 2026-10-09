@@ -3,7 +3,7 @@
 hand-solder list for everything it will not fit.
 
   <out>/GPSDO-PYNQ-Z2_bom.csv   Comment, Designator, Footprint, LCSC
-  <out>/GPSDO-PYNQ-Z2_cpl.csv   Designator, Mid X, Mid Y, Layer, Rotation
+  <out>/GPSDO-PYNQ-Z2_cpl_kicad_native.csv   Designator, Mid X, Mid Y, Layer, Rotation
   <out>/hand_solder_bom.csv     the through-hole parts, to order loose
 
 Only surface-mount, non-DNP parts with a part number go into the first two.
@@ -40,8 +40,8 @@ def norm_rot(r):
 # (SOT-23: +180) that DISAGREES with the table used by the two most widely
 # used KiCad->JLCPCB tools (SOT-23: -90).  So no table can be applied blind.
 #
-# What is done: TWO placement files are written.  `_cpl.csv` is KiCad-native,
-# as before.  `_cpl_jlc_corrected.csv` applies the table below, which is the
+# What is done: TWO placement files are written.  `_cpl_kicad_native.csv` is KiCad-native,
+# as before.  `_cpl_jlcpcb_upload.csv` applies the table below, which is the
 # subset of matthewlai/JLCKicadTools `cpl_rotations_db.csv` (also imported by
 # Bouni/kicad-jlcpcb-tools) that matches a footprint on this board, fetched
 # 2026-09-14.  Its convention, from that tool's source: for a TOP-side part
@@ -136,14 +136,14 @@ def write(outdir, rows=None, quiet=False):
                      vals[0]))
 
     # ---- CPL, twice: KiCad-native and JLCPCB-corrected ---------------------
-    cpl = os.path.join(outdir, "%s_cpl.csv" % NAME)
+    cpl = os.path.join(outdir, "%s_cpl_kicad_native.csv" % NAME)
     with open(cpl, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
         for r in sorted(smt, key=lambda r: r["ref"]):
             w.writerow([r["ref"], "%.4f" % r["x"], "%.4f" % (-r["y"]),
                         r["side"].capitalize(), "%.4f" % norm_rot(r["rot"])])
-    cplj = os.path.join(outdir, "%s_cpl_jlc_corrected.csv" % NAME)
+    cplj = os.path.join(outdir, "%s_cpl_jlcpcb_upload.csv" % NAME)
     un = unchecked(smt)
     ncorr = collections.Counter()
     with open(cplj, "w", newline="", encoding="utf-8") as f:
