@@ -37,7 +37,7 @@ Do this on the day it is ordered:
    `mfg/release/`, the handbook, the README and `SHA256SUMS.txt`.
 5. Set `REV = "C"`, `DATE = "unreleased"`, and start `REVC_CHANGES.md`.
 
-## Rev B in the generator: where it stands (2026-10-09, 08:45)
+## Rev B in the generator: where it stands (2026-10-09, 08:30)
 
 Started from rev A's generator on the morning after N1.  `revB_progress/` holds
 renders of the placement (the whole board, unit 1's tile, the helper block, the
@@ -121,6 +121,7 @@ right hardware. All of it is the bench board.
 | 2026-10-08 (r45.19) | **S3**: FB401's bridge → 4.7 Ω (RA3) | item 12 | unit 4 quiet 30/30 undriven (O2) |
 | 2026-10-08 (r45.19) | **S4**: R3001 3k3 → 1k, R3002 1k → 330 Ω (RA1) | item 9 | slips gone in 14 of 15 drive settings (O3) |
 | 2026-10-08 (r45.20) | **S2b**: 100 kΩ park on unit 13 (TP1302 to JP1301 pin 2), soldered with the board on | item 11 | quiet 10/10. Every channel is now driven or parked |
+| 2026-10-09 (r45.23) | **L1**: insulated wire from test pad A (TP2002, +3V3_A beside HO) to FB201's lower pad (+3V3_A at unit 2's squarer), power off | item 5 (RA4) | O7 again: unit 4's state moves the OTHER helper group 0.6-1.7 ps (was 1.9-3.0); its own group's pair −0.74 ps (was −1.00). The shared rail's impedance is about half the coupling |
 | not planned | HIN: R3004 in, R3005 out (an external helper) | | |
 
 CLK0 at 2 mA (round 40) is firmware, not a rework.

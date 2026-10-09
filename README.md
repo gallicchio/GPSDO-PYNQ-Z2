@@ -15675,3 +15675,65 @@ with `VOLTage`:
   replica bias on every channel stands.
 - **To finish it** (hands, 1 min): put a tee for unit 9's cable on scope CH4,
   in place of the port-6 line, and repeat with the scope correction.
+
+### 45.23 The L1 strap, O7 again, rev B's plane, and the heater question
+
+**L1 is in** (Jason, 08:20): a wire from test pad A (+3V3_A beside HO) to
+FB201's lower pad. Before it I stopped N2 after 1.8 h, set both HPs to 0 V DC
+and shut the PYNQ down. The PYNQ came back at **192.168.8.117**: its MAC is
+random at every boot (locally administered, `f6:21:...`), so its address moves.
+After a reboot: `./pynq-run bringup.py --inputs 1,2,4,9,10,11,12` (30 checks,
+0 failures), then `si_set.py 2 2`.
+
+**N2, the 1.8 h before the strap** (heater off, the board warming 22.9 → 24.1 °C):
+
+| Pairs | Span | Against the board's mean temperature |
+|---|---|---|
+| within a helper group (2 − 1, 11 − 10) | 1.8, 3.9 ps | −0.3, 0.0 ps/K |
+| across groups (10 − 1, 11 − 1, 10 − 2, 11 − 2) | 8-9 ps | −3.4 to −3.7 ps/K |
+| the HPs (4 − 1, 9 − 1) | 115, 138 ps | the 33120As' own phase against the OCXO |
+
+N1's group drift again: it is rev A's separate helper buffers, which rev B
+replaces with one fan-out on its own supply (item 22).
+
+**O7 after the strap**, the same protocol as 45.22 (unit 4 between 10 MHz and
+0 V DC, six cycles of 40 s each way):
+
+| Pair | Before L1 | After L1 |
+|---|---|---|
+| 2 − 1 (unit 4's own helper group) | −1.00 ± 0.04 ps | **−0.74 ± 0.03 ps** |
+| 11 − 10 (the other group) | −0.16 ± 0.02 | +0.29 ± 0.25 |
+| 10 − 1, 11 − 1 | +2.02, +1.89 | **+0.63, +0.93** |
+| 10 − 2, 11 − 2 | +3.02, +2.89 | **+1.37, +1.67** |
+
+- **One wire roughly halved how far a channel's state moves the other helper
+  group.** About half of that coupling is the shared +3V3_A track's
+  impedance, which is what item 5's plane removes.
+- The rest is consistent with rev A's helper buffers sitting on +3V3_A
+  beside the squarers. Rev B moves the distribution onto FO_VDD (item 22).
+- N3, the quiet logger after the strap, started at 08:52 with N2's settings.
+
+**Rev B, 07:25-08:50** (`REVB_CHANGES.md` has the table):
+- Jason's decisions: **4 layers with B.Cu as the +3V3_A plane**, keep
+  207 × 180 mm, a **thermostat**, 74LVC2GU04 on all 13 channels.
+- **The plane is in** (244de0a). B.Cu's pour is +3V3_A instead of a second
+  GND. Every +3V3_A pad has its own via (56 found by the plane-via search,
+  13 drawn at R51). Rev A's gutter rails and margin spines are gone. DRC after
+  a zone fill: no clearance errors, and GND and +3V3_A are fully connected.
+- **Tile tracks** for the SC-70-6 squarer, the replica, the tap and the park.
+- **19 U.FL monitor taps.**
+- **Pins** of every new IC checked against the datasheet figures.
+
+**The heater, on a second look: keep it where it is.** At 08:13 I said the
+thermostat would move the heaters out of the tiles. The free spots along the
+margins sit next to the thermometers, and perimeter-only heating makes the
+edge tiles warmer than the inner ones by an amount proportional to heater
+power. A thermostat varies that power with the room, so the gradient would
+drift. Rev A's layout puts one identical heater in every tile, so a slow
+change of heater power reaches every channel alike and largely cancels in
+the pairs. What O11b saw (−4.5 ps within a group, beyond −10 ps across
+groups) was a full 9.6 W *step*, and mostly the helper groups. So: keep the
+24 heaters, drive them with a slow linear loop (the hardware already drives
+them linearly), and put the loop's sensor in the interior, beside the
+fan-out. Waiting on Jason before changing item 20's plan.
+

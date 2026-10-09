@@ -547,6 +547,9 @@ Day 1's results are in README 45.20.  Two of them shape day 2:
 
 ### L1, the +3V3_A strap: one wire, about 5 minutes, power OFF
 
+**Done 2026-10-09, 08:20** (README 45.23).  O7 after it: unit 4's state moves
+the other helper group 0.6-1.7 ps, down from 1.9-3.0 ps.
+
 **What you need:** one piece of insulated wire, AWG 22-24, about 70 mm, both
 ends stripped and tinned about 1.5 mm.
 
