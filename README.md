@@ -15711,9 +15711,9 @@ replaces with one fan-out on its own supply (item 22).
   impedance, which is what item 5's plane removes.
 - The rest is consistent with rev A's helper buffers sitting on +3V3_A
   beside the squarers. Rev B moves the distribution onto FO_VDD (item 22).
-- N3, the quiet logger after the strap, started at 08:52 with N2's settings.
+- N3, the quiet logger after the strap, started at 08:39 with N2's settings.
 
-**Rev B, 07:25-08:50** (`REVB_CHANGES.md` has the table):
+**Rev B, 07:25-08:30** (`REVB_CHANGES.md` has the table):
 - Jason's decisions: **4 layers with B.Cu as the +3V3_A plane**, keep
   207 × 180 mm, a **thermostat**, 74LVC2GU04 on all 13 channels.
 - **The plane is in** (244de0a). B.Cu's pour is +3V3_A instead of a second
