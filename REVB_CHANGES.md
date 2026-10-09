@@ -63,6 +63,15 @@ rail taps) and the draft schematic as PDF.
 | no | INA3221; TPS3700 LEDs; the heater away from the tiles; the squarer-supply and squarer-output taps on units 1 and 4 | 6, 7, 19, 20 |
 | no | JLC stock check of the new ICs (74LVC2GU04, LMK1C1108, U.FL) at order time; the 74AUP2GU04 had 0 stock | 8 |
 
+## Decisions, 2026-10-09 (Jason, after the 07:25 status)
+
+| # | question | decision |
+|---|---|---|
+| 1 | layer count for the +3V3_A plane (item 5) | **4 layers; B.Cu poured as +3V3_A** (rev A's B.Cu had no tracks, only a second GND pour); In1 stays solid GND |
+| 2 | board size | **keep 207 x 180 mm** |
+| 3 | the heater (item 20) | **a whole-board thermostat**: heaters out of the tiles, into the margins, away from the fan-out; thermometers beside the fan-out and the samplers. The cost is slower tests (no heating one channel on its own; minutes, not seconds, to settle) and a control loop to write |
+| 4 | a 74AUP2GU04 on 1-2 channels (item 8) | **no: 74LVC2GU04 on all 13** (the AUP part has 0 stock at LCSC; same footprint, so it can be hand-fitted later) |
+
 ## The plan at a glance
 
 Priority: **1** = don't order rev B without it; **2** = should be in rev B;
