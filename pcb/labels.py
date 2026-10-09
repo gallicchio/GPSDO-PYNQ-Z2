@@ -61,14 +61,10 @@ TEST_POINTS = [
      "3.25-3.35 V.  Absent, by design, when the host is off"),
     ("D",  "TP_3V3_D", "power block, at the digital LDO",
      "3.25-3.35 V.  Absent, by design, when the host is off"),
-    ("X",  "TP_XA",    "helper block, at the Si5351's crystal",
-     "0.5-1.0 Vpp, 25 MHz, by design.  Rev A reads 0.2-0.4 Vpp, a rounded "
-     "triangle (300-520 mV) -- a quarter of the 1 Vpp the datasheet drives XA "
-     "with, and most likely why its fractional PLL can be made to slip (round "
-     "40).  Unprobed it is ~0.4-0.55 Vpp: the probe's ~20 pF matters behind "
-     "767 R (round 42).  This pad is the divider, before the 10 nF into XA, so "
-     "its DC level is the divider's (~0.4 V), not the pin's.  Probe it with a "
-     "10x probe and a ground spring, or not at all"),
+    ("X",  "TP_REF",   "helper block, at the Si5351C's CLKIN",
+     "0/3.3 V HCMOS, 25 MHz: the TCXO, through 33 R, straight into CLKIN (rev B "
+     "items 9 and RA1).  Rev A drove XA through a 3k3/1k divider instead, and "
+     "that slow edge was the PLLA slip mechanism (round 45.20, O3)"),
     ("W",  "TP_1W",    "1-Wire block, on the bus",
      "the DS18B20 bus: idle high at 3.3 V, with the conversion traffic on it"),
 ]
@@ -82,7 +78,7 @@ def legend_columns():
              % (D.F_BEAT * 0.9e-3, D.F_BEAT * 1.15e-3),
              "5  +5 V  4.6-5.3 V"],
             ["P  pps  0/3.3 V, 1 Hz",
-             "X  Si5351 XA  0.5-1.0 Vpp",
+             "X  TCXO at CLKIN  0/3.3 V",
              "W  1-Wire bus",
              "A/D  +3V3  3.25-3.35 V"])
 
@@ -104,7 +100,7 @@ def helper_key():
     them, in the top band east of the centre line.
     """
     return ["HIN = ext helper IN, %.1f-3.3 Vpp AC" % D.V_SMA_MIN,
-            "HO = CLK1 OUT, 0/3.3 V into 50R"]
+            "HO = CLK2 OUT, buffered, 0/3.3 V"]
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +122,7 @@ def col_head_10m():
     thing that differs between the thirteen, and TERM_NOTE says which.
     """
     return ("10 MHz IN",
-            "AC coupled   50R w/ jumper JP   %.1f Vpp max" % D.V_SMA_ABSMAX)
+            "AC  JP 1-2 = 50R, 2-3 = PARK  %.1f Vpp max" % D.V_SMA_ABSMAX)
 
 
 # ---------------------------------------------------------------------------

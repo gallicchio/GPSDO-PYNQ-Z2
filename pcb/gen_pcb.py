@@ -138,7 +138,7 @@ def build():
          "TP_SQ    at the squarer      0.6 - 3.3 Vpp, crossing mid-rail",
          "TP_BEAT  channel out         0/3.3 V square, 1.1 - 1.4 kHz",
          "TP_PPS   channel out         0/3.3 V, 1 Hz",
-         "TP_XA    Si5351 drive        0.5 - 1.0 Vpp at 25 MHz",
+         "TP_REF   TCXO at CLKIN       0/3.3 V HCMOS at 25 MHz",
          "TP_5V    after the fuse      4.6 - 5.3 V",
          "TP_3V3_A / TP_3V3_D          3.25 - 3.35 V"]
     for i, t in enumerate(L):
