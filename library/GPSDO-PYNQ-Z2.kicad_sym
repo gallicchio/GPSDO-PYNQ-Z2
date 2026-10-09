@@ -6,9 +6,13 @@
 (exclude_from_sim no)
 (in_bom yes)
 (on_board yes)
+(in_pos_files yes)
+(duplicate_pin_numbers_are_jumpers no)
 (embedded_fonts no)
 	(property "Reference" "U"
 (at -3.81 6.35 0)
+(show_name no)
+(do_not_autoplace no)
 		(effects
 			(font
 (size 1.27 1.27)
@@ -17,6 +21,8 @@
 	)
 	(property "Value" "LP5907MFX-3.3"
 (at 6.35 6.35 0)
+(show_name no)
+(do_not_autoplace no)
 		(effects
 			(font
 (size 1.27 1.27)
@@ -25,47 +31,57 @@
 	)
 	(property "Footprint" "Package_TO_SOT_SMD:SOT-23-5"
 (at 0 8.89 0)
+(show_name no)
+(do_not_autoplace no)
+(hide yes)
 		(effects
 			(font
 (size 1.27 1.27)
 			)
-(hide yes)
 		)
 	)
 	(property "Datasheet" "http://www.ti.com/lit/ds/symlink/lp5907.pdf"
 (at 0 12.7 0)
+(show_name no)
+(do_not_autoplace no)
+(hide yes)
 		(effects
 			(font
 (size 1.27 1.27)
 			)
-(hide yes)
 		)
 	)
 	(property "Description" "250-mA Ultra-Low-Noise Low-IQ LDO, 3.3V, SOT-23"
 (at 0 0 0)
+(show_name no)
+(do_not_autoplace no)
+(hide yes)
 		(effects
 			(font
 (size 1.27 1.27)
 			)
-(hide yes)
 		)
 	)
 	(property "ki_keywords" "Single Output LDO Low-Noise"
 (at 0 0 0)
+(show_name no)
+(do_not_autoplace no)
+(hide yes)
 		(effects
 			(font
 (size 1.27 1.27)
 			)
-(hide yes)
 		)
 	)
 	(property "ki_fp_filters" "SOT?23*"
 (at 0 0 0)
+(show_name no)
+(do_not_autoplace no)
+(hide yes)
 		(effects
 			(font
 (size 1.27 1.27)
 			)
-(hide yes)
 		)
 	)
 	(symbol "TPS7A2033PDBVR_0_1"
@@ -98,24 +114,6 @@
 				)
 			)
 		)
-		(pin input line
-(at -7.62 0 0)
-(length 2.54)
-			(name "EN"
-				(effects
-					(font
-(size 1.27 1.27)
-					)
-				)
-			)
-			(number "3"
-				(effects
-					(font
-(size 1.27 1.27)
-					)
-				)
-			)
-		)
 		(pin power_in line
 (at 0 -7.62 90)
 (length 2.54)
@@ -127,6 +125,24 @@
 				)
 			)
 			(number "2"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin input line
+(at -7.62 0 0)
+(length 2.54)
+			(name "EN"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "3"
 				(effects
 					(font
 (size 1.27 1.27)

@@ -53,12 +53,12 @@ SOURCES = ["gen/*.py", "pcb/*.py", "mfg/*.py (except release/)", "build.py",
            "datasheets/", "mechanical/", NAME + ".kicad_prl (KiCad's own UI state)"]
 
 
+sys.path.insert(0, os.path.join(ROOT, "gen"))
+import kicad_env                                   # noqa: E402  KiCad 10 (REVB item 14)
+
+
 def cli():
-    for c in (os.environ.get("KICAD_CLI"),
-              os.path.expanduser("~/.local/kicad9/AppDir/AppRun")):
-        if c and os.path.exists(c):
-            return [c, "kicad-cli"] if c.endswith("AppRun") else [c]
-    return ["kicad-cli"]
+    return kicad_env.kicad_cli()
 
 
 class Step:
@@ -116,7 +116,12 @@ def main():
 
     s = Step("1/7  schematic, project file and local footprints  <- gen/")
     out = run([sys.executable, "gen/gen.py"])
-    s.done(out.strip().replace("\n", "; "))
+    # REVB item 14: save every sheet in KiCad 10's own format, so that opening
+    # the project in KiCad 10 rewrites nothing (the generator writes the
+    # KiCad 9 dialect it was written against; KiCad converts it losslessly).
+    for sch in sorted(glob.glob(os.path.join(ROOT, "*.kicad_sch"))):
+        run(cli() + ["sch", "upgrade", sch])
+    s.done(out.strip().replace("\n", "; ") + "; sheets saved in KiCad 10's format")
 
     s = Step("2/7  netlist and ERC  <- kicad-cli")
     run(cli() + ["sch", "export", "netlist", "-o", NETLIST, NAME + ".kicad_sch"])
@@ -177,9 +182,7 @@ def main():
                           "-o", os.path.join(BUILD, "drc.json"), unf])
         filled = os.path.join(BUILD, "filled.kicad_pcb")
         # fill_zones needs pcbnew, so it runs under KiCad's own interpreter
-        k = cli()
-        fill_cmd = (k[:-1] + ["python3.11"] if k[0].endswith("AppRun")
-                    else [sys.executable])
+        fill_cmd = kicad_env.kicad_python()
         run(fill_cmd + [os.path.join(ROOT, "mfg", "fill_zones.py"), pcb, filled])
         shutil.copyfile(filled, pcb)
         d2 = run(cli() + ["pcb", "drc", "--severity-error", "--format", "json",

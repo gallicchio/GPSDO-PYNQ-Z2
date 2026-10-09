@@ -26,8 +26,8 @@ import hashlib, math, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sexp import parse, head, kids, kid, val, num
 
-KICAD9 = os.path.expanduser("~/.local/kicad9/squashfs-root/usr/share/kicad")
-SYMDIR = os.path.join(KICAD9, "symbols")
+import kicad_env
+SYMDIR = kicad_env.SYMBOLS          # KiCad 10 (REVB item 14); see gen/kicad_env.py
 SCH_VERSION = "20250114"
 GRID = 1.27
 
@@ -80,10 +80,17 @@ class SymCache:
     def _lib(self, libname):
         if libname not in self._libs:
             path = os.path.join(SYMDIR, libname + ".kicad_sym")
-            if not os.path.exists(path):
+            symdir = os.path.join(SYMDIR, libname + ".kicad_symdir")
+            files = ([os.path.join(symdir, f) for f in sorted(os.listdir(symdir))
+                      if f.endswith(".kicad_sym")] if os.path.isdir(symdir)    # KiCad 10
+                     else [path] if os.path.exists(path) else [])              # KiCad 9
+            if not files:
                 raise KeyError("no such symbol library: " + libname)
-            doc = parse(open(path, encoding="utf-8").read())[0]
-            self._libs[libname] = {val(s): s for s in kids(doc, "symbol")}
+            syms = {}
+            for f in files:
+                doc = parse(open(f, encoding="utf-8").read())[0]
+                syms.update({val(s): s for s in kids(doc, "symbol")})
+            self._libs[libname] = syms
         return self._libs[libname]
 
     def get(self, lib_id):

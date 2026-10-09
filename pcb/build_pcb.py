@@ -48,8 +48,9 @@ import jlc as J             # the design rules, and JLCPCB's own minimums
 from sexp import parse, kids, kid, val, head
 
 ROOT = os.path.dirname(HERE)
-KFP = os.environ.get("KICAD9_FOOTPRINTS", os.path.join(
-    os.environ["HOME"], ".local/kicad9/squashfs-root/usr/share/kicad/footprints"))
+sys.path.insert(0, os.path.join(ROOT, "gen"))
+import kicad_env                                    # noqa: E402
+KFP = kicad_env.FOOTPRINTS                          # KiCad 10 (REVB item 14)
 LOCAL_FP = os.path.join(ROOT, "library", "GPSDO-PYNQ-Z2.pretty")
 
 LAYERS = [(0, "F.Cu", "signal"), (1, "In1.Cu", "signal"), (2, "In2.Cu", "signal"),

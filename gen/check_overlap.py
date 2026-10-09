@@ -39,6 +39,11 @@ def _eff(node):
         hd = kid(e, "hide")
         if hd and val(hd[1]) in ("yes", "true"):
             hidden = True
+    # KiCad 10 writes a property's (hide yes) beside (effects), not inside it
+    # (REVB item 14: the build saves every sheet in KiCad 10's format)
+    hd = kid(node, "hide")
+    if hd and len(hd) > 1 and val(hd[1]) in ("yes", "true"):
+        hidden = True
     return h, just, hidden
 
 

@@ -36,11 +36,9 @@ SCH = os.path.join(ROOT, "GPSDO-PYNQ-Z2.kicad_sch")
 
 def _kicad_cli():
     """The kicad-cli this project builds with, wherever it lives."""
-    for c in (os.environ.get("KICAD_CLI"),
-              os.path.expanduser("~/.local/kicad9/AppDir/AppRun")):
-        if c and os.path.exists(c):
-            return [c, "kicad-cli"] if c.endswith("AppRun") else [c]
-    return ["kicad-cli"]
+    sys.path.insert(0, os.path.join(ROOT, "gen"))
+    import kicad_env
+    return kicad_env.kicad_cli()                    # KiCad 10 (REVB item 14)
 
 
 def netlist(path=None, regenerate=True):

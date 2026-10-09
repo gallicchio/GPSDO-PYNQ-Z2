@@ -57,7 +57,7 @@ Priority: **1** = don't order rev B without it; **2** = should be in rev B;
 | 11 | **Park unused channels** | PLANNED, **VALIDATED ON REV A** | **1** | 100 kΩ from S to ground held unit 5 quiet in 30 of 30 restarts (r45). **Parks on 3, 5, 6, 7, 8: all quiet 30/30, and unit 13 began oscillating (29/30): park every one** (r45.20 O2) | 3-pin header, 50R / PARK |
 | 12 | **RC, not bead, gate filters** | PLANNED, **CONFIRMED ON REV A** | **1** | **FB401 bridged: unit 4 quiet in 30 of 30**, was oscillating 30 of 30 (r45) | 2.2-10 Ω on every gate; RA3 picks the value |
 | 13 | Crosstalk rules | PLANNED, reprioritised | 2 | No 10 MHz tone above 0.4 ps; state changes and strong edges are what move a channel (r45 T2) | supply rules first |
-| 14 | Build rev B in KiCad 10 | DECIDED | 2 | Jason views in KiCad 10 and never saves; opening rewrites the project file | port `build.py` and `gen/project.py` |
+| 14 | Build rev B in KiCad 10 | **DONE for the schematic** (2026-10-09) | 2 | Jason views in KiCad 10 and never saves; opening rewrites the project file. KiCad 9's extracted copy had gone | `gen/kicad_env.py`; sheets saved by `kicad-cli sch upgrade`; rev A's netlist identical (318 nets, 592 parts). The board step is untested on 10 |
 | 15 | Deglitch the beats in the gateware | PLANNED | 2 | 28-32% of transitions carry extra edges (r45) | |
 | 16 | Monitor the Si5351 during long runs | PLANNED | 2 | | |
 | 17 | ps per cycle from the measured beat | PLANNED | 2 | 0.8% off design (r43) | |

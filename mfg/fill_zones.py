@@ -3,7 +3,9 @@
 
 Run under KiCad's own Python, which is the only interpreter that has pcbnew:
 
-    ~/.local/kicad9/AppDir/AppRun python3.11 mfg/fill_zones.py in.kicad_pcb out.kicad_pcb
+    ~/.local/kicad10/AppDir/AppRun python3.11 mfg/fill_zones.py in.kicad_pcb out.kicad_pcb
+
+(gen/kicad_env.py's kicad_python() says which interpreter build.py uses.)
 
 DRC has to be run BOTH ways.  Unfilled it checks the tracks against each other;
 filled it also checks them against the three ground pours, and that is the pass
