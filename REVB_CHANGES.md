@@ -63,9 +63,9 @@ Priority: **1** = don't order rev B without it; **2** = should be in rev B;
 | 17 | ps per cycle from the measured beat | PLANNED | 2 | 0.8% off design (r43) | |
 | 18 | **Replica-biased squarers** (AM-to-PM) | PLANNED | **1** | −147 to −231 ps/dB (r43, r45 T3); a pair drifts +4-5 ps/K (r45) | 74LVC2GU04 per channel; RA2 |
 | 19 | U.FL/MMCX monitor taps | PLANNED | 2 | Every rev A question needed a hand-held probe | 25-35 taps |
-| 20 | Heater and thermal layout | **RA7 DONE: not gradients** | 2 | **N1 (r45.21): within a helper group < 0.5 ps/K; between groups 4-4.5 ps/K; one coefficient on the gradient fails. The heater's current steps the groups 4-14 ps** | the heater's current on its own return, away from the clock tree; sensors beside the fan-out and the samplers |
+| 20 | Heater and thermal layout | **RA7 DONE: not gradients** | 2 | **N1 (r45.21): within a helper group < 0.5 ps/K; between groups 4-4.5 ps/K; one coefficient on the gradient fails. O11b (r45.22): no electrical step at all; the per-tile heater resistors warm their channels within ~10-40 s** | even heating, away from the clock tree and not inside the tiles; sensors beside the fan-out and the samplers |
 | 21 | pps inputs | **NO CHANGE** | | First real pulses counted; thresholds 1.93 V up, 1.32 V down at the jack (r45) | keep 1k/10k, 51R DNP |
-| 22 | **The helper's distribution** | **NEW**, PLANNED, **THE FIRST THING** | **1** | OCXO pairs on one helper buffer (U3004: units 1-4; U3006: 9-11): 11-12 ps per transition; across buffers 20 ps with HO off, 53 ps at 8 mA; a channel's state moves its whole buffer group 2-3 ps; the port swap (O8) puts it on the board, not the OCXO (r45.20) | one low-jitter fan-out on its own clean supply, equal-length lines, HO kept off it |
+| 22 | **The helper's distribution** | **NEW**, PLANNED, **THE FIRST THING** (O10: more CLK0 drive is worse, 24 → 45 ps between groups at 2 → 8 mA) | **1** | OCXO pairs on one helper buffer (U3004: units 1-4; U3006: 9-11): 11-12 ps per transition; across buffers 20 ps with HO off, 53 ps at 8 mA; a channel's state moves its whole buffer group 2-3 ps; the port swap (O8) puts it on the board, not the OCXO (r45.20) | one low-jitter fan-out on its own clean supply, equal-length lines, HO kept off it |
 
 ## Rev A boards: reworks and hand-fitted parts
 

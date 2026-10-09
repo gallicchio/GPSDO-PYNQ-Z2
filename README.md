@@ -15618,3 +15618,60 @@ three ways, each with a term for the heater's instant step;
     gradients.
 - Three single-row spikes (+7 ps, all pairs at once) at 0.2, 6.2 and 11.2 h:
   something every ~6 h, not yet identified.
+
+### 45.22 Day 2: the helper's drive, the heater's fast response, AM-to-PM against level
+
+All of it ran from here, 05:25-06:20, with HO at 2 mA.
+
+**O10, the helper's (CLK0's) drive.** Per-transition rms; 60 s at each:
+
+| CLK0 | 2 − 1 (top group) | 11 − 10 (bottom group) | across groups |
+|---|---|---|---|
+| 2 mA (rev A's standard) | 7.0 ps | 11.5 ps | 23.7-24.8 ps |
+| 4 mA | 7.0 | 15.3 | 36.7-37.3 |
+| 6 mA | 6.5 | 17.8 | 41.6-42.1 |
+| 8 mA | 6.6 | 19.9 | 43.8-45.0 |
+
+- **More drive is worse**, at the far end of the tree (U3006) and between
+  groups, and the chatter returns (1.000 → 1.028 edges per transition on
+  unit 1).
+- **The Si5351's output current is what pushes the tree, not a slow edge.**
+  It is the same story as HO in O6.
+- **For rev B (item 22):** CLK0 at 2 mA into one load only, the fan-out's
+  input, right beside it. The fan-out gets its own supply and drives the
+  lines.
+
+**O11 and O11b, the heater.** O11 compared 15 s after switching on with 15 s
+after switching off: +6 to +9 ps across groups, opposite in sign to N1's
+first rows. O11b settles it with one continuous 100 s recording, read in 1 s
+bins:
+
+- **Nothing jumps at the switch.**
+- The pairs start drifting within ~10 s. 2 − 1 reaches −4.5 ps by ~30 s; the
+  cross-group pairs pass −10 ps by ~40 s and are still falling after a minute.
+- The drift lags the switch-off before recovering.
+- **So the "electrical step" of 45.20-45.21 was heat.** Rev A's heater is a
+  resistor inside every unit's box (the `H` parts), and each warms its own
+  channel's parts within seconds, by different amounts.
+- **For item 20:** the heater's *placement* matters, not its current's
+  return. Heat the board evenly and well away from the clock tree, or not
+  inside the tiles at all.
+
+**O12, AM-to-PM against level: inconclusive.** Each level was stepped ±0.5 dB
+with `VOLTage`:
+
+| Unit | Level (Vpp open circuit) | ps/dB | Residual |
+|---|---|---|---|
+| 9 (unterminated) | 1.0 / 1.4 / 2.0 / 2.6 | 413 / **117** / 337 / −71 | 68 / **5** / 67 / 27 ps |
+| 4 (terminated) | 1.0 / 1.6 / 2.6 | 448 / 353 / −50 | 33 / 27 / 57 ps |
+
+- The large residuals and the sign flips at 2.6 Vpp on both units are **the
+  33120A's own output phase moving with its amplitude**, not just at the
+  range boundary of 45.20.
+- With all four scope channels on OCXO lines, I couldn't measure the
+  generator's phase and subtract it, as round 43 did.
+- **What survives:** the coefficient grows steeply as the level falls, on
+  both units, and units differ several-fold at similar levels. Item 18's
+  replica bias on every channel stands.
+- **To finish it** (hands, 1 min): put a tee for unit 9's cable on scope CH4,
+  in place of the port-6 line, and repeat with the scope correction.
