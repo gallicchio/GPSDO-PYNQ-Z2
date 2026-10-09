@@ -55,7 +55,7 @@ rail taps) and the draft schematic as PDF.
 | yes | silkscreen: `JP 1-2 = 50R, 2-3 = PARK`, `HO = CLK2 OUT, buffered`, `X = the TCXO at CLKIN`; the heater `H` only on R2001-R2024 (rev A also put one on R2025/R2026) | 2, 3 |
 | yes | **driver for rev B**: `Si5351Config(rev='B')`, PLLs from CLKIN (register 15 = 0x0C), HO on CLK2 at 2 mA, CLK1 off; 72 driver tests | 9, 10 |
 | yes | parts_map: 4R7 0805 (C17675, Basic), the 1x03 header | |
-| no | **+3V3_A plane: needs the layer decision** (4 layers with B.Cu as the plane, or 6). The SC-70-6 squarer's VCC pin sits between its two outputs, so a supply track and the output must cross; a plane under the tile ends that | 5 |
+| no | **+3V3_A plane: needs the layer decision.** Rev A's B.Cu carries NO tracks, only a second GND pour (F.Cu 7.2 m of track, In2 7.5 m, In1 solid GND), so 4 layers with B.Cu poured as +3V3_A costs nothing in routing room; 6 layers would buy a separate plane for +3V3_D. The tile already assumes a plane: U01's R51 reaches +3V3_A by a via | 5 |
 | yes | **the tile's hand tracks** (all 13 units): U01's filter on the LEFT (the SC-70-6 has VCC between its outputs), its R51 to +3V3_A by a via; 1Y straight to U02; ground out between the rows; tap and park lanes through the 0.84 mm gaps in JP01's column. DRC: no clearance errors, shorts or crossings | 11, 18, 19 |
 | yes | the tile's silk designators: J03, R21, R22, R51 and JP01 get preferred spots in the TILE's frame (same on both sides); on unit 1 every new name is beside its part | 1, 2 |
 | no | on the right-hand units R22's name is crowded out by the heater's (R20xx) and lands by R05; J03's name goes to F.Fab on units 2-12 (even), 11, 13 (the unit numeral fills its spot), and R21's on units 10 and 12 | 1, 2 |
