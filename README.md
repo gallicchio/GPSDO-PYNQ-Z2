@@ -15737,3 +15737,74 @@ groups) was a full 9.6 W *step*, and mostly the helper groups. So: keep the
 them linearly), and put the loop's sensor in the interior, beside the
 fan-out. Waiting on Jason before changing item 20's plan.
 
+### 45.24 Rev B toward an order: the heater stays, the plane, the release, the helper by hand
+
+**Decisions (Jason, 2026-10-09):** 4 layers with B.Cu as the +3V3_A plane; keep
+207 × 180 mm; a thermostat, option A (the 24 heaters stay, one per tile plus
+the ring, and the loop's sensor U5007 goes beside the fan-out); 74LVC2GU04 on
+all 13 channels.
+
+**Why the heaters stay.** Moving them to the margins would make the edge tiles
+warmer than the inner ones by an amount proportional to heater power, and a
+thermostat changes that power with the room: a gradient that drifts. One
+identical heater per tile makes a slow change of heater power nearly
+common-mode in the pairs. O11b's moves were a full 9.6 W *step*, mostly
+through rev A's helper groups.
+
+**What changed on the board:**
+- the +3V3_A plane on B.Cu, every +3V3_A pad with its own via, kept 3.6 mm
+  from each mounting hole and the PYNQ slot;
+- the DNP crystal removed (Si5351 datasheet 7.5: unused XA/XB float);
+- the helper block re-placed for routing and every track drawn by hand
+  (`pcb/helper.py`), because the first routed build left 37 nets in pieces
+  there;
+- U5007 at the far end of U3005.
+
+**The release** (`mfg/`): JLCPCB fits every top-side through-hole part; the
+headers are ordered at their own lengths; rotations and origins are per part,
+predicted from JLCPCB's own land patterns, and the method reproduces all 8
+rotations rev A's preview read; `PLACEMENT_CHECKS.txt` lists what to look at;
+FABRICATION_NOTES gives the order form field by field. The Pi socket J4001
+stays hand-soldered (Jason). The order waits until 2026-10-10 (Jason), after
+the routed build is clean.
+
+**Routing, so far.**
+- The first routed build left 37 nets in pieces, almost all in the helper.
+- Hand-routing the helper brought that to 4.
+- Two causes remained, and both are fixed in `cebca16`, now building:
+  - Without the gutter rails, the plane-via search filled the tiles' gutters
+    and pushed the returns onto F.Cu. The gutters are now closed to it again.
+  - U5007's I2C was stranded at the far end of the block. It now runs by hand
+    into the Si5351's I2C vias.
+
+### 45.25 This board's floor against the RFSoC's, and an analog DMTD estimate
+
+Jason asked: compare this board's measured performance with the 4-input
+RFSoC 4x2 analysed in DroneSDR `GPSDO-comparison`, plot where each method
+works, and add an estimate for a board with analog mixers and audio ADCs.
+How much would that cost, and would it have bought anything?
+**`analysis/floor_compare/`** has the figures, the numbers, the method and
+the cost table (its README).
+
+- **New measurement:** a 300 s continuous recording of units 1, 2, 10 and 11
+  on the OCXO (17:13Z, kept locally in
+  `gateware/board/overnight_20261009T1713Z_floor300/`). N3 was paused for it
+  and resumed as N3b, until 2026-10-10 00:14.
+  - **The same-buffer pair 2 − 1 is now at the DDMTD's quantization limit:**
+    5.4 ps rms per transition, which is the 12.3 ps step divided by √6.
+  - At day 2's O1 it was 10.5-12 ps.
+- **ADEV at a common 50 Hz bandwidth, at 1 s:** DDMTD 2.8e-12; RFSoC
+  1.0e-12 (outdoors) or 1.6e-13 (9th harmonic, indoors); the LBE-1421 GPSDO
+  pair 6.9e-11.
+- **At 100 s:** 2.8e-14 against 1.8e-14. In TDEV this board's same-buffer pair
+  holds 0.06-0.09 ps over 10-1000 s.
+- **For GPSDO comparisons all three methods agree from τ ≈ 0.3 s up.**
+  - The RFSoC wins below ~1 s.
+  - From ~100 s up the room sets every floor.
+- **The analog DMTD** (estimate: mixers, a 24-bit ADC, IQ demodulation):
+  - 50-250x lower floor than the DDMTD below ~10 s, and no gain at long τ;
+  - about $250-400 per assembled 13-channel board, 2.5-4x the DDMTD's, with
+    the mixers out of stock at LCSC;
+  - it would only matter for references better than ~3e-12 at 1 s, which
+    the GPSDOs here are not.
+
