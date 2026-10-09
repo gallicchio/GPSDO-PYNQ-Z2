@@ -15,7 +15,7 @@ from driver.i2c_devices import (                        # noqa: E402
     plan_pll, ms_params, ms_registers, decode_ms, trim_fraction, crc8_maxim,
     scan, EXPECTED_DEVICES, REG_MSNA, REG_MSNB, REG_MS0, REG_MS1,
     REG_CLK_CTRL, REG_OEB, REG_PLL_RESET, REG_XTAL_CL, REG_PLL_SRC,
-    CLK_PDN, CLK_PLLB,
+    CLK_PDN, CLK_PLLB, CLK_IDRV_2MA, REG_MS2,
 )
 from driver import F_HELPER, F_BEAT                     # noqa: E402
 
@@ -242,6 +242,29 @@ class TestClk2Witness(unittest.TestCase):
         cfg = Si5351Config(clk2='null')
         self.assertEqual(cfg.expected_clk2(), cfg.expected()[1])
         self.assertTrue(cfg.registers()[REG_CLK_CTRL + 2] & CLK_PLLB)
+
+    def test_rev_b_image(self):
+        """Rev B (items 9, 10): PLLs from CLKIN, HO on CLK2 at 2 mA, CLK1 off."""
+        a, b = Si5351Config(), Si5351Config(rev='B')
+        rb = b.registers()
+        self.assertEqual(rb[REG_PLL_SRC], 0x0C)
+        self.assertEqual(a.registers()[REG_PLL_SRC], 0x00)
+        self.assertEqual(rb[REG_CLK_CTRL + 1], CLK_PDN)
+        self.assertEqual(rb[REG_CLK_CTRL + 2] & 0x03, CLK_IDRV_2MA)
+        self.assertTrue(rb[REG_CLK_CTRL + 2] & CLK_PLLB)
+        self.assertEqual(rb[REG_CLK_CTRL + 0], a.registers()[REG_CLK_CTRL + 0])
+        for reg in range(REG_MSNA, REG_MS0 + 8):          # same PLL and helper plan
+            self.assertEqual(rb[reg], a.registers()[reg])
+        for k in range(8):                                # HO's MultiSynth = CLK1's on rev A
+            self.assertEqual(rb[REG_MS2 + k], a.registers()[REG_MS1 + k])
+        self.assertNotIn(REG_MS1, rb)
+        self.assertEqual(b.oeb(), 0xFA)
+        self.assertEqual(b.expected(), a.expected())
+        self.assertAlmostEqual(b.expected_clk2(), 10e6, places=3)
+        with self.assertRaises(ValueError):
+            Si5351Config(rev='B', clk2='helper')
+        with self.assertRaises(ValueError):
+            Si5351Config(rev='C')
 
     def test_clk2_ms_registers_only_appear_when_it_is_on(self):
         from driver.i2c_devices import REG_MS2

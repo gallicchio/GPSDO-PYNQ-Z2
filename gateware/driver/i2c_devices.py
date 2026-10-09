@@ -249,6 +249,10 @@ CLK_IDRV_2MA, CLK_IDRV_4MA, CLK_IDRV_6MA, CLK_IDRV_8MA = 0x00, 0x01, 0x02, 0x03
 # rewritten at every power-up; the board's parts do not set it.
 IDRV_HELPER = CLK_IDRV_2MA
 IDRV_NULL = CLK_IDRV_8MA
+# Rev B's HO (CLK2): 2 mA.  Round 45.20 O6, rev A: HO at 8 mA put 53 ps per
+# transition between helper groups, at 2 mA 24 ps, and unit 12's beat stayed
+# clean (1.001 edges per transition).  Rev B also buffers it (74LVC1G125).
+IDRV_HO_REVB = CLK_IDRV_2MA
 
 XTAL_CL_6PF, XTAL_CL_8PF, XTAL_CL_10PF = 0x40, 0x80, 0xC0
 XTAL_CL_RESERVED_BITS = 0x12          # AN619 reg 183 bits 5:0 "should be 010010b"
@@ -346,7 +350,16 @@ class Si5351Config(object):
     CLK2_CHOICES = ('off', 'helper', 'null')
 
     def __init__(self, f_xtal=25e6, f_helper=10_001_234.4, f_null=10e6,
-                 div=80, pll_ratio=None, xtal_cl=XTAL_CL_10PF, clk2='off'):
+                 div=80, pll_ratio=None, xtal_cl=XTAL_CL_10PF, clk2='off', rev='A'):
+        """rev='B' is the rev B board (REVB_CHANGES items 9 and 10): an
+        Si5351C whose PLLs both take the TCXO on CLKIN (register 15), and the
+        null source / HO on CLK2 -- its own output bank, VDDOB -- at 2 mA,
+        with CLK1 powered down.  rev='A' (the default) is unchanged."""
+        if rev not in ('A', 'B'):
+            raise ValueError("rev must be 'A' or 'B', got %r" % rev)
+        if rev == 'B' and clk2 != 'off':
+            raise ValueError("rev B uses CLK2 for HO; clk2 must stay 'off'")
+        self.rev = rev
         self.f_xtal, self.f_helper, self.f_null, self.div = f_xtal, f_helper, f_null, div
         if pll_ratio is None:
             self.a, self.b, self.c, self.f_vco_a = plan_pll(f_xtal, f_helper, div)
@@ -372,11 +385,21 @@ class Si5351Config(object):
     def registers(self):
         """register -> byte, everything the part needs after power-up."""
         r = {}
-        r[REG_PLL_SRC] = 0x00                          # both PLLs from XTAL, CLKIN_DIV = 1
+        # AN619 reg 15: bit 2 PLLA_SRC, bit 3 PLLB_SRC (1 = CLKIN), bits 7:6
+        # CLKIN_DIV (00 = /1: 25 MHz is inside CLKIN's 10-40 MHz without it)
+        r[REG_PLL_SRC] = 0x0C if self.rev == 'B' else 0x00
         r[REG_XTAL_CL] = self.xtal_cl | XTAL_CL_RESERVED_BITS
         r.update(ms_registers(REG_MSNA, *ms_params(self.a, self.b, self.c)))
         r.update(ms_registers(REG_MSNB, *ms_params(self.mult_b, 0, 1)))
         r.update(ms_registers(REG_MS0, *ms_params(self.div, 0, 1), rdiv=0))
+        if self.rev == 'B':
+            # HO on CLK2 from PLLB, 2 mA (round 45.20, O6); CLK1 not routed
+            r.update(ms_registers(REG_MS2, *ms_params(self.div, 0, 1), rdiv=0))
+            r[REG_CLK_CTRL + 0] = CLK_INT | CLK_SRC_MS | IDRV_HELPER
+            r[REG_CLK_CTRL + 1] = CLK_PDN
+            r[REG_CLK_CTRL + 2] = CLK_INT | CLK_PLLB | CLK_SRC_MS | IDRV_HO_REVB
+            r[REG_SS_EN] = 0x00
+            return r
         r.update(ms_registers(REG_MS1, *ms_params(self.div, 0, 1), rdiv=0))
         # Drive strengths: see IDRV_HELPER above -- 8 mA on the helper made
         # PLLA cycle-slip on the first board.
@@ -402,12 +425,16 @@ class Si5351Config(object):
 
     def expected_clk2(self):
         """What CLK2 puts out, or None when it is powered down."""
+        if self.rev == 'B':
+            return self.f_vco_b / self.div            # HO
         if self.clk2 == 'off':
             return None
         return (self.f_vco_b if self.clk2 == 'null' else self.f_vco_a) / self.div
 
     def oeb(self):
         """The output-enable byte: 0 enables, 1 disables, bit n = CLKn."""
+        if self.rev == 'B':
+            return 0xFA                               # CLK0 (helper) and CLK2 (HO)
         return 0xFC & ~(0x04 if self.clk2 != 'off' else 0) & 0xFF
 
 
