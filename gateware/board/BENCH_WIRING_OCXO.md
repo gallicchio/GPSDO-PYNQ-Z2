@@ -529,6 +529,32 @@ An insulated AWG 22-24 wire, ~60 mm, from C2003 pad 1 (122.00, 7.95) to FB201
 pad 1 (142.76, 61.46).  Then O7 again.  It decides whether the shared rail is
 the coupling path, which item 5's plane removes.
 
+### Day 2 (2026-10-09): all from here, no rearranging
+
+Day 1's results are in README 45.20.  Two of them shape day 2:
+
+- the helper tree carries noise between buffer groups (O1, O6, O8);
+- the helper buffers U3003-U3007 sit on +3V3_A, through beads, beside every
+  squarer.
+
+| # | When (PDT) | What | Decides |
+|---|---|---|---|
+| **A1** | 05:30 | **N1's analysis.** Each corner's response to the heater: the instant step at switch-on (electrical) apart from the slow part (thermal), against the eight thermometers. Then the room's own swing. | item 20 against item 18: gradients (layout) or each channel's own coefficient (replica bias) |
+| **O10** | 05:45 | **The helper's drive.** CLK0 at 2, 4, 6 and 8 mA (RA1 made 4-8 mA usable), HO at 2 mA: per-transition jitter within and across buffer groups. | item 22: does a faster helper edge cut the cross-group jitter? That sets the fan-out's edge rate and drive |
+| **O11** | 06:05 | **The heater, toggled.** 60 s on, 60 s off, eight times: the instant step on each corner, before anything warms. | item 20: the heater's current return, kept off the channels' ground and the helper's supply |
+| **O12** | 06:30 | **AM-to-PM against level.** Unit 9 (unterminated) at four levels, 1.0-2.9 Vpp open circuit, and unit 4 (terminated) at three. Each level ±0.5 dB with `VOLTage` only, inside one HP range. | item 18: whether a higher drive level alone shrinks AM-to-PM (O4: 176 ps/dB at ~1.5 Vpp, 23 at ~2.9), and the input level to print on rev B's silkscreen |
+| **N2** | tonight | **A quiet night.** No heater, HO at 2 mA, the same logging. | the board's long-term floor between corners, and the OCXO against the TCXO: what a GPSDO comparison can resolve |
+
+**Optional, if you have five spare minutes: L1, the +3V3_A strap.**  One
+insulated wire, AWG 22-24, ~60 mm, from C2003 pad 1 (122.00, 7.95), the LDO's
+output capacitor at the top centre, to FB201 pad 1 (142.76, 61.46), unit 2's
++3V3_A.
+- **With the power off:** tell me and I shut the PYNQ down.  It is a rail,
+  and a slip with the board on would short it.
+- **Then O7 again.**  If unit 4's 2-3 ps group shift shrinks, the shared
+  +3V3_A is the path.  Item 22's own supply for the fan-out is planned either
+  way.
+
 ### Which test decides which rev B item
 
 | Rev B item | Decided by |
@@ -540,6 +566,7 @@ the coupling path, which item 5's plane removes.
 | 11 park unused channels (priority 1) | O2 |
 | 12 RC gate filters (priority 1) | O2, O7 |
 | 13 crosstalk rules | O5 |
+| 22 the helper's fan-out (new) | O1, O6, O8, O10, L1 |
 | 18 replica-biased squarers (priority 1) | O4, N1 |
 | 20 heater and thermal layout | N1 |
 
