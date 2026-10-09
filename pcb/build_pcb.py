@@ -3146,14 +3146,24 @@ def build():
     #   on the left -- and centred across its two pins, which in the part's
     #   own frame are (0, 0) and (0, 2.54).
     REFPREF = {}
+    # Rev B: the tap U.FL left of itself, in the corner under the SMA; its 1k
+    # and the park 100k each in the 1.65 mm strip between them and JP01; R51
+    # beside itself, above the tile's heater.  Without these the placer gave
+    # J03's name to R21's spot and R21's to R51's.
+    # JP01's own name moves to the SPINE side of the header, between it and
+    # C01: rev A's spot on the far side is now R21's.
+    TILE_REF = {"J03": (0.0, -4.0), "R21": (1.55, 0.0), "R22": (1.55, 0.0),
+                "R51": (0.0, -2.6), "JP01": (1.95, 1.27)}
     for u in sorted(byunit):
         for slot, r in byunit[u].items():
             if slot == "J01":
                 REFPREF[r] = (-6.35, 0.0)
             elif slot == "J02":
                 REFPREF[r] = (-4.8, 0.0)       # the pps box is 11.8 mm wide
-            elif slot == "JP01":
-                REFPREF[r] = (-1.65, 1.27)
+            elif slot in TILE_REF:
+                # rev B's new tile parts: the offset is in the TILE's frame,
+                # so it is the same on both sides of the board.
+                REFPREF[r] = to_local(TILE[slot][2], *TILE_REF[slot])
     for r in sorted(placed):
         if is_heater(r):
             REFPREF[r] = (5.5, 0.0)
@@ -3188,12 +3198,19 @@ def build():
         # board, and the clear board is usually straight above or below.
         b0, b1, b2, b3 = boxes[r]
         cw, ch = (b2 - b0) / 2.0 + 0.7, (b3 - b1) / 2.0 + 0.7
+        # The tap U.FL's name (rev B) is useful only BESIDE it.  On the
+        # right-hand units the unit's numeral fills that spot, and the wider
+        # searches below gave J803's name to R821's place -- so it gets its own
+        # spot or F.Fab, like any name that does not fit.
+        near_only = bool(re.match(r"^J(\d|1[0-3])03$", r))
         seeds = [p for p in (REFPREF.get(r), default_ref(d, name)) if p]
         seeds = [to_board(rrot, p[0], p[1]) for p in seeds]
         seeds += [(0.0, -ch), (0.0, ch), (-cw - w / 2.0, 0.0),
                   (cw + w / 2.0, 0.0)]
+        if near_only:
+            seeds = seeds[:1]
         for bx, by in seeds:
-            for dx, dy in spiral(0.45, 3.6):
+            for dx, dy in spiral(0.45, 1.0 if near_only else 3.6):
                 cx, cy = rx + bx + dx, ry + by + dy
                 bb = (cx - w / 2.0, cy - 0.48, cx + w / 2.0, cy + 0.48)
                 if not blocked(bb) and inside_home(r, bb):
@@ -3202,7 +3219,7 @@ def build():
             if found:
                 break
         hb = home_of(r)
-        if not found and hb:
+        if not found and hb and not near_only:
             # Round 41: every clear spot inside the part's OWN box, nearest
             # first, before giving up -- a designator in the next unit's box
             # names the wrong part, which is worse than none.
