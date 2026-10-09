@@ -545,15 +545,33 @@ Day 1's results are in README 45.20.  Two of them shape day 2:
 | **O12** | 06:30 | **AM-to-PM against level.** Unit 9 (unterminated) at four levels, 1.0-2.9 Vpp open circuit, and unit 4 (terminated) at three. Each level ±0.5 dB with `VOLTage` only, inside one HP range. | item 18: whether a higher drive level alone shrinks AM-to-PM (O4: 176 ps/dB at ~1.5 Vpp, 23 at ~2.9), and the input level to print on rev B's silkscreen |
 | **N2** | tonight | **A quiet night.** No heater, HO at 2 mA, the same logging. | the board's long-term floor between corners, and the OCXO against the TCXO: what a GPSDO comparison can resolve |
 
-**Optional, if you have five spare minutes: L1, the +3V3_A strap.**  One
-insulated wire, AWG 22-24, ~60 mm, from C2003 pad 1 (122.00, 7.95), the LDO's
-output capacitor at the top centre, to FB201 pad 1 (142.76, 61.46), unit 2's
-+3V3_A.
-- **With the power off:** tell me and I shut the PYNQ down.  It is a rail,
-  and a slip with the board on would short it.
-- **Then O7 again.**  If unit 4's 2-3 ps group shift shrinks, the shared
-  +3V3_A is the path.  Item 22's own supply for the fan-out is planned either
-  way.
+### L1, the +3V3_A strap: one wire, about 5 minutes, power OFF
+
+**What you need:** one piece of insulated wire, AWG 22-24, about 70 mm, both
+ends stripped and tinned about 1.5 mm.
+
+1. **Tell me first.**  I stop the logger and shut the PYNQ down.  Then unplug
+   the PYNQ's barrel jack and the 15 V heater supply.  Both ends are on the
+   analog supply, and a slip with the board on would short it.
+2. **End 1: the round test pad marked `A`** (TP2002), at the top of the
+   board, beside the `HO` jack.  It is +3V3_A right at the regulator.  Keep
+   clear of C2003's pad above it, which is ground.
+3. **End 2: FB201's lower pad** (pad 1, the +3V3_A side) in unit 2's box,
+   just below unit 2's squarer U201.  Not the upper pad: that one is the
+   chip's own supply.
+4. Lay the wire flat across the board between the two.  Nothing else.
+5. Plug the PYNQ back in (then the heater supply), and tell me.  I bring it
+   up and repeat O7.
+
+![L1, the whole run](rework_img/l1_strap_overview.jpg)
+
+![L1, end 1: test pad A](rework_img/l1_end1_tp2002.jpg)
+
+![L1, end 2: FB201's lower pad](rework_img/l1_end2_fb201.jpg)
+
+**What it tells:** if O7's 2-3 ps group shift shrinks with the strap in,
+the shared +3V3_A is the path.  Item 22 gives rev B's helper fan-out its own
+supply either way; this confirms why.
 
 ### Which test decides which rev B item
 

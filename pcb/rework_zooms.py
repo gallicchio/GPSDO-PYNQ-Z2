@@ -69,6 +69,21 @@ ZOOMS = [
         ('c', 56.64, 155.1, 1.3, CYAN, 'JP1301 pin 2 = GND', -2, 2.2),
         ('l', 60.3, 148.7, 56.64, 155.1, YEL, '100k', 0.8, 0.2),
     ]),
+    ('l1_strap_overview', 'top', 'L1: one insulated wire from test pad A (TP2002, +3V3_A at the regulator) to FB201 pad 1 (+3V3_A at unit 2)', (128.0, 35.0), (46.0, 66.0), [
+        ('c', 118.5, 9.86, 1.6, RED, 'END 1: test pad "A"', 2.5, -2.0),
+        ('c', 142.76, 61.46, 1.6, RED, 'END 2: FB201 pad 1', -16.0, 2.5),
+        ('l', 118.5, 9.86, 142.76, 61.46, YEL, 'the wire, ~60 mm', 1.5, 0.0),
+    ]),
+    ('l1_end1_tp2002', 'top', 'L1, end 1: solder the wire to test pad A (TP2002). It is +3V3_A at the regulator.', (121.5, 10.0), 16, [
+        ('c', 118.5, 9.86, 1.3, RED, 'here: pad "A"', -6.5, 2.2),
+        ('c', 122.0, 6.05, 0.9, CYAN, 'C2003 GND pad: keep clear', 1.5, -2.6),
+        ('c', 126.0, 11.0, 1.8, CYAN, 'U2001, the LDO', 2.2, 1.2),
+    ]),
+    ('l1_end2_fb201', 'top', 'L1, end 2: solder the wire to FB201 pad 1, the +3V3_A side (the lower pad as drawn)', (144.0, 60.5), 16, [
+        ('c', 142.76, 61.46, 0.9, RED, 'here: FB201 pad 1 (+3V3_A)', -11.0, 2.0),
+        ('c', 142.76, 59.34, 0.9, CYAN, 'not pad 2 (the chip side)', 1.4, -2.6),
+        ('c', 143.9, 53.8, 2.2, CYAN, 'U201, unit 2 squarer', 2.6, -2.0),
+    ]),
     ('s3_fb401', 'top', 'S3: unit 4: FB401 (now a solder bridge) becomes 4.7 Ohm 0805', (145.0, 76.0), 24, [
         ('c', 142.76, 78.2, 2.0, RED, 'FB401 -> 4.7 Ohm', 2.5, 1.0),
         ('c', 143.9, 71.6, 2.2, CYAN, 'U401 (unit 4 squarer)', 2.8, -3.6),
@@ -170,7 +185,8 @@ def wrap(d, text, font, width):
 
 def zoom(im, m, name, side, title, centre, size, marks):
     cx, cy = centre
-    (px0, py0), (px1, py1) = m(cx - size / 2, cy - size / 2), m(cx + size / 2, cy + size / 2)
+    sw, sh = size if isinstance(size, tuple) else (size, size)
+    (px0, py0), (px1, py1) = m(cx - sw / 2, cy - sh / 2), m(cx + sw / 2, cy + sh / 2)
     box = (int(min(px0, px1)), int(min(py0, py1)), int(max(px0, px1)), int(max(py0, py1)))
     crop = im.crop(box).copy()
     d = ImageDraw.Draw(crop)
