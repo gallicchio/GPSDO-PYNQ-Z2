@@ -37,7 +37,7 @@ Do this on the day it is ordered:
    `mfg/release/`, the handbook, the README and `SHA256SUMS.txt`.
 5. Set `REV = "C"`, `DATE = "unreleased"`, and start `REVC_CHANGES.md`.
 
-## Rev B in the generator: where it stands (2026-10-09, 07:40)
+## Rev B in the generator: where it stands (2026-10-09, 07:25)
 
 Started from rev A's generator on the morning after N1.  `revB_progress/` holds
 renders of the placement (the whole board, unit 1's tile, the helper block, the
@@ -49,6 +49,7 @@ rail taps) and the draft schematic as PDF.
 | yes | **Channel sheet**: 74LVC2GU04 squarer with its replica bias; 3-pin 50R/PARK header with 100k at the gate; 4R7 instead of every bead; a U.FL tap through 1k on the input node | 11, 12, 18, 19 |
 | yes | **Helper sheet**: Si5351C, TCXO on CLKIN; HO on CLK2 (VDDOB) through a 74LVC1G125; the replica squarer and two LMK1C1108 on FO_VDD; U.FL taps on the fan-out (HCLK), the reference at CLKIN (REF) and CLK0 | 9, 10, 19, 22 |
 | yes | **Power sheet**: U.FL taps through 1k on +5V_HDR, +3V3_A (placed at its far end, under unit 13) and +3V3_D | 19 |
+| yes | **Pin check of every new part against its datasheet's pin figure and table** (the netlist's pin numbers and functions): SN74LVC2GU04DCKR (C116660; TI DCK figure, and Nexperia's Table 3), LMK1C1108PWR (TI Table 5-1, all 16 pins), Si5351C-B-GM (Silicon Labs Fig. 19 / Table 16, all 21 pins), 74LVC1G125 DBV (TI pin table; OE̅ grounded). The SC-70-6 footprint numbers counter-clockwise, 1 facing 6 | 9, 10, 18, 22 |
 | yes | Rev A's reference numbers kept (new parts from Rx21, supply resistors from Rx51, taps Jx03 / J2004-J2006 / J3004-J3005) | |
 | yes | **Board: placement preview** (`NOHAND=1 NOROUTE=1`): 641 parts placed, no courtyard overlaps, every designator inside its box; each tap U.FL named on the silk | |
 | yes | silkscreen: `JP 1-2 = 50R, 2-3 = PARK`, `HO = CLK2 OUT, buffered`, `X = the TCXO at CLKIN`; the heater `H` only on R2001-R2024 (rev A also put one on R2025/R2026) | 2, 3 |
