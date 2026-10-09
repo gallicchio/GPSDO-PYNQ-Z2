@@ -12,7 +12,8 @@ import kigen
 from kigen import SYMS, ser, q
 
 PROJECT_SYMS = ("GPSDO-PYNQ-Z2:TPS7A2033PDBVR", "GPSDO-PYNQ-Z2:DS2482S-100",
-                "GPSDO-PYNQ-Z2:74LVC2GU04")          # rev B item 18
+                "GPSDO-PYNQ-Z2:74LVC2GU04",          # rev B item 18
+                "GPSDO-PYNQ-Z2:LMK1C1108PWR")        # rev B item 22
 
 
 def _sym_lib(outdir):

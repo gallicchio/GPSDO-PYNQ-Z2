@@ -436,124 +436,137 @@ def power(s):
 
 
 # ===========================================================================
+# Rev B items 9, 10 and 22: the Si5351C with the TCXO on CLKIN, HO on its own
+# output bank and buffer, and one fan-out (two LMK1C1108 side by side) on its
+# own filtered supply in place of rev A's cascade of five single gates.
+LMK = kigen.SYMS.define(
+    "GPSDO-PYNQ-Z2:LMK1C1108PWR",
+    [(1, "CLKIN", "input", "l", 5.08), (2, "1G", "input", "l", -5.08),
+     (3, "Y0", "output", "r", 8.89), (16, "Y1", "output", "r", 6.35),
+     (13, "Y2", "output", "r", 3.81), (15, "Y3", "output", "r", 1.27),
+     (6, "Y4", "output", "r", -1.27), (11, "Y5", "output", "r", -3.81),
+     (8, "Y6", "output", "r", -6.35), (9, "Y7", "output", "r", -8.89),
+     (5, "VDD", "power_in", "t", -2.54), (10, "VDD", "power_in", "t", 0.0),
+     (14, "VDD", "power_in", "t", 2.54),
+     (4, "GND", "power_in", "b", -2.54), (7, "GND", "power_in", "b", 0.0),
+     (12, "GND", "power_in", "b", 2.54)],
+    half_w=7.62, half_h=11.43,
+    datasheet="datasheets/TI_LMK1C1108.pdf",
+    description="1:8 LVCMOS clock buffer, 20 fs additive jitter, 55 ps output skew (TI SNAS814A)")
+
+
 def helper(s):
     R = RefGen(30)
-    _head(s, "HELPER OSCILLATOR AND FAN-OUT",
-          "Si5351A at %.7f MHz -> squarer -> a length-matched tree, one branch per channel.  "
-          "Helper SKEW enters the measurement 1:1, not divided by N, so this tree is the most "
-          "delicate net on the board." % (D.F_HELPER / 1e6))
+    _head(s, "HELPER OSCILLATOR AND FAN-OUT  (rev B)",
+          "TCXO -> Si5351C CLKIN -> CLK0 %.7f MHz -> squarer -> TWO LMK1C1108 side by side "
+          "-> 14 series-terminated branches.  Helper skew enters the measurement 1:1, so the "
+          "fan-out is ONE part family on ONE supply that no channel shares (item 22)."
+          % (D.F_HELPER / 1e6))
 
     # =================== band 1: the synthesizer =========================
     y = 101.6
     s.rect(15.24, 36.0, 564.0, 114.0)
-    s.text(19.05, 42.0, "SYNTHESIZER      25 MHz TCXO  ->  Si5351A  ->  CLK0", size=2.6, bold=True)
+    s.text(19.05, 42.0, "SYNTHESIZER    TCXO -> Si5351C CLKIN", size=2.6, bold=True)
 
-    # --- TCXO ------------------------------------------------------------
+    # --- TCXO, straight into CLKIN ------------------------------------------
     x = s.sym("Oscillator:FT5HN", 45.72, y, 0, ref=R("X"), value="FT5HNBPK25.0-T1",
               footprint="Oscillator:Oscillator_SMD_Fox_FT5H_5.0x3.2mm",
               lcsc="C5742665", ref_dxy=(-21.59, -8.89), val_dxy=(-21.59, -6.35))
     gnd(s, *x.pin(2), drop=7.62, R=R)
     vx, vy = x.pin(4)
     decouple(s, vx, vy, "+3V3_D", R)
-
-    # --- 3k3/1k divider into XA -------------------------------------------
     ox, oy = x.pin(3)
-    # +/-2.5 ppm, not +/-0.5: FT5HNB*P*K is the P = +/-2.5 ppm grade over
-    # -30..+85 C (Fox option table).  Round 28 caught this label; the beat is
-    # re-centred in software from the measured helper frequency (see note).
     s.text(55.88, oy + 6.35, "25.000000 MHz, 0/3.3 V HCMOS, +/-2.5 ppm (-30..+85 C)",
            size=1.3, italic=True)
     s.wire(ox, oy, 62.23, oy)
-    r_h(s, 66.04, oy, R("R"), "3k3")
-    s.wire(69.85, oy, 77.47, oy)
-    r_v(s, 77.47, oy + 8.89, R("R"), "1k")
-    s.wire(77.47, oy, 77.47, oy + 5.08)
-    gnd(s, 77.47, oy + 12.7, drop=6.35, R=R)
-    testpoint(s, 81.28, oy, R("TP"), "TP_XA")
-    s.wire(77.47, oy, 92.71, oy)
-    c_h(s, 96.52, oy, R("C"), "10n")
-    s.wire(100.33, oy, 107.95, oy)
-    s.text(88.9, oy + 20.32, "0.77 Vpp, 0 to +0.77 V at TP_XA -", size=1.3, italic=True)
-    s.text(88.9, oy + 24.13, "the level the Si5351 actually sees, AC coupled", size=1.3, italic=True)
-    s.note(210.82, 46.0, 122.0, 0,
-           "DRIVING XA WITH A REFERENCE IS A DOCUMENTED MODE.  Si5351 datasheet 6.6, "
-           "'Applying a Reference Clock at XTAL Input': 1 Vpp AC-coupled into XA, XB open - "
-           "which is this circuit.  (Rounds 17-27 said it was undocumented; two of round 28's "
-           "reviewers repeated that.)  The Si5351A has no CLKIN pin - only the C does - so XA is "
-           "the input.  XA/XB are absolute-maximum -0.5 to +1.3 V and the pin's own bias point "
-           "is not published: 0.77 Vpp (3k3/1k from 3.3 V CMOS, then the 10 nF) is the largest "
-           "swing that stays under 1.3 V even if the bias is as high as 0.9 V, and it is within "
-           "30 percent of the datasheet's figure.  Order matters: the 1k must sit on the "
-           "divider, not on XA.\n"
-           "Probe TP_XA, on the DRIVEN side of the coupling cap where 10 pF of probe does "
-           "nothing; probing XA itself would pull the oscillator.  If the part will not start "
-           "at 0.77 Vpp, 1k -> 1k3 gives 0.93 Vpp.  If it will not run at all, fit Y3001 and "
-           "drop the TCXO: +/-10 ppm, which cannot avoid the 60 Hz comb.",
-           size=1.4, color=WARN, cols=80)
+    r_h(s, 66.04, oy, R("R"), "33R")
+    testpoint(s, 76.2, oy, R("TP"), "TP_REF")
 
-    # --- Si5351 -----------------------------------------------------------
-    si = s.sym("Oscillator:Si5351A-B-GT", 175.26, y, 0, ref=R("U"), value="SI5351A-B-GTR",
-               footprint="Package_SO:MSOP-10_3x3mm_P0.5mm", lcsc="C504891",
-               ref_dxy=(-13.97, 16.51), val_dxy=(-13.97, 19.05))
-    xar = si.pin(2)[0] - 25.4                 # the XA riser, clear of XB's label
-    s.wire(107.95, oy, xar, oy)
-    s.wire(xar, oy, xar, si.pin(2)[1])
-    s.wire(xar, si.pin(2)[1], *si.pin(2))
-    s.glabel(xar, si.pin(2)[1] - 7.62, "SI_XA", shape="passive", justify="left", rot=90)
-    s.wire(xar, si.pin(2)[1] - 7.62, xar, si.pin(2)[1])
-    s.wire(*si.pin(3), si.pin(3)[0] - 8.89, si.pin(3)[1])
-    s.glabel(si.pin(3)[0] - 8.89, si.pin(3)[1], "SI_XB", shape="passive", justify="right")
-    s.text(139.7, si.pin(3)[1] + 3.81, "XB: open by design", size=1.3, italic=True)
-    gnd(s, *si.pin(8), drop=7.62, R=R)
-
-    # VDD and VDDO share ONE filtered node.  They are 5.08 mm apart on the
-    # symbol, so two separate bead-and-cap stacks land on top of each other,
-    # and the datasheet's own reference design runs both from the same 3.3 V.
-    # Si5351 datasheet 7.2: "Unused VDDOx pins should be tied to VDD", and
-    # sharing the node also satisfies the sequencing requirement trivially.
-    # Round 21: 7.1 asks for "one 0.1 to 1.0 uF decoupling capacitor per power
-    # supply pin ... mounted as close to the VDD and VDDOx pins as possible
-    # without using vias", so BOTH capacitors are 100 nF and the placer puts
-    # one hard against pin 1 and the other hard against pin 7.  The 10 nF that
-    # used to sit here was below the datasheet's range.
-    decouple(s, 175.26, 78.74, "+3V3_D", R, tall=False, values=("100n", "100n"))
-    s.wire(175.26, 78.74, 175.26, 84.0)
-    s.wire(si.pin(1)[0], 84.0, si.pin(7)[0], 84.0)
-    s.wire(*si.pin(1), si.pin(1)[0], 84.0)
-    s.wire(*si.pin(7), si.pin(7)[0], 84.0)
-    s.junction(175.26, 84.0)
-
+    si = s.sym("Oscillator:Si5351C-B-GM", 175.26, y, 0, ref=R("U"), value="SI5351C-B-GM",
+               footprint="Package_DFN_QFN:QFN-20-1EP_4x4mm_P0.5mm_EP2.7x2.7mm",
+               lcsc="C3608122", ref_dxy=(-13.97, 27.94), val_dxy=(-13.97, 30.48))
+    cix, ciy = si.pin(6)
+    s.wires((69.85, oy), (cix - 12.7, oy), (cix - 12.7, ciy), (cix, ciy))
+    s.note(62.23, 112.0, 70.0, 0,
+           "CLKIN, NOT XA (items 9, RA1).  The FT5HN is an HCMOS TCXO, and CLKIN takes full "
+           "CMOS levels (VIH >= 0.7 VDD, 3.6 V max), so it goes straight in through 33R.  "
+           "Rev A drove XA through a 3k3/1k divider and a slow edge; that edge was the PLLA "
+           "slip mechanism (RA1 fixed it on rev A: 0 slips in 14 of 15 drive settings).",
+           size=1.4, color=INFO, cols=58)
+    gnd(s, *si.pin(21), drop=5.08, R=R)
+    gnd(s, *si.pin(7), drop=5.08, R=R)          # OEB low: outputs enabled
+    s.nc(*si.pin(3))                            # INTR, unused
+    for pn in (12, 8, 19, 17, 16, 15):          # CLK1, CLK3..7 unused
+        s.nc(*si.pin(pn))
+    # XA/XB: the DNP crystal, as a fallback only
+    for pn, nm, j in ((1, "SI_XA", "right"), (2, "SI_XB", "right")):
+        px, py = si.pin(pn)
+        s.wire(px, py, px - 7.62, py)
+        s.glabel(px - 7.62, py, nm, shape="passive", justify=j)
     for pn, nm in ((4, "I2C_SCL"), (5, "I2C_SDA")):
         px, py = si.pin(pn)
         s.wire(px - 20.32, py, px, py)
         s.glabel(px - 20.32, py, nm, shape="bidirectional", justify="right")
-    s.text(120.65, 132.08, "I2C address 0x60.  Programmed at every power-up from the PYNQ:",
-           size=1.3, italic=True)
-    # 32 + 1543/390625 is EXACT for 10 001 234.4 Hz from 25 MHz through /80;
-    # the 32 + 4142/1048575 quoted in rounds 6-27 was 10 ppb high.  The driver
-    # computes it (i2c_devices.plan_pll) rather than carrying either number.
-    s.text(120.65, 135.89, "PLLA feedback 32 + 1543/390625 (exact), MultiSynth 80 (INTEGER, low spur),",
-           size=1.3, italic=True)
-    s.text(120.65, 139.7, "R = 1  ->  CLK0 = %.7f MHz,  f_beat = %.1f Hz,  N = %.0f"
-           % (D.F_HELPER / 1e6, D.F_BEAT, D.N_GAIN), size=1.3, italic=True)
-    s.text(120.65, 143.51, "CLK1 = PLLB, INTEGER: 25 MHz x 32 = 800 MHz, MultiSynth 80 -> "
-           "10.000000 MHz exactly", size=1.3, italic=True)
 
-    # --- CLK1 out to an SMA ------------------------------------------------
-    c1x, c1y = si.pin(9)
-    j1 = s.sym(D.P["SMA"]["lib"], c1x + 38.1, c1y, 0, ref=R("J"),
-               value="CLK1 OUT 10.000000MHz", footprint=D.P["SMA"]["fp"],
+    # supplies, by label: VDD, VDDOA (CLK0/1) and the unused VDDOC/VDDOD on
+    # SI_VDD; VDDOB (CLK2/3, HO) on its own SI_VDDOB
+    vdd, va, vb, vc, vd = (si.pin(n) for n in (20, 11, 10, 18, 14))
+    top = vdd[1] - 5.08
+    s.wires(vdd, (vdd[0], top)); s.wires(va, (va[0], top))
+    s.wire(vdd[0], top, va[0], top)
+    s.wire(vdd[0], top, vdd[0] - 5.08, top)
+    s.label(vdd[0] - 5.08, top, "SI_VDD", justify="right bottom")
+    s.wires(vc, (vc[0], top)); s.wires(vd, (vd[0], top))
+    s.wire(vc[0], top, vd[0], top)
+    s.wire(vd[0], top, vd[0] + 5.08, top)
+    s.label(vd[0] + 5.08, top, "SI_VDD", justify="left bottom")
+    s.wires(vb, (vb[0], top - 7.62), (vdd[0] - 5.08, top - 7.62))
+    s.label(vdd[0] - 5.08, top - 7.62, "SI_VDDOB", justify="right bottom")
+    # the two filtered supplies, drawn apart from the chip
+    for xx, lab, vals in ((86.36, "SI_VDD", ("100n", "100n")), (121.92, "SI_VDDOB", ("100n", "10n"))):
+        yy = 73.66
+        decouple(s, xx, yy, "+3V3_D", R, tall=False, values=vals)
+        s.wire(xx, yy, xx, yy + 2.54)
+        s.label(xx, yy + 2.54, lab, justify="left bottom")
+
+    s.text(120.65, 136.0, "I2C address 0x60.  Programmed at every power-up from the PYNQ:",
+           size=1.3, italic=True)
+    s.text(120.65, 139.81, "PLLA <- CLKIN, 32 + 1543/390625, MultiSynth0 80 -> CLK0 = %.7f MHz, "
+           "2 mA (O10)" % (D.F_HELPER / 1e6), size=1.3, italic=True)
+    s.text(120.65, 143.62, "PLLB <- CLKIN, x32 integer, MultiSynth2 80 -> CLK2 = 10.000000 MHz (HO), "
+           "2 mA (O6)", size=1.3, italic=True)
+
+    # --- CLK0 out to the squarer (band 2) -------------------------------------
+    c0x, c0y = si.pin(13)
+    s.wire(c0x, c0y, c0x + 12.7, c0y)
+    s.glabel(c0x + 12.7, c0y, "HELPER_SRC", shape="output", justify="left")
+
+    # --- CLK2: HO, buffered, on its own bank (item 10) -------------------------
+    c2x, c2y = si.pin(9)
+    pb = s.sym("74xGxx:74LVC1G125", c2x + 33.02, c2y, 0, ref=R("U"), value="74LVC1G125",
+               footprint="Package_TO_SOT_SMD:SOT-23-5", lcsc="C23654",
+               ref_dxy=(-3.81, 12.7), val_dxy=(-3.81, 15.24))
+    s.wire(c2x, c2y, *pb.pin(2))
+    gnd(s, *pb.pin(1), drop=5.08, R=R)          # ~OE low: enabled
+    gnd(s, *pb.pin(3), drop=5.08, R=R)
+    decouple(s, pb.pin(5)[0], pb.pin(5)[1], "+3V3_D", R, tall=False)
+    hx, hy = pb.pin(4)
+    r_h(s, hx + 7.62, hy, R("R"), "33R")
+    j1 = s.sym(D.P["SMA"]["lib"], hx + 30.48, hy, 0, ref=R("J"),
+               value="HO OUT 10.000000MHz", footprint=D.P["SMA"]["fp"],
                lcsc=D.P["SMA"]["lcsc"], ref_dxy=(2.54, -10.16), val_dxy=(2.54, -7.62))
-    s.wire(c1x, c1y, j1.pin(1)[0], c1y)
+    s.wires((hx, hy), (hx + 3.81, hy))
+    s.wires((hx + 11.43, hy), (j1.pin(1)[0], hy))
     gnd(s, *j1.pin(2), drop=5.08, R=R)
-    s.text(c1x + 20.32, c1y - 5.08, "OUT: 0/3.3 V CMOS into hi-Z,",
-           size=1.3, italic=True)
-    s.text(c1x + 20.32, c1y - 1.27, "1.6 Vpp into 50R (ZO = 50R)",
-           size=1.3, italic=True)
-    s.nc(*si.pin(6))
+    s.note(285.0, 112.0, 110.0, 0,
+           "HO, ISOLATED (item 10).  CLK2 sits on VDDOB, its own filtered bank; the helper's "
+           "CLK0 is on VDDOA.  A buffer drives the jack, so the cable never loads the Si5351, "
+           "and the Si5351 runs it at 2 mA.  Round 45: at 8 mA HO added 16 ps rms to "
+           "unrelated pairs (T2) and 53 ps per transition between helper groups (O6); at 2 mA, 24.",
+           size=1.4, color=INFO, cols=90)
 
-    # --- DNP crystal alternative -------------------------------------------
-    xt = s.sym("Device:Crystal_GND24", 320.04, y, 0, ref=R("Y"), value="25MHz",
+    # --- DNP crystal alternative on XA/XB -----------------------------------------
+    xt = s.sym("Device:Crystal_GND24", 330.2, 66.04, 0, ref=R("Y"), value="25MHz",
                footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm", dnp=True,
                ref_dxy=(-3.81, -8.89), val_dxy=(-3.81, -6.35))
     gnd(s, *xt.pin(2), drop=6.35, R=R)
@@ -561,43 +574,13 @@ def helper(s):
     s.glabel(xt.pin(1)[0] - 12.7, xt.pin(1)[1], "SI_XA", shape="passive", justify="right")
     s.wire(*xt.pin(3), xt.pin(3)[0] + 12.7, xt.pin(3)[1])
     s.glabel(xt.pin(3)[0] + 12.7, xt.pin(3)[1], "SI_XB", shape="passive", justify="left")
-    s.text(293.37, 126.0, "DNP alternative: a plain 25 MHz crystal on XA/XB.",
+    s.text(303.53, 80.0, "DNP fallback: a plain 25 MHz crystal on XA/XB (PLL source = XTAL).",
            size=1.3, italic=True)
-    s.text(293.37, 129.81, "+/-10 ppm moves the beat +/-100 Hz, which cannot avoid",
-           size=1.3, italic=True)
-    s.text(293.37, 133.62, "the 60 Hz comb.  The TCXO's +/-2.5 ppm is +/-25 Hz: enough to",
-           size=1.3, italic=True)
-    s.text(293.37, 137.43, "reach 1260 Hz at +85 C, so software re-centres the beat from",
-           size=1.3, italic=True)
-    s.text(293.37, 141.24, "the measured helper frequency; the heated board holds it anyway.",
-           size=1.3, italic=True)
-
-    s.note(400.05, 46.0, 170.0, 0,
-           "CLK1 IS THE NULL-CHANNEL SOURCE.\n"
-           "Set it to exactly 10.000000 MHz and patch this SMA to channel 13 with a short "
-           "coax.  Round 28: CLK1 runs from PLLB in INTEGER mode (25 MHz x 32 = 800 MHz, "
-           "MultiSynth 80) and the helper from PLLA.  Same TCXO, so the beat is exactly "
-           "%.1f Hz; two PLLs, so what channel 13 reports is the front end plus the PLLs' "
-           "uncorrelated noise - an UPPER BOUND on the floor, not 'noiseless' as earlier rounds "
-           "said.  (CLK1 off PLLA would need MultiSynth 80.0099, the fractional mode the helper "
-           "was steered away from.)  A cable rather than a jumper keeps every channel tile "
-           "identical and puts a real connector in the loop, which is the honest thing to "
-           "measure." % D.F_BEAT,
-           size=1.4, color=INFO, cols=100)
 
     # =================== band 2: source select and squarer ================
     ys = 205.0
     s.rect(15.24, 156.0, 564.0, 84.0)
     s.text(19.05, 162.0, "SOURCE SELECT AND SQUARER      fit exactly one 0R", size=2.6, bold=True)
-
-    c0x, c0y = si.pin(10)
-    s.wire(c0x, c0y, c0x + 27.94, c0y)
-    # Anchored at 127 so the whole tag sits well inside the SYNTHESIZER band.
-    # A glabel at rot 270 hangs DOWNWARDS from its anchor, so at 148 the tag ran
-    # past the band's bottom edge at 150 and into the gap below it.
-    s.wire(c0x + 27.94, c0y, c0x + 27.94, 127.0)
-    s.glabel(c0x + 27.94, 127.0, "HELPER_SRC", shape="output", justify="right", rot=270)
-
     jx = s.sym(D.P["SMA"]["lib"], 33.02, ys, 0, ref=R("J"), value="EXT HELPER IN",
                footprint=D.P["SMA"]["fp"], mirror="y", lcsc=D.P["SMA"]["lcsc"],
                ref_dxy=(-5.08, -10.16), val_dxy=(-5.08, -7.62))
@@ -606,141 +589,110 @@ def helper(s):
     r_v(s, 55.88, ys + 8.89, R("R"), "51R", left=True)
     s.wire(55.88, ys, 55.88, ys + 5.08)
     gnd(s, 55.88, ys + 12.7, drop=6.35, R=R)
-    r_h(s, 66.04, ys, R("R"), "0R DNP", dnp=True)          # R_EXT, the SMA branch
+    r_h(s, 66.04, ys, R("R"), "0R DNP", dnp=True)
     s.wire(55.88, ys, 62.23, ys)
     s.wire(69.85, ys, 88.9, ys)
-    # The Si5351 arrives on its OWN branch with its OWN series 0R.  Drawn as one
-    # node with two 0R feeding it, fitting both really does short CLK0 to the
-    # SMA; drawn as two branches meeting at the selector node, it cannot.
     yh = ys - 15.24
     s.glabel(40.64, yh, "HELPER_SRC", shape="input", justify="right", rot=180)
-    s.text(40.64, yh - 3.81, "10.0012344 MHz, 0/3.3 V CMOS, Si5351 CLK0",
-           size=1.3, italic=True)
+    s.text(40.64, yh - 3.81, "10.0012344 MHz, 0/3.3 V CMOS, Si5351 CLK0", size=1.3, italic=True)
     s.wire(40.64, yh, 62.23, yh)
-    # 0R, and round 21 puts it back after round 20 made it 33R.  The datasheet
-    # settles it: Figure 16 "Recommended Trace Characteristics" shows the CLK
-    # output driving a 50 ohm line through **R = 0 ohms**, described as an
-    # "optional resistor for EMI management", because the output stage is
-    # already a 50 ohm source (Table: Output Impedance ZO = 50 ohm) and the
-    # jitter specification only holds at that default drive strength.
-    #
-    # It is not neutral here either.  This node feeds the squarer through a
-    # 10 n and a 330 R, so 33 R adds 10 % to the series resistance that sets
-    # the edge rate at the inverter's threshold -- about 7 % less slew on the
-    # one edge in the instrument whose slew IS the measurement.  Round 17 asked
-    # for the resistor and round 20 fitted it; the datasheet says not to.
-    r_h(s, 66.04, yh, R("R"), "0R")                        # R_INT, the Si5351 branch
+    r_h(s, 66.04, yh, R("R"), "0R")
     s.wire(69.85, yh, 88.9, yh)
     s.wire(88.9, yh, 88.9, ys)
     s.junction(88.9, ys)
-    s.text(93.98, ys + 8.89, "SELECT: fit R_INT or R_EXT, never both.",
-           size=1.3, italic=True)
-    s.text(93.98, ys + 12.7, "Two branches, two resistors, one node.", size=1.3, italic=True)
-
-    # squarer, same topology as a channel
+    s.text(93.98, ys + 8.89, "SELECT: fit R_INT or R_EXT, never both.", size=1.3, italic=True)
     s.wire(88.9, ys, 105.41, ys)
     c_h(s, 109.22, ys, R("C"), "10n C0G")
     s.wire(113.03, ys, 125.73, ys)
     r_h(s, 129.54, ys, R("R"), "330R")
-    inv = s.sym(D.P["INV"]["lib"], 162.56, ys, 0, ref=R("U"), value=D.P["INV"]["val"],
-                footprint=D.P["INV"]["fp"], lcsc=D.P["INV"]["lcsc"],
-                ref_dxy=(-3.81, 14.0), val_dxy=(-3.81, 16.51))
-    s.wire(133.35, ys, *inv.pin(2))
-    s.nc(*inv.pin(1))
-    gnd(s, *inv.pin(3), drop=7.62, R=R)
-    decouple(s, inv.pin(5)[0], inv.pin(5)[1], "+3V3_A", R, tall=False)
-    a, b = inv.pin(2), inv.pin(4)
-    yfb = ys + 24.13
-    s.wires((a[0], ys), (a[0], yfb), (a[0] + 8.89, yfb))
-    r_h(s, a[0] + 12.7, yfb, R("R"), "1M 1%", below=True)
-    s.wires((a[0] + 16.51, yfb), (b[0], yfb), (b[0], ys))
-    s.text(a[0] + 24.13, yfb + 2.54, "same self-biased squarer as every channel",
-           size=1.3, italic=True)
+    pi = D.P["INV2"]
+    inv = s.sym(pi["lib"], 162.56, ys, 0, ref=R("U"), value=pi["val"], footprint=pi["fp"],
+                lcsc=pi["lcsc"], ref_dxy=(-7.62, -12.7), val_dxy=(-7.62, -10.16))
+    s.wire(133.35, ys, *inv.pin(1))
+    gnd(s, *inv.pin(2), drop=6.35, R=R)
+    s.wire(inv.pin(5)[0], inv.pin(5)[1], inv.pin(5)[0], inv.pin(5)[1] - 2.54)
+    s.label(inv.pin(5)[0], inv.pin(5)[1] - 2.54, "FO_VDD", justify="left bottom")
+    s.junction(146.05, ys)
+    s.wire(146.05, ys, 146.05, ys + 5.08)
+    r_v(s, 146.05, ys + 8.89, R("R"), "1M 1%", left=True)
+    a2 = inv.pin(3); y2 = inv.pin(4)
+    s.wires((146.05, ys + 12.7), (146.05, ys + 16.51), (a2[0], ys + 16.51), a2)
+    s.label(a2[0] - 2.54, ys + 16.51, "REPLICA", justify="right bottom")
+    s.wire(y2[0], y2[1], y2[0] + 5.08, y2[1])
+    s.label(y2[0] + 5.08, y2[1], "REPLICA", justify="left bottom")
+    b = inv.pin(6)
+    s.wire(b[0], b[1], b[0] + 12.7, b[1])
+    s.glabel(b[0] + 12.7, b[1], "HELPER_SQ", shape="output", justify="left")
+    s.text(132.08, ys + 24.13, "the same replica-biased squarer as every channel (item 18), "
+           "on the fan-out's own supply", size=1.3, italic=True)
 
-    # first-stage buffer
-    buf1 = s.sym(D.P["BUF"]["lib"], 216.0, ys, 0, ref=R("U"), value=D.P["BUF"]["val"],
-                 footprint=D.P["BUF"]["fp"], lcsc=D.P["BUF"]["lcsc"],
-                 ref_dxy=(-3.81, 14.0), val_dxy=(-3.81, 16.51))
-    s.wire(b[0], ys, *buf1.pin(2))
-    s.nc(*buf1.pin(1))
-    gnd(s, *buf1.pin(3), drop=7.62, R=R)
-    decouple(s, buf1.pin(5)[0], buf1.pin(5)[1], "+3V3_A", R, tall=False)
-    obx, oby = buf1.pin(4)
-    s.text(228.6, ys + 16.51, "BUFFERED, unlike the GU04 beside it", size=1.4, bold=True)
-    s.note(432.0, 166.0, 140.0, 0,
-           "WHY THE 74LVC1G34 HERE AND THE 74LVC1GU04 NEXT DOOR.\n"
-           "They are opposites on purpose.  The squarer needs the UNBUFFERED GU04 because it "
-           "is run inside a 1M feedback loop at its own threshold, and one gain stage in that "
-           "loop cannot oscillate while three can.\n"
-           "Everything after it wants the exact opposite: no feedback, no linear region, just "
-           "the fastest, stiffest edge available into fourteen flip-flop clock inputs.  That is "
-           "the BUFFERED G34 - three cascaded stages, ~30 ohm output, and an input slew-rate "
-           "limit in its Recommended Operating Conditions that the squarer's clean edge already "
-           "satisfies.  Using a GU04 here would give soft edges and multiply every flip-flop's "
-           "threshold mismatch straight into skew.",
-           size=1.4, color=INFO, cols=80)
-
-    s.note(300.0, 166.0, 122.0, 0,
-           "HELPER SKEW ENTERS AT FULL SCALE, 1:1.  A delay d in one channel's helper branch "
-           "shifts that channel's beat by d x N, which referred back to the input is d.  Only "
-           "DIFFERENTIAL drift survives: a constant is a per-channel calibration the null test "
-           "removes, and a shift common to all fourteen branches cancels exactly.\n"
-           "So the copper barely matters, and it is worth doing the arithmetic rather than "
-           "reflexively length-matching.  FR4 carries about 6.9 ps/mm and its delay tempco is "
-           "50-100 ppm/degC, so a branch MISMATCH of 100 mm - the worst this board could "
-           "produce - drifts 0.7 ps over a 10 degC swing, against a 12.3 ps single-shot "
-           "resolution.  Match the branches to 10 mm because it is free, not to 1 mm; the "
-           "length itself is a per-channel constant the null test removes.\n"
-           "SILICON is the whole problem, which is why the four second-stage buffers have to "
-           "be physically ADJACENT so their tempcos track.  That is the layout constraint, and "
-           "it is the only one on this sheet that is tight.",
-           size=1.4, color=WARN, cols=80)
-
-    # =================== band 3: the fan-out tree =========================
+    # =================== band 3: the fan-out ===============================
     s.rect(15.24, 246.0, 564.0, 120.0)
-    s.text(19.05, 251.0, "LENGTH-MATCHED FAN-OUT      14 branches, series terminated",
-           size=2.6, bold=True)
+    s.text(19.05, 251.0, "FAN-OUT      2 x LMK1C1108 side by side, one input, 14 branches "
+           "series terminated, on FO_VDD", size=2.6, bold=True)
+    names = ["HCLK_%02d" % k for k in range(13)] + ["HELPER_CLK", "TAP", None]
+    yl = 290.0
+    k = 0
+    for c, lx in enumerate((76.2, 279.4)):
+        u = s.sym(LMK, lx, yl, 0, ref=R("U"), value="LMK1C1108PWR",
+                  footprint="Package_SO:TSSOP-16_4.4x5mm_P0.65mm", lcsc="C2868241",
+                  ref_dxy=(-20.32, -10.16), val_dxy=(-20.32, -7.62))
+        cx_, cy_ = u.pin(1)
+        s.wire(cx_ - 7.62, cy_, cx_, cy_)
+        s.glabel(cx_ - 7.62, cy_, "HELPER_SQ", shape="input", justify="right")
+        gx, gy = u.pin(2)                       # 1G: pulled up (internal pull-down)
+        s.wire(gx, gy, gx - 5.08, gy)
+        r_v(s, gx - 5.08, gy - 3.81 - 3.81, R("R"), "10k", left=True)
+        s.wire(gx - 5.08, gy - 3.81, gx - 5.08, gy)
+        s.wire(gx - 5.08, gy - 11.43, gx - 5.08, gy - 13.97)
+        s.label(gx - 5.08, gy - 13.97, "FO_VDD", justify="right bottom")
+        vs_ = [u.pin(n) for n in (5, 10, 14)]
+        tv = vs_[0][1] - 5.08
+        for vp in vs_:
+            s.wire(vp[0], vp[1], vp[0], tv)
+        s.wire(vs_[0][0], tv, vs_[-1][0] + 5.08, tv)
+        s.label(vs_[-1][0] + 5.08, tv, "FO_VDD", justify="left bottom")
+        gs = [u.pin(n) for n in (4, 7, 12)]
+        bv = gs[0][1] + 2.54
+        for gp in gs:
+            s.wire(gp[0], gp[1], gp[0], bv)
+        s.wire(gs[0][0], bv, gs[-1][0], bv)
+        gnd(s, gs[1][0], bv, drop=3.81, R=R)
+        # outputs: staircase, the top pin to the farthest column
+        outs = [u.pin(n) for n in (3, 16, 13, 15, 6, 11, 8, 9)]
+        for m, (px, py) in enumerate(outs):
+            nm = names[k]; k += 1
+            colx = px + 12.7 + (7 - m) * 10.16
+            if nm is None:
+                s.nc(px, py)
+                continue
+            s.wires((px, py), (colx, py), (colx, yl + 22.86))
+            r_v(s, colx, yl + 26.67, R("R"), "33R")
+            s.wire(colx, yl + 30.48, colx, yl + 33.02)
+            if nm == "TAP":
+                pu = D.P["UFL"]
+                t = s.sym(pu["lib"], colx, yl + 35.56, 270, ref=R("J"), value="TAP HELPER",
+                          footprint=pu["fp"], lcsc=pu["lcsc"], ref_dxy=(-3.81, 2.54),
+                          val_dxy=(-3.81, 5.08), justify="right")
+                gnd(s, *t.pin(2), drop=3.81, R=R)
+            else:
+                s.glabel(colx, yl + 33.02, nm, shape="output", justify="right", rot=270)
+    # FO_VDD: its own filter off +3V3_D, which no squarer channel shares
+    for xx, vals in ((480.06, ("100n", "10n")), (515.62, ("100n", "100n"))):
+        decouple(s, xx, 279.4, "+3V3_D", R, tall=False, values=vals)
+        s.wire(xx, 279.4, xx, 281.94)
+        s.label(xx, 281.94, "FO_VDD", justify="left bottom")
+    s.note(15.24, 346.0, 560.0, 0,
+           "WHY ONE FAN-OUT, item 22.  Rev A's five 74LVC1G34 drove the channels in blocks "
+           "(U3004 units 1-4, U3006 units 9-11, ...) off +3V3_A beside the squarers.  With "
+           "every unit on one OCXO (round 45.20-45.22): pairs within a block 7-15 ps per "
+           "transition, between blocks 20-53 ps; a channel's state moved its whole block 2-3 ps; "
+           "and the blocks drifted 4-4.5 ps/K apart.  Two LMK1C1108 side by side, one input, "
+           "on FO_VDD: 20 fs additive, 55 ps static skew within a part, 280 ps between the "
+           "two (a per-channel constant).  33R series-terminates each branch.",
+           size=1.4, color=WARN, cols=230)
 
-    yb = 300.0                       # the four second-stage buffers
-    spine = 254.0
-    per = (4, 4, 3, 3)               # 14 branches, as even as fourteen divides by four
-    bxs = [120.65, 231.14, 341.63, 452.12]
-    s.wire(obx, oby, obx + 7.62, oby)
-    s.wire(obx + 7.62, oby, obx + 7.62, spine)
-    s.wire(bxs[0] - 15.24, spine, bxs[-1] - 15.24, spine)
-    s.junction(obx + 7.62, spine)
 
-    branch = 0
-    for k, bx in enumerate(bxs):
-        s.wire(bx - 15.24, spine, bx - 15.24, yb)
-        bf = s.sym(D.P["BUF"]["lib"], bx, yb, 0, ref=R("U"), value=D.P["BUF"]["val"],
-                   footprint=D.P["BUF"]["fp"], lcsc=D.P["BUF"]["lcsc"],
-                   ref_dxy=(-27.94, -1.27), val_dxy=(-27.94, 1.27))
-        s.nc(*bf.pin(1))
-        gnd(s, *bf.pin(3), drop=7.62, R=R)
-        decouple(s, bf.pin(5)[0], bf.pin(5)[1], "+3V3_A", R, tall=False)
-        # branches fan DOWNWARD, one column each, so no two labels share a row
-        s.wire(bx + 12.7, yb, bx + 12.7 + (per[k] - 1) * 12.7, yb)
-        for m in range(per[k]):
-            cxb = bx + 12.7 + m * 12.7
-            s.wire(cxb, yb, cxb, yb + 8.255)
-            r_v(s, cxb, yb + 12.065, R("R"), "33R")
-            s.wire(cxb, yb + 15.875, cxb, yb + 24.13)
-            nm = "HELPER_CLK" if branch == 13 else "HCLK_%02d" % branch
-            s.glabel(cxb, yb + 24.13, nm, shape="output", justify="right", rot=270)
-            branch += 1
-
-    s.note(15.24, 346.0, 340.0, 0,
-           "WHY A 1:4 TREE AND NOT ONE GATE.  One 74LVC1G34 driving fourteen flip-flop inputs "
-           "plus their traces is about 100 pF, which gives 5-8 ns edges.  Per-flip-flop clock "
-           "threshold mismatch converts to skew as dV/slew, so a slow edge multiplies a 5 mV "
-           "threshold difference into 12 ps instead of 3 ps.  Two stages keep every branch at "
-           "1-2 ns.  33R at each driver is series termination: at a 1 ns edge the branch is a "
-           "transmission line once it is longer than about 45 mm.",
-           size=1.4, color=INFO, cols=200)
-
-
-# ===========================================================================
 def rpi_header(s):
     R = RefGen(40)
     _head(s, "RASPBERRY PI 40-PIN HEADER",

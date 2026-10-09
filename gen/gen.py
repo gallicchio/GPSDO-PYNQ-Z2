@@ -13,7 +13,7 @@ OUT = os.path.abspath(os.path.join(HERE, ".."))
 BOARD_SHEETS = [("power.kicad_sch", "Power", "power",
                  "5 V entry, two low-noise LDOs, and the 12 V board heater"),
                 ("helper.kicad_sch", "Helper", "helper",
-                 "Si5351A + 25 MHz TCXO, the squarer, and the length-matched fan-out tree"),
+                 "Si5351C + 25 MHz TCXO on CLKIN, HO buffered on its own bank, two LMK1C1108 fan-outs (rev B)"),
                 ("header.kicad_sch", "RPi header", "rpi_header",
                  "the 2x20 socket, with every pin's Zynq site and function annotated"),
                 ("housekeeping.kicad_sch", "Housekeeping", "housekeeping",
