@@ -2887,6 +2887,17 @@ def build():
         part_text(r, dx, dy, L, sz, 0.26, rmax=2.2,
                   alts=((dy, -dx), (-dy, dx)))
 
+    # ---- what each monitor tap carries (rev B item 19) ----------------------
+    # A U.FL has no pin names to read.  The channels' own "TAP IN" jacks go
+    # unnamed: their J number says which unit, and a tile has no room.
+    TAP_NAME = {"TAP +5V": "+5V", "TAP +3V3_A far": "+3V3_A", "TAP +3V3_D": "+3V3_D",
+                "TAP REF": "REF", "TAP CLK0": "CLK0", "TAP HELPER": "HCLK"}
+    for r in sorted(placed):
+        L = TAP_NAME.get(vals.get(r, "")) if r.startswith("J") else None
+        if L:
+            part_text(r, 0.0, 3.7, L, 1.2, 0.22, rmax=2.0,
+                      alts=((3.9, 0.0), (-3.9, 0.0)))
+
     # ---- a pin-1 dot where the footprint forgot one ------------------------
     # ROUND 35.  Every other package on this board marks pin 1 with a filled
     # triangle -- SOT-23-5, SOT-23-6, SOT-223, SOIC-8 and MSOP-10 all carry
