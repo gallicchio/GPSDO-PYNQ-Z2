@@ -41,3 +41,8 @@ design_review_*/*.png
 design_review_*/*.pdf
 design_review_*/drc-*.json
 design_review_*/filled.kicad_p*
+
+# The netlist the release scripts export and re-read every run (mfg/bomdata.py).
+# KiCad writes the schematic's ABSOLUTE path into it, and nothing committed may
+# name /home (2026-10-09: it had been tracked since rev A).
+mfg/_netlist.net
