@@ -37,7 +37,7 @@ Do this on the day it is ordered:
    `mfg/release/`, the handbook, the README and `SHA256SUMS.txt`.
 5. Set `REV = "C"`, `DATE = "unreleased"`, and start `REVC_CHANGES.md`.
 
-## Rev B in the generator: where it stands (2026-10-09, 07:15)
+## Rev B in the generator: where it stands (2026-10-09, 07:40)
 
 Started from rev A's generator on the morning after N1.  `revB_progress/` holds
 renders of the placement (the whole board, unit 1's tile, the helper block, the
@@ -55,7 +55,9 @@ rail taps) and the draft schematic as PDF.
 | yes | **driver for rev B**: `Si5351Config(rev='B')`, PLLs from CLKIN (register 15 = 0x0C), HO on CLK2 at 2 mA, CLK1 off; 72 driver tests | 9, 10 |
 | yes | parts_map: 4R7 0805 (C17675, Basic), the 1x03 header | |
 | no | **+3V3_A plane: needs the layer decision** (4 layers with B.Cu as the plane, or 6). The SC-70-6 squarer's VCC pin sits between its two outputs, so a supply track and the output must cross; a plane under the tile ends that | 5 |
-| no | the tile's and the helper block's hand tracks for the new parts, then the router | |
+| yes | **the tile's hand tracks** (all 13 units): U01's filter on the LEFT (the SC-70-6 has VCC between its outputs), its R51 to +3V3_A by a via; 1Y straight to U02; ground out between the rows; tap and park lanes through the 0.84 mm gaps in JP01's column. DRC: no clearance errors, shorts or crossings | 11, 18, 19 |
+| no | the tile's silk designators round JP01/R21/R22/R51 (placed, but not beside their parts); R1021-R1321 went to F.Fab | 1, 2 |
+| no | the helper block's hand tracks, then the router | |
 | no | INA3221; TPS3700 LEDs; the heater away from the tiles; the squarer-supply and squarer-output taps on units 1 and 4 | 6, 7, 19, 20 |
 | no | JLC stock check of the new ICs (74LVC2GU04, LMK1C1108, U.FL) at order time; the 74AUP2GU04 had 0 stock | 8 |
 

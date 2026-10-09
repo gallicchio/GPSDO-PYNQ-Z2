@@ -81,7 +81,20 @@ PARTS_10M = {
     "R21":  (-6.6, 12.4, 270),      # 1k into the tap
     "R22":  (-6.6, 16.4, 270),      # 100k, gate to JP01 pin 3 (PARK)
 }
-for _slot, _y in (("01", Y_U1), ("02", Y_U2), ("03", Y_U3)):
+# Rev B: the squarer is a 74LVC2GU04 in SC-70-6, whose VCC (pin 5) sits
+# BETWEEN its two outputs on the bottom row: 2Y (the replica, pin 4) on the
+# left and 1Y (pin 6) on the right.  A supply from the right-hand gutter would
+# have to cross 1Y on its way down to the flip-flop, so U01's filter moves to
+# the LEFT: VCC drops out of the pin's end, runs left past the two capacitors
+# to R51, and R51's other end takes a via to +3V3_A (the plane, item 5).  1Y
+# then runs straight down to U02 with nothing across it.  U02 and U03 keep
+# rev A's right-hand arrangement.
+Y_VCC1 = Y_U1 + 2.45                  # U01's VCC lane, below the replica's R05
+PARTS_10M["R51"] = (-6.4, Y_VCC1, 0)  # 4R7 lying flat, pad 1 (+3V3_A) outboard,
+                                      # above the tile's heater (y 24.75 on)
+PARTS_10M["C02"] = (-1.5, Y_VCC1 + 0.95, 270)
+PARTS_10M["C03"] = (-3.7, Y_VCC1 + 0.95, 270)
+for _slot, _y in (("02", Y_U2), ("03", Y_U3)):
     _p = _ic_power(_y)
     PARTS_10M["R5" + _slot[1]] = _p["FB"]               # R51 R52 R53 (were FB01-03)
     PARTS_10M["C%02d" % (2 * int(_slot))] = _p["CA"]       # C02 C04 C06
@@ -152,14 +165,28 @@ def _ic_power_routes(fb, y, rail):
 
 def routes_10m(head=RAIL_HEAD):
     """head: where the rail starts -- above the 1 pps block, or above the
-    10 MHz block for unit 13, which has no 1 pps half."""
+    10 MHz block for unit 13, which has no 1 pps half.
+
+    Rev B (2026-10-09): the squarer is the SC-70-6 74LVC2GU04 with its replica
+    bias, the input has a U.FL tap and a 100k park, and the jumper is the 3-pin
+    50R/PARK header.  JP01's pins are 1.7 mm pads 2.54 apart, so the gaps
+    between them are 0.84 mm: the tap and the park resistor each cross JP01's
+    column through one, at y = 12.87 and 15.41."""
     R = []
     # --- the input node: SMA centre pin down, terminator left, test point right
     R.append((("J01", "1"), W_SIG, [(0, 0), (0, 6.088)]))
-    R.append((("J01", "1"), W_SIG, [(0, 6.088), (-3.4, 6.088)]))
+    R.append((("J01", "1"), W_SIG, [(0, 6.088), (-2.9, 6.088)]))
     R.append((("J01", "1"), W_SIG, [(0, 6.088), (3.0, 6.088), (3.0, 6.6)]))
-    # --- 51R down to the jumper that grounds it
-    R.append((("R01", "2"), W_SIG, [(-3.4, 7.912), (-3.4, 11.2)]))
+    # --- 51R down to the header's pin 1 (pin 2 is ground: 1-2 = 50R)
+    R.append((("R01", "2"), W_SIG, [(-2.9, 7.912), (-2.9, 11.6)]))
+    # --- the tap (item 19): the AC-coupled node, through 1k, to the U.FL.
+    #     J03's pin is 1.5 mm in from its ground pads, so the track runs
+    #     down the gap between those pads and JP01.
+    R.append((("J03", "1"), W_SIG, [(-5.075, 7.3), (-5.075, 10.3), (-6.6, 11.488)]))
+    R.append((("R21", "2"), W_SIG, [(-6.6, 13.312), (-6.6, 12.87), (0, 12.87)]))
+    # --- the park (item 11): the squarer input through 100k to pin 3
+    R.append((("R22", "1"), W_SIG, [(-6.6, 15.488), (-6.6, 15.41), (0, 15.41), (0, 15.912)]))
+    R.append((("R22", "2"), W_SIG, [(-6.6, 17.312), (-3.4, 17.312)]))
     # --- 0R to the coupling cap, with the 2k2 hanging off that node
     R.append((("R02", "2"), W_SIG, [(0, 7.912), (0, 10.088)]))
     R.append((("R02", "2"), W_SIG, [(0, 9.4), (2.488, 9.4)]))
@@ -169,14 +196,26 @@ def routes_10m(head=RAIL_HEAD):
     # SOT-23 at rot 180 puts pad 1 BELOW the centre and pad 2 above it, so the
     # +3V3_A tap is the lower pad and the ground pad is the upper one.
     R.append((("D01", "1"), W_PWR, [(4.838, 13.95), (RAIL_10M, 13.95)]))
-    # --- the squarer input node: 330R down, 1M and test point across
-    R.append((("R04", "2"), W_SIG, [(0, 15.912), (0, 19.0625)]))
-    R.append((("R04", "2"), W_SIG, [(-3.4, 17.4), (3.0, 17.4)]))
-    R.append((("R05", "1"), W_SIG, [(-3.4, 19.288), (-3.4, 17.4)]))
-    # --- squarer output: the 1M back, then on to the first flip-flop
-    R.append((("U01", "4"), W_SIG, [(-3.4, 21.112), (-3.4, 21.3375), (-0.95, 21.3375)]))
-    R.append((("U01", "4"), W_SIG, [(-0.95, 21.3375), (-0.95, 24.4),
-                                    (0.95, 24.4), (0.95, Y_U2 - 1.1375)]))
+    # --- the squarer input node: 330R down the spine, test point right, the
+    #     1M up from the left, and in to 1A (pin 1, top right).  Every SC-70-6
+    #     track leaves its pad by the END: the pads are 0.35 mm wide with
+    #     0.30 mm between them, too little for a track.
+    R.append((("R04", "2"), W_SIG, [(0, 15.912), (0, 17.4), (0.65, 18.05), (0.65, 19.3625)]))
+    R.append((("R04", "2"), W_SIG, [(0, 17.4), (3.0, 17.4)]))
+    R.append((("R05", "1"), W_SIG, [(-3.4, 19.288), (-2.2, 18.1), (-1.5, 17.4), (0, 17.4)]))
+    # --- the replica (item 18): 2A and 2Y (pins 3 and 4, the left column)
+    #     tied, and the 1M's far end on them
+    R.append((("U01", "3"), W_SIG, [(-0.65, 19.3625), (-0.65, 21.0375)]))
+    R.append((("U01", "4"), W_SIG, [(-3.4, 21.112), (-0.65, 21.0375)]))
+    # --- ground (pin 2, top middle) through the 0.65 mm gap between the rows
+    #     and out to the right, between 1A and 1Y, to its via
+    R.append((("U01", "2"), 0.2, [(0, 19.3625), (0, 20.2), (1.6, 20.2)]))
+    # --- VCC (pin 5, bottom middle) out of its end and left along its lane
+    R.append((("U01", "5"), W_SIG, [(0, 21.0375), (0, Y_VCC1), (-5.4875, Y_VCC1)]))
+    R.append((("R51", "1"), W_SIG, [(-7.3125, Y_VCC1), (-7.3125, Y_VCC1 + 1.35)]))
+    # --- squarer output 1Y (pin 6, bottom right) straight down to U02's D
+    R.append((("U01", "6"), W_SIG, [(0.65, 21.0375), (0.65, 22.4), (0.95, 22.7),
+                                    (0.95, Y_U2 - 1.1375)]))
     # --- flip-flop to flip-flop, down the left and across below U02
     R.append((("U02", "4"), W_SIG, [(-0.95, Y_U2 + 1.1375), (-0.95, Y_U2 + 4.2),
                                     (0.95, Y_U2 + 4.2), (0.95, Y_U3 - 1.1375)]))
@@ -189,7 +228,7 @@ def routes_10m(head=RAIL_HEAD):
     # --- the beat out, to its test point and down to In2
     R.append((("U03", "4"), W_SIG, [(-0.95, Y_U3 + 1.1375), (-0.95, 39.8),
                                     (BEAT_VIA[0], 39.8)]))
-    for fb, y in (("FB01", Y_U1), ("FB02", Y_U2), ("FB03", Y_U3)):
+    for fb, y in (("R52", Y_U2), ("R53", Y_U3)):
         R += _ic_power_routes(fb, y, RAIL_10M)
     # --- the rail itself, down the gutter past all three ferrites
     R.append((("D01", "1"), W_PWR, [(RAIL_10M, head), (RAIL_10M, RAIL_FOOT)]))
@@ -207,10 +246,10 @@ def routes_pps():
     R.append((("U04", "4"), W_SIG, [(-0.95, Y_U4 + 1.1375), (-0.95, 16.6),
                                     (PPS_VIA[0], 16.6)]))
     vy = Y_U4 + 1.1375
-    R.append((("FB04", "1"), W_PWR, [(RAIL_PPS, vy), (4.862, vy)]))
-    R.append((("FB04", "2"), W_SIG, [(2.738, vy), (0.95, vy)]))
-    R.append((("FB04", "2"), W_SIG, [(2.85, vy), (2.85, 17.0)]))
-    R.append((("FB04", "2"), W_SIG, [(2.85, vy), (2.85, 10.8)]))
+    R.append((("R54", "1"), W_PWR, [(RAIL_PPS, vy), (4.862, vy)]))
+    R.append((("R54", "2"), W_SIG, [(2.738, vy), (0.95, vy)]))
+    R.append((("R54", "2"), W_SIG, [(2.85, vy), (2.85, 17.0)]))
+    R.append((("R54", "2"), W_SIG, [(2.85, vy), (2.85, 10.8)]))
     return R
 
 
@@ -234,3 +273,9 @@ PPS_VIA  = (-4.9, PPS_OFFSET[1] + 16.6)           # pps-local (-4.9, 16.6)
 VIAS_10M = [("U03", "4") + BEAT_VIA + (ESC_Y,),
             ("U02", "2") + HCLK_VIA + (ESC_Y,)]
 VIAS_PPS = [("U04", "4") + PPS_VIA + (ESC_Y,)]
+
+# Rev B: plain through vias, no In2 stub -- U01's ground, and R51's +3V3_A end,
+# which lands on the +3V3_A plane (item 5; until the plane exists it is an
+# unconnected via).
+PLAIN_VIAS_10M = [("U01", "2", 1.6, 20.2),
+                  ("R51", "1", -7.3125, Y_VCC1 + 1.35)]

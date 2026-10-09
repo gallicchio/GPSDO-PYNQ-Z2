@@ -677,6 +677,10 @@ def build():
                 run(u, spec, off=T.PPS_OFFSET)
         for slot, pad, vx, vy, ey in ([] if _NOHAND else T.VIAS_10M):
             escape(u, slot, pad, vx, vy, ey)
+        for slot, pad, vx, vy in ([] if _NOHAND else T.PLAIN_VIAS_10M):
+            nm = netof(u, slot, pad)
+            if nm:
+                tile_vias.append(f(vx, vy) + (nm,))
         if byunit[u].get("U04") and not _NOHAND:
             for slot, pad, vx, vy, ey in T.VIAS_PPS:
                 escape(u, slot, pad, vx, vy, ey)
