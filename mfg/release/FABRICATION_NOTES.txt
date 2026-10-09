@@ -101,24 +101,21 @@ ROTATION  (round 33)
   Round 28 built the corrections from the JLCKicadTools table.  Round 33
   rebuilt them from YOUR OWN placement preview, which is the only authority,
   and two of the five were wrong -- one of them on 59 parts:
-    MSOP-10_3x3mm_P0.5mm                 +270  x0    U3001
-        on U3001, pad 1 is at the north-east corner of its own body
-        pin 1 dot
-    Oscillator_SMD_Fox_FT5H_5.0x3.2mm    +270  x1    X3001
+    Oscillator_SMD_Fox_FT5H_5.0x3.2mm    +270  x1    read on rev A: X3001
         on X3001, pad 1 is at the north-east corner of its own body
         pin 1 is the NORTH-EAST pad; a 0.8 mm dot is printed beside it
         from round 35, because this footprint ships with no pin-1 mark of
         its own
-    SOIC-8_3.9x4.9mm_P1.27mm             +270  x9    U5001, U6001
+    SOIC-8_3.9x4.9mm_P1.27mm             +270  x9    read on rev A: U5001, U6001
         on U5001, pad 1 is at the north-west corner of its own body
         pin 1 dot
-    SOT-223-3_TabPin2                    +180  x3    Q2001
+    SOT-223-3_TabPin2                    +180  x3    read on rev A: Q2001
         on Q2001, pad 1 is at the north-west corner of its own body
         tab = drain, the wide pad
-    SOT-23-5                             +180  x40   U102 + 58 others
+    SOT-23-5                             +180  x40   read on rev A: U102 + 58 others
         on U102, pad 1 is at the north-west corner of its own body
         pin 1 = the D input
-    SOT-23-6                             +270  x1    U5009
+    SOT-23-6                             +270  x1    read on rev A: U5009
         on U5009, pad 1 is at the north-west corner of its own body
         pin 1 dot
     D_SMA                                   0  x4    D2001

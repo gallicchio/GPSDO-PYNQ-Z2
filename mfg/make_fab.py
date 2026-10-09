@@ -266,7 +266,13 @@ def rotation_table():
 
     out = []
     for fp, (corr, who, look) in sorted(parts_map.JLC_ROTATION.items()):
-        out.append("    %-36s %+4d  x%-3d  %s" % (fp, corr, n.get(fp, 0), who))
+        # Rev B: a footprint this board no longer uses is left out -- its row
+        # named rev A's MSOP-10 Si5351 as U3001, which is now the QFN-20.
+        # The parts named are the ones rev A's preview was read off.
+        if not n.get(fp, 0):
+            continue
+        out.append("    %-36s %+4d  x%-3d  read on rev A: %s"
+                   % (fp, corr, n.get(fp, 0), who))
         ref = re.match(r"[A-Z]+\d+", who)
         c = pin1_corner(ref.group(0)) if ref else ""
         if c:
