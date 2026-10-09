@@ -252,6 +252,21 @@ def track(x0, y0, x1, y1, layer, net_no, tag, w=0.4):
                  A("uuid", S(uid("t", tag, x0, y0, x1, y1, layer)))), 1)
 
 
+def pour_keepout(layer, poly, tag):
+    """A rule area that keeps the copper POUR out and nothing else."""
+    pts = A("pts", *[A("xy", round(px, 3), round(py, 3)) for px, py in poly])
+    return ser(A("zone", A("net", 0), A("net_name", S("")),
+                 A("layers", S(layer)), A("uuid", S(uid("k", tag, layer))),
+                 A("name", S(tag)), A("hatch", "edge", 0.5),
+                 A("connect_pads", A("clearance", 0)),
+                 A("min_thickness", 0.25), A("filled_areas_thickness", "no"),
+                 A("keepout", A("tracks", "allowed"), A("vias", "allowed"),
+                   A("pads", "allowed"), A("copperpour", "not_allowed"),
+                   A("footprints", "allowed")),
+                 A("fill", A("thermal_gap", 0.5), A("thermal_bridge_width", 0.5)),
+                 A("polygon", pts)), 1)
+
+
 def zone(net_no, net_name, layer, poly, tag, solid=False):
     pts = A("pts", *[A("xy", px, py) for px, py in poly])
     return ser(A("zone", A("net", net_no), A("net_name", S(net_name)),
@@ -2363,6 +2378,22 @@ def build():
     poly = [(0.3, 0.3), (G.BW - 0.3, 0.3), (G.BW - 0.3, G.BH - 0.3), (0.3, G.BH - 0.3)]
     out.append(zone(numof["GND"], "GND", "In1.Cu", poly, "GND-In1.Cu"))
     out.append(zone(numof["+3V3_A"], "+3V3_A", "B.Cu", poly, "+3V3_A-B.Cu"))
+    # ...but not under a standoff.  Rev A's B.Cu was GND, so a metal standoff
+    # or screw head on the bottom face touched nothing that mattered; rev B's
+    # is +3V3_A, under nothing but solder mask, and the slot's standoff is the
+    # one shared with the PYNQ (whose hole is ground).  Keep the pour 3.6 mm
+    # from each hole's centre (an M3 standoff is 6.35 mm across its corners),
+    # and 3.6 mm from the slot's axis along its 3.8 mm of travel.
+    for i, ((mx, my), kind, _n) in enumerate(G.MOUNT):
+        R_KO, half = 3.6, (0.0 if kind == "hole" else 1.9)
+        ko = []
+        for k in range(13):                       # right end, -90..+90 deg
+            a = _m.radians(-90 + 15 * k)
+            ko.append((mx + half + R_KO * _m.cos(a), my + R_KO * _m.sin(a)))
+        for k in range(13):                       # left end, 90..270 deg
+            a = _m.radians(90 + 15 * k)
+            ko.append((mx - half + R_KO * _m.cos(a), my + R_KO * _m.sin(a)))
+        out.append(pour_keepout("B.Cu", ko, "MH%d-B.Cu-keepout" % (i + 1)))
     # ...and a pour on F.Cu as well.  That is what actually clears the ground
     # ratsnest: 32 SMD ground pads never found room for a via, and a pad sitting
     # in a ground pour does not need one.  It costs a little capacitance on the
