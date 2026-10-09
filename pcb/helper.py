@@ -48,6 +48,10 @@ GATE_Y = 0.0
 X_LMK1, X_LMK2 = 59.0, 84.0        # the two LMK1C1108s
 SPINE_Y = -12.4                    # +3V3_D along the top edge, clear of C3007/C3008
 SQ_IN2_Y = -9.5                    # HELPER_SQ's In2 run to both LMKs
+# The margin lanes (build_pcb.py LANES) cross the board on In2 at these board
+# y: I2C_SCL 25.0, I2C_SDA 25.8, Q2003-D 26.6, HTR_DRIVE 27.4, +3V3_D 28.2,
+# +15V_HTR 29.0.  In local x (board y - 40) that is:
+LANE_X = {"I2C_SCL": -15.0, "I2C_SDA": -14.2, "+3V3_D": -11.8}
 
 PARTS = {
     # ---- 25 MHz TCXO and its supply ------------------------------------
@@ -222,12 +226,23 @@ def routes():
     p10 = P("U3001", 10)
     f("U3001", 10, SIG, p10, (p10[0], P("C3005", 1)[1]), P("C3005", 1))
     f("U3001", 10, PWR, P("C3005", 1), P("C3006", 1), P("R3053", 2))
-    # I2C: a via each beside the pins; the router takes them to the bus
+    # I2C: down to In2 beside the pins, out under the TCXO to just below the
+    # margin lanes, over them on F.Cu, and a via straight onto each I2C lane
+    # (rev A's U5007 did the same: the four lanes between the block and the
+    # I2C pair leave no way through on In2)
     p4, p5 = P("U3001", 4), P("U3001", 5)
     f("U3001", 5, SIG, p5, (12.6, p5[1]))
     lv("U3001", 5, 12.6, p5[1])
+    n("U3001", 5, SIG, (12.6, p5[1]), (-9.0, 1.0))
+    lv("U3001", 5, -9.0, 1.0)
+    f("U3001", 5, SIG, (-9.0, 1.0), (LANE_X["I2C_SDA"], 1.0))
+    lv("U3001", 5, LANE_X["I2C_SDA"], 1.0)
     f("U3001", 4, SIG, p4, (13.3, p4[1]), (11.6, 0.0))
     lv("U3001", 4, 11.6, 0.0)
+    n("U3001", 4, SIG, (11.6, 0.0), (-9.0, -0.4))
+    lv("U3001", 4, -9.0, -0.4)
+    f("U3001", 4, SIG, (-9.0, -0.4), (LANE_X["I2C_SCL"], -0.4))
+    lv("U3001", 4, LANE_X["I2C_SCL"], -0.4)
 
     # ---- CLK0: along the signal line to the select resistor; its tap -----
     f("U3001", 13, SIG, P("U3001", 13), P("R3005", 1))
@@ -320,7 +335,9 @@ def routes():
     f("U3004", 5, PWR, (P("R3055", 2)[0], -5.6), (X_LMK2 - 7.4125, -5.6))
 
     # ---- +3V3_D along the top edge, and down to each 4R7 ------------------
-    f("R3051", 1, PWR, (P("R3051", 1)[0], SPINE_Y), (99.0, SPINE_Y))
+    # fed from the +3V3_D margin lane by a via onto it
+    f("R3051", 1, PWR, (LANE_X["+3V3_D"], SPINE_Y), (99.0, SPINE_Y))
+    lv("R3051", 1, LANE_X["+3V3_D"], SPINE_Y)
     for ref in ("R3051", "R3052", "R3054", "R3055", "R3056"):
         p = P(ref, 1)
         f(ref, 1, PWR, (p[0], SPINE_Y), p)
@@ -331,5 +348,22 @@ def routes():
     n("R3053", 1, PWR, (r53[0], 9.4), (30.6, 9.4), (30.6, SPINE_Y))
     lv("R3053", 1, 30.6, SPINE_Y)
 
+    # ---- U5007's I2C: out past U3005's HCLK stubs (x 92.6-95.6, a fence
+    # from their vias to the block edge) before going down to In2.  SDA (pin
+    # 1, left) passes under SCL's end.
+    sda, scl = U5007_PIN[1], U5007_PIN[2]
+    f("U5007", 2, SIG, scl, (scl[0], -3.5), (100.2, -3.5))
+    lv("U5007", 2, 100.2, -3.5)
+    f("U5007", 1, SIG, sda, (sda[0], -2.8), (101.2, -2.8))
+    lv("U5007", 1, 101.2, -2.8)
+
     IN2_ROUTES[:] = I2
     return R
+
+
+# U5007 is placed by build_pcb.py with the margin thermometers, at local
+# (96.5, -7.6), local rot 90 (board rot 0); its SOIC-8 pins 1 and 2 are on the
+# row toward the signal line.
+U5007_AT = (96.5, -7.6)
+U5007_PIN = {1: (U5007_AT[0] - 1.905, U5007_AT[1] + 2.47),
+             2: (U5007_AT[0] - 0.635, U5007_AT[1] + 2.47)}
