@@ -37,23 +37,27 @@ Do this on the day it is ordered:
    `mfg/release/`, the handbook, the README and `SHA256SUMS.txt`.
 5. Set `REV = "C"`, `DATE = "unreleased"`, and start `REVC_CHANGES.md`.
 
-## Rev B in the generator: where it stands (2026-10-09, 06:45)
+## Rev B in the generator: where it stands (2026-10-09, 07:15)
 
-Started from rev A's generator on the morning after N1.  `revB_progress/` holds a
-render of the placement and the draft schematic as PDF.
+Started from rev A's generator on the morning after N1.  `revB_progress/` holds
+renders of the placement (the whole board, unit 1's tile, the helper block, the
+rail taps) and the draft schematic as PDF.
 
 | Done | What | Items |
 |---|---|---|
 | yes | The build on KiCad 10 (`gen/kicad_env.py`; sheets saved in its format); rev A's netlist reproduced exactly | 14 |
 | yes | **Channel sheet**: 74LVC2GU04 squarer with its replica bias; 3-pin 50R/PARK header with 100k at the gate; 4R7 instead of every bead; a U.FL tap through 1k on the input node | 11, 12, 18, 19 |
-| yes | **Helper sheet**: Si5351C, TCXO on CLKIN; HO on CLK2 (VDDOB) through a 74LVC1G125; the replica squarer and two LMK1C1108 on FO_VDD; a helper U.FL tap | 9, 10, 22 |
-| yes | Rev A's reference numbers kept (new parts from Rx21, supply resistors from Rx51) | |
-| yes | **Board: placement preview** (`NOHAND=1 NOROUTE=1`): every part placed, none outside its box | |
+| yes | **Helper sheet**: Si5351C, TCXO on CLKIN; HO on CLK2 (VDDOB) through a 74LVC1G125; the replica squarer and two LMK1C1108 on FO_VDD; U.FL taps on the fan-out (HCLK), the reference at CLKIN (REF) and CLK0 | 9, 10, 19, 22 |
+| yes | **Power sheet**: U.FL taps through 1k on +5V_HDR, +3V3_A (placed at its far end, under unit 13) and +3V3_D | 19 |
+| yes | Rev A's reference numbers kept (new parts from Rx21, supply resistors from Rx51, taps Jx03 / J2004-J2006 / J3004-J3005) | |
+| yes | **Board: placement preview** (`NOHAND=1 NOROUTE=1`): 641 parts placed, no courtyard overlaps, every designator inside its box; each tap U.FL named on the silk | |
+| yes | silkscreen: `JP 1-2 = 50R, 2-3 = PARK`, `HO = CLK2 OUT, buffered`, `X = the TCXO at CLKIN`; the heater `H` only on R2001-R2024 (rev A also put one on R2025/R2026) | 2, 3 |
+| yes | **driver for rev B**: `Si5351Config(rev='B')`, PLLs from CLKIN (register 15 = 0x0C), HO on CLK2 at 2 mA, CLK1 off; 72 driver tests | 9, 10 |
+| yes | parts_map: 4R7 0805 (C17675, Basic), the 1x03 header | |
+| no | **+3V3_A plane: needs the layer decision** (4 layers with B.Cu as the plane, or 6). The SC-70-6 squarer's VCC pin sits between its two outputs, so a supply track and the output must cross; a plane under the tile ends that | 5 |
 | no | the tile's and the helper block's hand tracks for the new parts, then the router | |
-| no | silkscreen legend (still says "50R w/ jumper JP", "HO = CLK1 OUT") | 2, 3 |
-| no | +3V3_A plane; INA3221; TPS3700 LEDs; the heater away from the tiles; more taps (rails, squarer supply and output, TCXO) | 5, 6, 7, 19, 20 |
-| no | **firmware for rev B**: the Si5351C's PLLs from CLKIN (register 15), HO on CLK2 at 2 mA, CLK0 at 2 mA | 9, 10 |
-| no | parts_map entries for 4R7, U.FL, the 1x03 header, the new ICs; JLC stock check | |
+| no | INA3221; TPS3700 LEDs; the heater away from the tiles; the squarer-supply and squarer-output taps on units 1 and 4 | 6, 7, 19, 20 |
+| no | JLC stock check of the new ICs (74LVC2GU04, LMK1C1108, U.FL) at order time; the 74AUP2GU04 had 0 stock | 8 |
 
 ## The plan at a glance
 
@@ -80,7 +84,7 @@ Priority: **1** = don't order rev B without it; **2** = should be in rev B;
 | 16 | Monitor the Si5351 during long runs | PLANNED | 2 | | |
 | 17 | ps per cycle from the measured beat | PLANNED | 2 | 0.8% off design (r43) | |
 | 18 | **Replica-biased squarers** (AM-to-PM) | **IN GENERATOR** (schematic) | **1** | −147 to −231 ps/dB (r43, r45 T3); a pair drifts +4-5 ps/K (r45) | 74LVC2GU04 per channel; RA2 |
-| 19 | U.FL/MMCX monitor taps | PLANNED | 2 | Every rev A question needed a hand-held probe | 25-35 taps |
+| 19 | U.FL/MMCX monitor taps | **IN GENERATOR** (19 of them: 13 inputs, HCLK, REF, CLK0, three rails) | 2 | Every rev A question needed a hand-held probe. An unplugged tap: 0.01-0.02% of the node's amplitude, 25-50 ps fixed, pickup < 0.05% (r45.22) | 1k into a U.FL; still to add: squarer supply and output on units 1 and 4 |
 | 20 | Heater and thermal layout | **RA7 DONE: not gradients** | 2 | **N1 (r45.21): within a helper group < 0.5 ps/K; between groups 4-4.5 ps/K; one coefficient on the gradient fails. O11b (r45.22): no electrical step at all; the per-tile heater resistors warm their channels within ~10-40 s** | even heating, away from the clock tree and not inside the tiles; sensors beside the fan-out and the samplers |
 | 21 | pps inputs | **NO CHANGE** | | First real pulses counted; thresholds 1.93 V up, 1.32 V down at the jack (r45) | keep 1k/10k, 51R DNP |
 | 22 | **The helper's distribution** | **IN GENERATOR** (schematic), THE FIRST THING (O10: more CLK0 drive is worse, 24 → 45 ps between groups at 2 → 8 mA) | **1** | OCXO pairs on one helper buffer (U3004: units 1-4; U3006: 9-11): 11-12 ps per transition; across buffers 20 ps with HO off, 53 ps at 8 mA; a channel's state moves its whole buffer group 2-3 ps; the port swap (O8) puts it on the board, not the OCXO (r45.20) | one low-jitter fan-out on its own clean supply, equal-length lines, HO kept off it |
