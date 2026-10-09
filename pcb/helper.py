@@ -348,14 +348,19 @@ def routes():
     n("R3053", 1, PWR, (r53[0], 9.4), (30.6, 9.4), (30.6, SPINE_Y))
     lv("R3053", 1, 30.6, SPINE_Y)
 
-    # ---- U5007's I2C: out past U3005's HCLK stubs (x 92.6-95.6, a fence
-    # from their vias to the block edge) before going down to In2.  SDA (pin
-    # 1, left) passes under SCL's end.
+    # ---- U5007's I2C, by hand all the way: past U3005's HCLK stubs (a fence
+    # at x 92.6-95.6), down to In2, back along the block's top edge (outside
+    # every other In2 run here), and into the Si5351's own I2C vias at
+    # (-9, -0.4) and (-9, 1.0), which already reach the lanes.  The router left
+    # both stranded (2026-10-09), and a lane crossing of their own landed on
+    # TP2003.  SDA takes the outer run both ways round, so the two never cross.
     sda, scl = U5007_PIN[1], U5007_PIN[2]
-    f("U5007", 2, SIG, scl, (scl[0], -3.5), (100.2, -3.5))
-    lv("U5007", 2, 100.2, -3.5)
-    f("U5007", 1, SIG, sda, (sda[0], -2.8), (101.2, -2.8))
-    lv("U5007", 1, 101.2, -2.8)
+    f("U5007", 1, SIG, sda, (sda[0], -2.5), (99.6, -2.5))
+    lv("U5007", 1, 99.6, -2.5)
+    n("U5007", 1, SIG, (99.6, -2.5), (99.6, -14.4), (-10.8, -14.4), (-10.8, 1.0), (-9.0, 1.0))
+    f("U5007", 2, SIG, scl, (scl[0], -3.3), (97.6, -3.3))
+    lv("U5007", 2, 97.6, -3.3)
+    n("U5007", 2, SIG, (97.6, -3.3), (97.6, -13.6), (-10.0, -13.6), (-10.0, -0.4), (-9.0, -0.4))
 
     IN2_ROUTES[:] = I2
     return R

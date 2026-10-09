@@ -692,6 +692,7 @@ def build():
         in2_term.setdefault(nm, []).append((sx, sy))
 
     railends = {}
+    gutters = []
     # Rev B: NOHAND=1 leaves out rev A's hand-drawn tile and helper tracks,
     # which no longer fit the parts (a placement preview).
     _NOHAND = bool(os.environ.get("NOHAND"))
@@ -712,6 +713,9 @@ def build():
             for slot, pad, vx, vy, ey in T.VIAS_PPS:
                 escape(u, slot, pad, vx, vy, ey)
         railends.setdefault(urot, []).append(f(T.RAIL_10M, T.RAIL_HEAD_PPS))
+        # Rev B: the rail is gone (the B.Cu plane), but where it ran stays
+        # closed to the plane-via search -- see gutter_clear().
+        gutters.append(f(T.RAIL_10M, T.RAIL_HEAD_PPS) + f(T.RAIL_10M, T.RAIL_FOOT))
         # One heater per tile, in the empty strip down the tile's outboard
         # side: no ground pad lives there, so it costs nothing, and it puts a
         # heater beside every channel instead of only around the outside.
@@ -1505,6 +1509,23 @@ def build():
                 return False
         return True
 
+    def gutter_clear(px, py):
+        """Rev A's +3V3_A rail ran down every tile's gutter, and it kept this
+        search out of it, "which is what leaves a clean vertical channel on
+        In2.Cu underneath" (tile.py) for the beat and pps returns.  Rev B's
+        plane took the rail away; without this, ground and +3V3_A vias landed
+        in the gutters, the returns spilled onto F.Cu along the bottom, and
+        I2C_SCL to the header lost its way out (2026-10-09).  0.75 mm: the old
+        0.5 mm rail's half-width, a via's radius and the 0.2 mm rule."""
+        for x0, y0, x1, y1 in gutters:
+            dx, dy = x1 - x0, y1 - y0
+            L2 = dx * dx + dy * dy
+            u = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
+            qx, qy = x0 + u * dx, y0 + u * dy
+            if (px - qx) ** 2 + (py - qy) ** 2 < 0.75 ** 2:
+                return False
+        return True
+
     # Rev B: the same search gives every +3V3_A pad its via to the B.Cu plane
     # (item 5), except a pad that a tile already drops to it by hand (R51).
     PLANE_NETS = ("GND", "+3V3_A")
@@ -1545,7 +1566,7 @@ def build():
                             break
                 # and it must not hang off the board edge
                 ok = ok and (0.8 < vx < G.BW - 0.8 and 0.8 < vy < G.BH - 0.8)
-                ok = ok and seg_clear(vx, vy, 0.3)
+                ok = ok and seg_clear(vx, vy, 0.3) and gutter_clear(vx, vy)
                 if ok:
                     for f in (0.3, 0.5, 0.7, 0.9):
                         if not seg_clear(ax + (vx - ax) * f,
