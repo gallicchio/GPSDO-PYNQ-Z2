@@ -15573,3 +15573,48 @@ mean of the four OCXO units. Thirteen 20 s points, −1 to +1 dB:
     the OCXO's case, the rails, and each OCXO line's RMS on the scope.
   - The afternoon's no-heater baseline, 22:24-23:07Z, is
     `overnight_20261008T2224Z/`.
+
+### 45.21 N1 (RA7): the board's temperature drift is the helper tree's, not the channels'
+
+`overnight_20261008T2322Z/`: 13 h, 390 rows, all clean, no slips. HO was at
+2 mA. The heater was off 1 h, on 3 h, off 3 h, on 3 h, then off; each heated
+step was ~12 K, with the left edge 2-5 K hotter. The OCXO's case (the probe)
+stayed at 26-28 °C. `ra7_analyse.py` fits each corner's delay against unit 1
+three ways, each with a term for the heater's instant step;
+`overnight_20261008T2322Z/ra7.png` plots it.
+
+| Pair | Where | Per K of mean board temperature | Step at heater on/off (2 min) |
+|---|---|---|---|
+| 2 − 1 | top left, top right | **+0.1 ps/K** | −4.5/+3.8, −4.2/+4.6 ps |
+| 11 − 10 | bottom left, bottom right | **−0.4 ps/K** | ~1-4 ps |
+| 10 − 1 | bottom right, top left | **−4.0 ps/K** | −11.3/+9.0, −8.0/+13.1 ps |
+| 11 − 1 | bottom left, top left | **−4.4 ps/K** | −11.9/+9.7, −8.1/+12.1 ps |
+
+| Model | Residual |
+|---|---|
+| A: each unit its own coefficient on its local thermometer | 2.6 ps rms |
+| M: each unit its own coefficient on the mean | 2.7 ps rms |
+| **B: one coefficient on the gradient between corners** | **6.3 ps rms**: fails |
+
+- **It isn't the gradient.** 2 − 1 (left against right) barely moves, though
+  the left runs hotter. 10 − 2 (bottom against top, both on the right edge,
+  where the thermometers agree to 1 K) moves 50 ps.
+- **Within a helper group, the channels hardly drift:** under 0.5 ps/K. RA2's
+  2.6 ps/K on 2 − 1 belonged to that bench: unit 2 unterminated on the SDG, HO
+  at 8 mA.
+- **The two groups drift 4-4.5 ps/K apart.** Units 1 and 2 hang off helper
+  buffer U3004, units 10 and 11 off U3006. The likeliest mechanism: U3004
+  drives four units and U3006 three, and a CMOS gate's delay grows with
+  temperature in proportion to its load. The buffers' +3V3_A feed, through
+  copper whose resistance rises 0.4 %/K, can add to it.
+- **The heater's instant step is grouped too:** ~4 ps within the top group,
+  8-14 ps between groups. That is its current reaching the helper tree's
+  supply or ground.
+- **What it decides:**
+  - **item 22** (one fan-out, matched loads, its own supply) fixes the drift
+    as well as the noise, so it is the first thing in rev B;
+  - **item 18's** replica bias is for AM-to-PM, not temperature;
+  - **item 20's** heater layout is about its current's return path, not
+    gradients.
+- Three single-row spikes (+7 ps, all pairs at once) at 0.2, 6.2 and 11.2 h:
+  something every ~6 h, not yet identified.
