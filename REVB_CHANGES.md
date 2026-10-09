@@ -37,6 +37,24 @@ Do this on the day it is ordered:
    `mfg/release/`, the handbook, the README and `SHA256SUMS.txt`.
 5. Set `REV = "C"`, `DATE = "unreleased"`, and start `REVC_CHANGES.md`.
 
+## Rev B in the generator: where it stands (2026-10-09, 06:45)
+
+Started from rev A's generator on the morning after N1.  `revB_progress/` holds a
+render of the placement and the draft schematic as PDF.
+
+| Done | What | Items |
+|---|---|---|
+| yes | The build on KiCad 10 (`gen/kicad_env.py`; sheets saved in its format); rev A's netlist reproduced exactly | 14 |
+| yes | **Channel sheet**: 74LVC2GU04 squarer with its replica bias; 3-pin 50R/PARK header with 100k at the gate; 4R7 instead of every bead; a U.FL tap through 1k on the input node | 11, 12, 18, 19 |
+| yes | **Helper sheet**: Si5351C, TCXO on CLKIN; HO on CLK2 (VDDOB) through a 74LVC1G125; the replica squarer and two LMK1C1108 on FO_VDD; a helper U.FL tap | 9, 10, 22 |
+| yes | Rev A's reference numbers kept (new parts from Rx21, supply resistors from Rx51) | |
+| yes | **Board: placement preview** (`NOHAND=1 NOROUTE=1`): every part placed, none outside its box | |
+| no | the tile's and the helper block's hand tracks for the new parts, then the router | |
+| no | silkscreen legend (still says "50R w/ jumper JP", "HO = CLK1 OUT") | 2, 3 |
+| no | +3V3_A plane; INA3221; TPS3700 LEDs; the heater away from the tiles; more taps (rails, squarer supply and output, TCXO) | 5, 6, 7, 19, 20 |
+| no | **firmware for rev B**: the Si5351C's PLLs from CLKIN (register 15), HO on CLK2 at 2 mA, CLK0 at 2 mA | 9, 10 |
+| no | parts_map entries for 4R7, U.FL, the 1x03 header, the new ICs; JLC stock check | |
+
 ## The plan at a glance
 
 Priority: **1** = don't order rev B without it; **2** = should be in rev B;
@@ -52,20 +70,20 @@ Priority: **1** = don't order rev B without it; **2** = should be in rev B;
 | 6 | Rail LEDs with "in range" | PLANNED | 3 | | TPS3700 windows |
 | 7 | Rail monitor (INA3221) | PLANNED | 2 | Rails flat to 1 mV; the CircuitGears read 1-2% low and drift (r45) | on-board V and I logging |
 | 8 | A lower-current squarer (74AUP) | **ON ONE OR TWO CHANNELS** | 3 | Not tested on rev A (no part to hand). Parking 3, 6, 7, 8 raised +3V3_A ~110 mV (r45.20), so the idle load is mostly gone anyway | a 74AUP2GU04 in item 18's SC-70-6 footprint on one or two channels: a BOM change |
-| 9 | **Si5351C, the TCXO on CLKIN** | PLANNED, **RA1 CONFIRMS THE MECHANISM** | **1** | PLLA slips at CLK0 ≥ 4 mA; 15 h clean at 2 mA (r39-45). **RA1's faster XA edge: 0 slips in 14 of 15 drive settings (was 9 slipping), 53/s at 8+8 mA (was 1600)** (r45.20) | CLKIN, separate VDDO banks |
-| 10 | **Isolate HO, drive it at 2-4 mA** | PLANNED | **1** | 58 ps on unit 11 (r41); +16 ps rms on an unrelated pair at 8 mA (r45 T2). **OCXO pairs across helper-buffer groups: 20 ps (HO off), 24 (2 mA), 33 (4 mA), 53 ps (8 mA) per transition; within a group 11-15 ps** (r45.20 O6) | buffered, filtered, own bank, away from the helper tree; RA5 |
-| 11 | **Park unused channels** | PLANNED, **VALIDATED ON REV A** | **1** | 100 kΩ from S to ground held unit 5 quiet in 30 of 30 restarts (r45). **Parks on 3, 5, 6, 7, 8: all quiet 30/30, and unit 13 began oscillating (29/30): park every one** (r45.20 O2) | 3-pin header, 50R / PARK |
-| 12 | **RC, not bead, gate filters** | PLANNED, **CONFIRMED ON REV A** | **1** | **FB401 bridged: unit 4 quiet in 30 of 30**, was oscillating 30 of 30 (r45) | 2.2-10 Ω on every gate; RA3 picks the value |
+| 9 | **Si5351C, the TCXO on CLKIN** | **IN GENERATOR** (schematic), RA1 CONFIRMS THE MECHANISM | **1** | PLLA slips at CLK0 ≥ 4 mA; 15 h clean at 2 mA (r39-45). **RA1's faster XA edge: 0 slips in 14 of 15 drive settings (was 9 slipping), 53/s at 8+8 mA (was 1600)** (r45.20) | CLKIN, separate VDDO banks |
+| 10 | **Isolate HO, drive it at 2-4 mA** | **IN GENERATOR** (schematic: CLK2, VDDOB, buffer) | **1** | 58 ps on unit 11 (r41); +16 ps rms on an unrelated pair at 8 mA (r45 T2). **OCXO pairs across helper-buffer groups: 20 ps (HO off), 24 (2 mA), 33 (4 mA), 53 ps (8 mA) per transition; within a group 11-15 ps** (r45.20 O6) | buffered, filtered, own bank, away from the helper tree; RA5 |
+| 11 | **Park unused channels** | **IN GENERATOR** (schematic), VALIDATED ON REV A | **1** | 100 kΩ from S to ground held unit 5 quiet in 30 of 30 restarts (r45). **Parks on 3, 5, 6, 7, 8: all quiet 30/30, and unit 13 began oscillating (29/30): park every one** (r45.20 O2) | 3-pin header, 50R / PARK |
+| 12 | **RC, not bead, gate filters** | **IN GENERATOR** (every gate: 4R7), CONFIRMED ON REV A | **1** | **FB401 bridged: unit 4 quiet in 30 of 30**, was oscillating 30 of 30 (r45) | 2.2-10 Ω on every gate; RA3 picks the value |
 | 13 | Crosstalk rules | PLANNED, reprioritised | 2 | No 10 MHz tone above 0.4 ps; state changes and strong edges are what move a channel (r45 T2) | supply rules first |
 | 14 | Build rev B in KiCad 10 | **DONE for the schematic** (2026-10-09) | 2 | Jason views in KiCad 10 and never saves; opening rewrites the project file. KiCad 9's extracted copy had gone | `gen/kicad_env.py`; sheets saved by `kicad-cli sch upgrade`; rev A's netlist identical (318 nets, 592 parts). The board step is untested on 10 |
 | 15 | Deglitch the beats in the gateware | PLANNED | 2 | 28-32% of transitions carry extra edges (r45) | |
 | 16 | Monitor the Si5351 during long runs | PLANNED | 2 | | |
 | 17 | ps per cycle from the measured beat | PLANNED | 2 | 0.8% off design (r43) | |
-| 18 | **Replica-biased squarers** (AM-to-PM) | PLANNED | **1** | −147 to −231 ps/dB (r43, r45 T3); a pair drifts +4-5 ps/K (r45) | 74LVC2GU04 per channel; RA2 |
+| 18 | **Replica-biased squarers** (AM-to-PM) | **IN GENERATOR** (schematic) | **1** | −147 to −231 ps/dB (r43, r45 T3); a pair drifts +4-5 ps/K (r45) | 74LVC2GU04 per channel; RA2 |
 | 19 | U.FL/MMCX monitor taps | PLANNED | 2 | Every rev A question needed a hand-held probe | 25-35 taps |
 | 20 | Heater and thermal layout | **RA7 DONE: not gradients** | 2 | **N1 (r45.21): within a helper group < 0.5 ps/K; between groups 4-4.5 ps/K; one coefficient on the gradient fails. O11b (r45.22): no electrical step at all; the per-tile heater resistors warm their channels within ~10-40 s** | even heating, away from the clock tree and not inside the tiles; sensors beside the fan-out and the samplers |
 | 21 | pps inputs | **NO CHANGE** | | First real pulses counted; thresholds 1.93 V up, 1.32 V down at the jack (r45) | keep 1k/10k, 51R DNP |
-| 22 | **The helper's distribution** | **NEW**, PLANNED, **THE FIRST THING** (O10: more CLK0 drive is worse, 24 → 45 ps between groups at 2 → 8 mA) | **1** | OCXO pairs on one helper buffer (U3004: units 1-4; U3006: 9-11): 11-12 ps per transition; across buffers 20 ps with HO off, 53 ps at 8 mA; a channel's state moves its whole buffer group 2-3 ps; the port swap (O8) puts it on the board, not the OCXO (r45.20) | one low-jitter fan-out on its own clean supply, equal-length lines, HO kept off it |
+| 22 | **The helper's distribution** | **IN GENERATOR** (schematic), THE FIRST THING (O10: more CLK0 drive is worse, 24 → 45 ps between groups at 2 → 8 mA) | **1** | OCXO pairs on one helper buffer (U3004: units 1-4; U3006: 9-11): 11-12 ps per transition; across buffers 20 ps with HO off, 53 ps at 8 mA; a channel's state moves its whole buffer group 2-3 ps; the port swap (O8) puts it on the board, not the OCXO (r45.20) | one low-jitter fan-out on its own clean supply, equal-length lines, HO kept off it |
 
 ## Rev A boards: reworks and hand-fitted parts
 
