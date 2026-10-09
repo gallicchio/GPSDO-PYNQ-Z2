@@ -1090,6 +1090,30 @@ U.FL-R-SMT-1 (LCSC C88374), each fed through 49.9 Ω.
 few millimetres away, its ground pads stitched to the plane. Unplugged, it
 adds well under 1 pF.
 
+**An unplugged tap, in numbers (r45.21; Jason: U.FL is fine, debug only; it
+must not push a channel by 1 %).** The worst case is 1 pF of stub (trace
+plus the U.FL's centre pin) behind the 1 kΩ: 15.9 kΩ at 10 MHz.
+
+| Effect, nothing plugged in | Terminated input (~25 Ω) | Unterminated (~50 Ω) |
+|---|---|---|
+| amplitude lost | 0.010 % | 0.020 % |
+| added delay | 25 ps, **fixed** | 50 ps, **fixed** |
+| pickup from a clock trace 2 mm away (0.05 pF) | 0.03 % of 1 Vpp | 0.05 % |
+| pickup as an antenna, 5 mm stub in 1 V/m at 10 MHz | 0.4 µV | 0.8 µV |
+
+- **An unplugged tap does not act as an antenna.** A 5 mm stub is 1/6000 of
+  a wavelength at 10 MHz, and the 1 kΩ isolates whatever it does pick up.
+- **The fixed delay is a channel offset**, like a cable's, and cancels in
+  every comparison. Its temperature coefficient is that of a few millimetres
+  of FR-4.
+- **The only coupling worth designing for is near-field:**
+  - a tap trace runs **≤ 5 mm**;
+  - it stays **≥ 2 mm from any clock trace** (HO, the helper, the TCXO);
+  - ground runs between them.
+- **Plugged in, a tap does push its channel** (the traps below: 2-5 % of the
+  amplitude into a 50 Ω scope). That is fine for debugging, and the
+  silkscreen says which taps do it.
+
 **The series resistor is the "divider built into the connector."** It sets
 both the ratio and what the node feels:
 
