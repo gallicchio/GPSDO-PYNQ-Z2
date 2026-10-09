@@ -299,8 +299,9 @@ BOARD
   Outline ............ %(w).2f x %(h).2f mm, rectangular, no cutouts, no slots
   Copper layers ...... %(nl)d   (F.Cu / In1.Cu / In2.Cu / B.Cu)
   Suggested stackup .. 1.6 mm FR-4, 1 oz outer, 0.5 oz inner  (JLC04161H-7628)
-  Surface finish ..... ENIG preferred (lead-free HASL acceptable)
-  Soldermask ......... any colour; silkscreen white
+  Surface finish ..... ENIG, 1 U" gold (see the order form below)
+  Soldermask ......... green (Economic PCBA does 4 layers in green only);
+                       silkscreen white
   Impedance control .. NOT required.  See the note below.
 
 WHAT IS ON EACH LAYER
