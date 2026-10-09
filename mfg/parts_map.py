@@ -56,6 +56,8 @@ MAP = {
     ("10k",    "R_0805_2012Metric"): ("C17414",   "Basic 0805W8F1002T5E"),
     ("100k",   "R_0805_2012Metric"): ("C149504",  "Basic 0805W8F1003T5E"),
     ("1M 1%",  "R_0805_2012Metric"): ("C17514",   "Basic 0805W8F1004T5E, +/-1%"),
+    # rev B item 12: every gate's supply through 4R7 where rev A had a bead
+    ("4R7",    "R_0805_2012Metric"): ("C17675",   "Basic 0805W8F470KT5E, 4.7 ohm"),
     # ---- the heater ----------------------------------------------------
     ("560R", "R_2010_5025Metric"):
         ("C48997026", "CL2010FN560RB, +/-1%, 750 mW, 200 V.  The 750 mW is "
@@ -73,6 +75,9 @@ MAP = {
     # the code buys the right pitch and enough pins, not that it matches the
     # footprint's pin count.  One 1x40 strip covers all fifteen single-row
     # positions with pins to spare.
+    ("50R/PARK", "PinHeader_1x03_P2.54mm_Vertical"):
+        ("C2337", "2.54 mm 1x40P breakable male strip -- snap to 1x3 (rev B item 11: "
+                  "1-2 = 50R, 2-3 = PARK)"),
     ("50R TERM", "PinHeader_1x02_P2.54mm_Vertical"):
         ("C2337", "2.54 mm 1x40P breakable male strip -- snap to 1x2.  "
                   "13 needed, plus 13 jumper shunts (see EXTRAS)"),
