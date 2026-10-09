@@ -335,11 +335,11 @@ def hand_placed(G):
     # thermometer stacks had.  Laid out with every V+ pad in one column, the
     # net is two straight tracks; see build().
     d["U6001"] = (16.0, 25.0, 0)          # DS2482-100, SOIC-8
-    d["FB6001"] = (13.53, 20.3, 270)      # bead above pin 1
+    d["R6051"] = (13.53, 20.3, 270)       # rev B: R6051 (4R7) where FB6001 was      # bead above pin 1
     d["C6001"] = (10.5, 25.635, 180)      # both caps to the left, V+ inward,
     d["C6002"] = (10.5, 28.2, 180)        # below R2014's 2010 footprint
     d["U5009"] = (46.0, 173.0, 0)         # MCP4725, SOT-23-6
-    d["FB5009"] = (44.86, 177.0, 90)      # bead below pin 3
+    d["R5059"] = (44.86, 177.0, 90)       # rev B: R5059 (4R7) where FB5009 was      # bead below pin 3
     d["C5017"] = (41.5, 173.95, 180)
     d["C5018"] = (41.5, 171.0, 180)
     # The three heater pass FETs, each at the centroid of the eight heaters it
@@ -416,7 +416,7 @@ def hand_placed(G):
         s = -1.0 if tmirror.get(ref) else 1.0
         d[ref] = (sx, sy, 180 if s < 0 else 0)
         rf = 0 if s < 0 else 180
-        d["FB500%d" % (i + 1)] = (sx, sy - s * 5.0, rf)
+        d["R505%d" % (i + 1)] = (sx, sy - s * 5.0, rf)     # rev B: was FB500n
         d["C50%02d" % (2 * i + 1)] = (sx, sy + s * 4.2, 180 - rf)
         d["C50%02d" % (2 * i + 2)] = (sx, sy + s * 7.0, 180 - rf)
 
@@ -652,16 +652,19 @@ def build():
         in2_term.setdefault(nm, []).append((sx, sy))
 
     railends = {}
+    # Rev B: NOHAND=1 leaves out rev A's hand-drawn tile and helper tracks,
+    # which no longer fit the parts (a placement preview).
+    _NOHAND = bool(os.environ.get("NOHAND"))
     for u in sorted(byunit):
         f, urot = xf(u)
-        for spec in T.routes_10m(T.RAIL_HEAD_PPS):
+        for spec in ([] if _NOHAND else T.routes_10m(T.RAIL_HEAD_PPS)):
             run(u, spec)
-        if byunit[u].get("U04"):
+        if byunit[u].get("U04") and not _NOHAND:
             for spec in T.routes_pps():
                 run(u, spec, off=T.PPS_OFFSET)
-        for slot, pad, vx, vy, ey in T.VIAS_10M:
+        for slot, pad, vx, vy, ey in ([] if _NOHAND else T.VIAS_10M):
             escape(u, slot, pad, vx, vy, ey)
-        if byunit[u].get("U04"):
+        if byunit[u].get("U04") and not _NOHAND:
             for slot, pad, vx, vy, ey in T.VIAS_PPS:
                 escape(u, slot, pad, vx, vy, ey)
         railends.setdefault(urot, []).append(f(T.RAIL_10M, T.RAIL_HEAD_PPS))
@@ -2707,7 +2710,7 @@ def build():
     REGIONS = {
         "helper": sorted(H.PARTS) + ["J3001", "J3002"],
         "power": sorted(PW.PARTS),
-        "house": sorted(blockrefs.get("house", [])) + ["U5009", "FB5009",
+        "house": sorted(blockrefs.get("house", [])) + ["U5009", "R5059",
                                                        "C5017", "C5018"],
         # ROUND 31.  The box is drawn round what the LABEL names -- the five
         # screw terminals you wire external probes into, their ten series
@@ -2720,7 +2723,7 @@ def build():
         "probes": (sorted(blockrefs.get("probes", []))
                    + ["J600%d" % (i + 1) for i in range(5)]
                    + ["R60%02d" % n for n in range(2, 12)]
-                   + ["FB6001"]),
+                   + ["R6051"]),
     }
     rboxes = {}
     for _name, _refs in sorted(REGIONS.items()):

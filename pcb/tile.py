@@ -50,7 +50,8 @@ RAIL_HEAD = -5.0             # both rails run the FULL height of the box, not
                              # underneath, and In2 badly needs the channels.
 
 def _ic_power(y):
-    """Ferrite and the two capacitors that serve one gate at spine y."""
+    """The supply resistor (rev B item 12: 4R7 where rev A had a ferrite, same
+    0805) and the two capacitors that serve one gate at spine y."""
     return {"FB": (6.6, y + 1.1375, 180),
             "CA": (2.9, y + 4.0, 270),
             "CB": (5.3, y + 4.0, 270)}
@@ -71,10 +72,17 @@ PARTS_10M = {
     "U02":  (0.0, Y_U2, 270),       # sampling flip-flop
     "U03":  (0.0, Y_U3, 270),       # re-timing flip-flop
     "TP03": (-3.4, 39.8, 0),
+    # rev B: the input tap (item 19) and the park resistor (item 11), in the
+    # tile's free left column.  PLACEMENT ONLY so far: routes_10m() predates
+    # them, and the squarer (U01) is now a 74LVC2GU04 in SC-70-6.
+    "J03":  (-6.8, 7.3, 180),       # U.FL, TAP IN: top-left, clear of the SMA
+                                    # (its outline is 1.0 / 2.5 mm off its pin)
+    "R21":  (-6.6, 12.4, 270),      # 1k into the tap
+    "R22":  (-6.6, 16.4, 270),      # 100k, gate to JP01 pin 3 (PARK)
 }
 for _slot, _y in (("01", Y_U1), ("02", Y_U2), ("03", Y_U3)):
     _p = _ic_power(_y)
-    PARTS_10M["FB" + _slot] = _p["FB"]
+    PARTS_10M["R5" + _slot[1]] = _p["FB"]               # R51 R52 R53 (were FB01-03)
     PARTS_10M["C%02d" % (2 * int(_slot))] = _p["CA"]       # C02 C04 C06
     PARTS_10M["C%02d" % (2 * int(_slot) + 1)] = _p["CB"]   # C03 C05 C07
 
@@ -92,7 +100,7 @@ PARTS_PPS = {
     "R06":  (-3.4, 7.0, 270),       # 51R, DNP
     "R08":  (3.4, 8.0, 0),          # 10k to ground
     "U04":  (0.0, Y_U4, 270),       # 74LVC1G17 Schmitt buffer
-    "FB04": (3.8, Y_U4 + 1.1375, 180),
+    "R54":  (3.8, Y_U4 + 1.1375, 180),    # was FB04
     "C09":  (3.8, 10.8, 0),         # 10n, above the ferrite
     "C08":  (3.8, 17.0, 0),         # 100n, below it
     "TP04": (-3.4, 16.6, 0),
