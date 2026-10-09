@@ -60,8 +60,8 @@ PARTS_10M = {
     "J01":  (0.0, 0.0, 0),
     "TP01": (3.0, 6.6, 0),
     "R02":  (0.0, 7.0, 270),        # 0R series
-    "R01":  (-3.4, 7.0, 270),       # 51R terminator
-    "JP01": (-3.4, 11.2, 0),        # 50R TERM jumper, pin 1 at the top
+    "R01":  (-2.9, 7.0, 270),       # 51R terminator (rev B: 0.5 in, for J03)
+    "JP01": (-3.4, 11.6, 0),        # 50R/PARK header, pin 1 at the top (rev B: 0.4 down)
     "C01":  (0.0, 11.0, 270),       # 10n C0G, the AC coupling
     "R03":  (3.4, 9.4, 0),          # 2k2 to ground
     "R04":  (0.0, 15.0, 270),       # 330R into the squarer
@@ -75,8 +75,9 @@ PARTS_10M = {
     # rev B: the input tap (item 19) and the park resistor (item 11), in the
     # tile's free left column.  PLACEMENT ONLY so far: routes_10m() predates
     # them, and the squarer (U01) is now a 74LVC2GU04 in SC-70-6.
-    "J03":  (-6.8, 7.3, 180),       # U.FL, TAP IN: top-left, clear of the SMA
-                                    # (its outline is 1.0 / 2.5 mm off its pin)
+    "J03":  (-6.6, 7.3, 180),       # U.FL, TAP IN: top-left, clear of the SMA
+                                    # (courtyard 1.80 / 2.55 mm off its pin, so
+                                    # this puts its edge on the box's, x = -8.4)
     "R21":  (-6.6, 12.4, 270),      # 1k into the tap
     "R22":  (-6.6, 16.4, 270),      # 100k, gate to JP01 pin 3 (PARK)
 }

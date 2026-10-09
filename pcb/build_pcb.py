@@ -442,7 +442,20 @@ def hand_placed(G):
              (134.1, 157.0, 0)]             # R2024, astride the right columns
     for i, (hx, hy, hr) in enumerate(ring):
         d["R20%02d" % (14 + i)] = (hx, hy, hr)
+    # Rev B item 19: the three rail taps (+5V_HDR, +3V3_A, +3V3_D), each a 1k
+    # above its U.FL, in the open strip under unit 13 -- the far end of
+    # +3V3_A, which enters at the top right.
+    for i, tx in enumerate((80.0, 88.0, 96.0)):
+        d["R20%02d" % (27 + i)] = (tx, 165.0, 90)
+        d["J200%d" % (4 + i)] = (tx, 170.0, 0)
     return d
+
+
+def is_heater(ref):
+    """R2001-R2013 (one per channel tile) and R2014-R2024 (the ring)."""
+    import re
+    m = re.match(r"^R20(\d\d)$", ref)
+    return bool(m) and 1 <= int(m.group(1)) <= 24
 
 
 def block_of(ref):
@@ -2945,8 +2958,10 @@ def build():
     # middle of two channel tiles.  That is round 29's "random H's scattered
     # around" and "the T labels are not always next to their thermometers":
     # they were never near a heater or a thermometer at all.
+    # And only R2001-R2024: R2025/R2026 are the LDO_EN pair and rev B's
+    # R2027-R2029 the rail taps (item 19), none of them a heater.
     for r in sorted(placed):
-        if re.match(r"^R20\d\d$", r):
+        if is_heater(r):
             part_text(r, -5.5, 0.0, "H", 1.5, 0.26, rmax=2.2,
                       alts=((0.0, 3.2), (0.0, -3.2)))
         elif re.match(r"^U500[1-8]$", r):
@@ -3125,7 +3140,7 @@ def build():
             elif slot == "JP01":
                 REFPREF[r] = (-1.65, 1.27)
     for r in sorted(placed):
-        if r.startswith("R20"):
+        if is_heater(r):
             REFPREF[r] = (5.5, 0.0)
 
     refat, reflayer = {}, {}

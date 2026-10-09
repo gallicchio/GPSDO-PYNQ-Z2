@@ -161,3 +161,18 @@ def decouple(s, x_vcc, y_vcc, rail_net, R, note="", tall=True,
         if i == 0:
             s.junction(xc, y_node)
         prev = xc
+
+
+def ufl_tap(s, x, y, rref, jref, label, R, rval="1k", up=False):
+    """Rev B item 19: a monitor tap off the node at (x, y), hanging down (or
+    up): the series resistor first, its body at the node, then the U.FL with
+    its shield to ground.  1k: /21 into a 50 ohm scope, x1 into 1 Mohm; an
+    unplugged tap costs the node < 0.02 % and a fixed < 50 ps (REVB item 19)."""
+    sgn = -1 if up else 1
+    s.wire(x, y, x, y + sgn * 2.54)
+    r_v(s, x, y + sgn * 6.35, rref, rval, left=True)
+    p = D.P["UFL"]
+    j = s.sym(p["lib"], x, y + sgn * 15.24, 90 if up else 270, ref=jref, value=label,
+              footprint=p["fp"], lcsc=p["lcsc"], ref_dxy=(3.81, -1.27), val_dxy=(3.81, 1.27))
+    gnd(s, *j.pin(2), drop=3.81, R=R)
+    return j

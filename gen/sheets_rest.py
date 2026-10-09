@@ -5,7 +5,7 @@ signal flows left to right, every wire is orthogonal, and the reason for each
 choice is written next to the thing it explains.
 """
 import design as D
-from blocks import RefGen, gnd, rail, r_h, r_v, c_h, c_v, testpoint, decouple
+from blocks import RefGen, gnd, rail, r_h, r_v, c_h, c_v, testpoint, decouple, ufl_tap
 import kigen
 
 NOTE = (255, 245, 210)
@@ -434,6 +434,17 @@ def power(s):
            "Drive comes from the MCP4725 on the housekeeping sheet.",
            size=1.4, color=NOTE, cols=80)
 
+    # ---- rev B item 19: monitor taps on the rails -------------------------
+    s.text(421.64, 48.26, "MONITOR TAPS (item 19)   1k into a U.FL:  /21 into 50R (3-5 mA),  "
+           "x1 into 1M", size=1.5, bold=True)
+    for k, (net, lab) in enumerate((("+5V_HDR", "TAP +5V"), ("+3V3_A", "TAP +3V3_A far"),
+                                    ("+3V3_D", "TAP +3V3_D"))):
+        tx = 431.8 + k * 40.64
+        rail(s, tx, 60.96, net, rise=3.81, R=R)
+        ufl_tap(s, tx, 60.96, R("R"), R("J"), lab, R)
+    s.text(421.64, 88.9, "+3V3_A's tap is placed at the rail's FAR end, below unit 13, where the "
+           "squarers' current has done its damage.", size=1.3, italic=True)
+
 
 # ===========================================================================
 # Rev B items 9, 10 and 22: the Si5351C with the TCXO on CLKIN, HO on its own
@@ -682,6 +693,11 @@ def helper(s):
         decouple(s, xx, 279.4, "+3V3_D", R, tall=False, values=vals)
         s.wire(xx, 279.4, xx, 281.94)
         s.label(xx, 281.94, "FO_VDD", justify="left bottom")
+    # rev B item 19: taps on the reference at CLKIN, and on CLK0 at the Si5351
+    s.junction(96.52, oy)
+    ufl_tap(s, 96.52, oy, R("R"), R("J"), "TAP REF", R, up=True)
+    s.junction(196.85, c0y)
+    ufl_tap(s, 196.85, c0y, R("R"), R("J"), "TAP CLK0", R, up=True)
     s.note(15.24, 346.0, 560.0, 0,
            "WHY ONE FAN-OUT, item 22.  Rev A's five 74LVC1G34 drove the channels in blocks "
            "(U3004 units 1-4, U3006 units 9-11, ...) off +3V3_A beside the squarers.  With "
