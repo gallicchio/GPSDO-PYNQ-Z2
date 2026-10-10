@@ -15870,3 +15870,40 @@ curve in `analysis/floor_compare/`.
   - Both rest on an assumed thermal term. The GPSDOs sit 10⁵ above all of
     it.
 - `floor_plot.py --table` now prints both tables from the plotted curves.
+
+### 45.28 Order day: the heater's fuse, the +3V3_A budget, and every label in its own unit's box
+
+Checked before the upload (2026-10-10).
+
+- **Stock** (re-queried 06:13): every part is in stock. The tightest is the
+  Si5351C, 66 for the 2 needed. The new ICs have thousands.
+- **F2002 was the wrong part, on rev A too.** It is labelled "1.1A PPTC",
+  but C70076 is a 0.5 A-hold, 1 A-trip PPTC, below the heater array's 643 mA.
+  Now C19108403, a real 1.1 A / 24 V part in the same 1206 footprint.
+- **The +3V3_A budget.** The power sheet still carried rev A's "~100 mA".
+  - Rev A measured ~13 mA per self-biased gate.
+  - Rev B always biases each channel's replica gate. That puts +3V3_A at
+    160-250 mA in use, against the TPS7A2033's 300 mA.
+  - **With no jumper shunts fitted it would be 260-390 mA**, at the LDO's
+    current limit. Fit every JP (50R or PARK) before the first power-up.
+    The handbook's step 1 now says so.
+- **Labels in the wrong unit's box** (Jason: "be sure to check that this does
+  not happen").
+  - The build's check only saw parts with a home box. The in-tile heaters
+    had none, and on eight units their names sat in the next unit's box.
+  - Each in-tile heater now has its tile as home, and a part with no box
+    may not print in anyone's.
+  - A designator prints only where its own part is the nearest one. This
+    took the names nearer another part from 236 to 4; 64 names moved to
+    F.Fab.
+  - The new `pcb/check_unit_labels.py` runs in every build. It reads all
+    795 texts on the written board and found 0 in a wrong box. On the board
+    before the fix it flags all ten heater names.
+  - Checked by eye, unit by unit: `revB_progress/unit_labels_by_owner.png`.
+- **Taps:** each tile's U.FL says `TAP` beside it. No tap's J number is on
+  the silk.
+- **Unchanged:** copper, drill, mask and paste are identical to yesterday's
+  release; only the front silkscreen moved. DRC 0 errors, 0 unconnected; ERC
+  0.
+- **Before the boards arrive:** the handbook's bring-up and jumper sections
+  are still rev A's.

@@ -416,7 +416,10 @@ Order of operations, every time:
 
 1. **Before power.** Ohmmeter: pin 1 to pin 17 of the socket should read open
    (this board does not use the host's 3.3 V).  5 V to GND, and each 3.3 V
-   rail to GND, should read high, not short.
+   rail to GND, should read high, not short.  **Rev B: a shunt on every JP
+   header** -- 50R on a channel with a source, PARK on every other.  With
+   none fitted all 26 squarer gates sit at their threshold, 260-390 mA on
+   +3V3_A against the TPS7A2033's 300 mA (the power sheet's budget).
 2. **Host only.** PYNQ on, board on the header, no 15 V.  Test point `5`
    should read 4.6-5.3 V, `A` and `D` 3.25-3.35 V.
 3. **`./pynq-run bringup.py`**: the DAC made safe, the Si5351 programmed and

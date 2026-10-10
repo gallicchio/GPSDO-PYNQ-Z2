@@ -227,12 +227,17 @@ def power(s):
            "the debug header instead), fit R2026, a 0R, which ties LDO_EN to the LDO input.",
            size=1.4, color=WARN, cols=80)
     s.note(403.86, 100.0, 122.0, 0,
-           "CURRENT BUDGET, ~100 mA TOTAL.\n"
-           "14 x 74LVC1GU04 self-biased in the linear region ~3 mA each = 42 mA;  26 x "
-           "74LVC1G80 at 10 MHz ~1 mA each = 26 mA;  5 x 74LVC1G34 fan-out ~2 mA each = 10 mA; "
-           "12 x 74LVC1G17 at 1 Hz ~ 1 mA total;  Si5351 ~25 mA.  The linear-region current of "
-           "a self-biased unbuffered inverter is not a datasheet number - measure it on the "
-           "first board.",
+           "CURRENT BUDGET (rev B).  A self-biased unbuffered gate draws ~10-15 mA at its "
+           "threshold: rev A measured 180 mA on +3V3_A from 14 of them (round 41.5), not the "
+           "3 mA each this note used to say.\n"
+           "+3V3_A: each channel's REPLICA gate is always biased, 13 x 10-15 = 130-195 mA; its "
+           "signal gate adds as much again unless the channel is driven (a few mA) or PARKED "
+           "(none); 26 x 74LVC1G80 ~26 mA.  Every channel driven or parked: 160-250 mA of the "
+           "TPS7A2033's 300 mA.  NO SHUNTS FITTED: 260-390 mA, into its 360 mA minimum "
+           "current limit - fit every JP shunt (50R or PARK) before the first power-up.\n"
+           "+3V3_D: Si5351, two LMK1C1108, the helper squarer, eight TMP1075, the DS2482 and "
+           "the DAC, ~100 mA (estimate).  F2001 carries both rails: 260-350 mA, under its "
+           "500 mA hold.",
            size=1.4, color=NOTE, cols=80)
 
     # ---------------- 12 V heater ---------------------------------------
@@ -247,8 +252,11 @@ def power(s):
     yj = jk.pin(1)[1]
     # 1.1 A hold, not 500 mA: round 14.9 re-sized the heater array to 643 mA and
     # a 500 mA polyfuse would simply trip whenever the heater came on.
+    # C19108403 is TECHFUSE's nSMD110-24V: 1.1 A hold, 2.2 A trip, 24 V.  Rev A
+    # shipped C70076 under this "1.1A" label, and C70076 is the nSMD050-24V --
+    # 0.5 A hold, 1 A trip (found 2026-10-10 from JLCPCB's own attributes).
     f = s.sym("Device:Polyfuse", 71.12, yj, 90, ref=R("F"), value="1.1A PPTC",
-              footprint="Fuse:Fuse_1206_3216Metric", lcsc="C70076",
+              footprint="Fuse:Fuse_1206_3216Metric", lcsc="C19108403",
               ref_dxy=(0, -8.89), val_dxy=(0, -5.08))
     s.wire(jk.pin(1)[0], yj, f.pin(1)[0], yj)
     gnd(s, *jk.pin(2), drop=6.35, R=R)

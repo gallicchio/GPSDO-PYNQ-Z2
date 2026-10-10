@@ -3004,6 +3004,27 @@
 		)
 		(uuid "fbcfe111-49ee-963b-740a-fddc4253601a")
 	)
+	(text_box "CURRENT BUDGET (rev B).  A self-biased unbuffered gate draws ~10-15 mA at its\nthreshold: rev A measured 180 mA on +3V3_A from 14 of them (round 41.5), not the\n3 mA each this note used to say.\n+3V3_A: each channel's REPLICA gate is always biased, 13 x 10-15 = 130-195 mA;\nits signal gate adds as much again unless the channel is driven (a few mA) or\nPARKED (none); 26 x 74LVC1G80 ~26 mA.  Every channel driven or parked: 160-250\nmA of the TPS7A2033's 300 mA.  NO SHUNTS FITTED: 260-390 mA, into its 360 mA\nminimum current limit - fit every JP shunt (50R or PARK) before the first power-\nup.\n+3V3_D: Si5351, two LMK1C1108, the helper squarer, eight TMP1075, the DS2482 and\nthe DAC, ~100 mA (estimate).  F2001 carries both rails: 260-350 mA, under its\n500 mA hold."
+		(exclude_from_sim no)
+		(at 403.86 100.33 0)
+		(size 121.92 34.29)
+		(margins 0.9525 0.9525 0.9525 0.9525)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(fill
+			(type color)
+			(color 255 245 210 1)
+		)
+		(effects
+			(font
+				(size 1.4 1.4)
+			)
+			(justify left top)
+		)
+		(uuid "0c52cb91-c138-168d-54a7-448e26d76974")
+	)
 	(text_box "PASS FETS: DRIVE THEM FULLY ON OR OFF, NOT IN BETWEEN.\nRound 28.  The three FETs share one gate voltage and DMN6068SE Vth is 1.0-3.0 V\n(datasheet), so at any intermediate gate voltage which bank conducts is a\nlottery; worse, at half current a FET's own heating (Vth tempco x RthJA) has\nloop gain above 1, so a bank snaps to full-on.  Linear sharing needs an op-amp\ncurrent sink per FET from the 15 V rail - a Rev B change.  On this board the\nsoftware drives the DAC to 0 or full scale with a duty cycle of 30 s or more\nagainst a ~5 min board time constant: at Vgs = 3.3 V every DMN6068SE carries the\n214 mA its 70 ohm bank allows, dissipates ~3 mW instead of the 0.8 W a linear\nhalf-current point would, and all 24 heaters switch together.  Three FETs stay\nfor the local drain nets.  Drive comes from the MCP4725 on the housekeeping\nsheet."
 		(exclude_from_sim no)
 		(at 403.86 347.98 0)
@@ -3087,27 +3108,6 @@
 			(justify left top)
 		)
 		(uuid "5211060f-ab71-dec1-ec7c-a7f531e10b40")
-	)
-	(text_box "CURRENT BUDGET, ~100 mA TOTAL.\n14 x 74LVC1GU04 self-biased in the linear region ~3 mA each = 42 mA;  26 x\n74LVC1G80 at 10 MHz ~1 mA each = 26 mA;  5 x 74LVC1G34 fan-out ~2 mA each = 10\nmA; 12 x 74LVC1G17 at 1 Hz ~ 1 mA total;  Si5351 ~25 mA.  The linear-region\ncurrent of a self-biased unbuffered inverter is not a datasheet number - measure\nit on the first board."
-		(exclude_from_sim no)
-		(at 403.86 100.33 0)
-		(size 121.92 17.78)
-		(margins 0.9525 0.9525 0.9525 0.9525)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(fill
-			(type color)
-			(color 255 245 210 1)
-		)
-		(effects
-			(font
-				(size 1.4 1.4)
-			)
-			(justify left top)
-		)
-		(uuid "72ec07be-59e6-c145-af74-bd28c95e85e9")
 	)
 	(text_box "ONE SHARED RAIL FOR EVERY THRESHOLD-SETTING GATE.\n+3V3_A feeds all 14 squarers, all 26 flip-flops, all 12 Schmitts and the whole\nhelper fan-out.  A gate's switching threshold moves with its supply, so on a\nshared rail every channel's threshold moves TOGETHER - common mode, and it\ncancels in the differences we actually compute BETWEEN CHANNELS OF EQUAL SLEW.\nRound 28: dt = dV / slew, and the inventory's slews span 23 mV/ns (FE-5680A,\n0.72 Vpp sine) to ~1600 mV/ns (ZED-F9T CMOS), so 1 mV of common rail shift is 44\nps on one and 0.6 ps on the other, and 43 ps of it does NOT cancel between them.\nThat residual is the analog floor for the sine sources and the reason the board\nis heated and the rail is a 7 uV LDO.  Fourteen separate regulators would still\nbe worse: they would add fourteen independent wanders on top."
 		(exclude_from_sim no)
@@ -9408,7 +9408,7 @@
 				(justify left)
 			)
 		)
-		(property "LCSC" "C70076"
+		(property "LCSC" "C19108403"
 			(at 71.12 247.65 270)
 			(hide yes)
 			(show_name no)

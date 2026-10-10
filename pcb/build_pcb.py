@@ -2518,6 +2518,7 @@ def build():
     # 0.04 mm from other INK is only legibility: two labels that touch are
     # ugly, and KiCad calls that `silk_overlap`, which is a warning here.
     M_PAD, M_INK = 0.18, 0.12
+    NEAR_SLACK = 0.3            # mm: a designator nearer its own part than any other
     # What a short label avoids, and what a line of prose avoids.  The
     # difference is the vias; see where they are added, below.
     ALL, PROSE = ("pad", "ink", "via"), ("pad", "ink")
@@ -2821,6 +2822,16 @@ def build():
     def home_of(ref):
         u, slot = unit_of(ref)
         if not u:
+            # A tile's own heater (R2001-R2013) belongs to the power sheet but
+            # lives in its tile's 10 MHz box.  With no home its designator was
+            # free to go anywhere, and on eight units it went into the NEXT
+            # unit's box (2026-10-10; Jason: "labels for one unit showed up in
+            # another unit's box" -- round 41's problem by another route).
+            if is_heater(ref) and ref in placed:
+                hx, hy = placed[ref][0], placed[ref][1]
+                for (_u, kind), bx in sorted(ubox.items()):
+                    if kind == "10m" and bx[0] <= hx <= bx[2] and bx[1] <= hy <= bx[3]:
+                        return bx
             return None
         kind = ("10m" if slot in T.PARTS_10M else
                 "pps" if slot in T.PARTS_PPS else None)
@@ -2828,9 +2839,14 @@ def build():
 
     def inside_home(ref, b):
         hb = home_of(ref)
-        return hb is None or (b[0] >= hb[0] + BOX_MARGIN and b[1] >= hb[1] + BOX_MARGIN
-                              and b[2] <= hb[2] - BOX_MARGIN
-                              and b[3] <= hb[3] - BOX_MARGIN)
+        if hb is None:
+            # No box of its own, so in nobody else's either: a ring heater's
+            # H touched unit 3's pps box (2026-10-10).
+            return not any(b[0] < v[2] + BOX_MARGIN and v[0] - BOX_MARGIN < b[2]
+                           and b[1] < v[3] + BOX_MARGIN and v[1] - BOX_MARGIN < b[3]
+                           for v in ubox.values())
+        return (b[0] >= hb[0] + BOX_MARGIN and b[1] >= hb[1] + BOX_MARGIN
+                and b[2] <= hb[2] - BOX_MARGIN and b[3] <= hb[3] - BOX_MARGIN)
 
     # ---- a box round each named region ------------------------------------
     # Round 29.  "HELPER", "POWER", "HOUSEKEEPING" and "1-WIRE" were four
@@ -2846,7 +2862,10 @@ def build():
                 max(b[2] for b in bs) + pad, max(b[3] for b in bs) + pad)
 
     REGIONS = {
-        "helper": sorted(H.PARTS) + ["J3001", "J3002"],
+        # U5007 and its filter are the fan-out's own thermometer, at its
+        # foot (rev B item 20): inside the box, not hanging under its edge.
+        "helper": sorted(H.PARTS) + ["J3001", "J3002",
+                                     "U5007", "R5057", "C5013", "C5014"],
         "power": sorted(PW.PARTS),
         "house": sorted(blockrefs.get("house", [])) + ["U5009", "R5059",
                                                        "C5017", "C5018"],
@@ -3013,13 +3032,51 @@ def build():
                   alts=((dy, -dx), (-dy, dx)))
 
     # ---- what each monitor tap carries (rev B item 19) ----------------------
-    # A U.FL has no pin names to read.  The channels' own "TAP IN" jacks go
-    # unnamed: their J number says which unit, and a tile has no room.
+    # A U.FL has no pin names to read.  Every tap is NAMED beside it and its
+    # designator stays off the silk (below): "J103" reads as a jumper
+    # (Jason's rule from ECP5-2ADC-2DAC, CLAUDE_PCB.md).  The tiles' own
+    # "TAP IN" jacks get "TAP" where their J number used to try to go -- on
+    # ten of the thirteen units that J number had found no room and the jack
+    # carried no label at all (2026-10-10).
     TAP_NAME = {"TAP +5V": "+5V", "TAP +3V3_A far": "+3V3_A", "TAP +3V3_D": "+3V3_D",
-                "TAP REF": "REF", "TAP CLK0": "CLK0", "TAP HELPER": "HCLK"}
+                "TAP REF": "REF", "TAP CLK0": "CLK0", "TAP HELPER": "HCLK",
+                "TAP IN": "TAP"}
+    _tapless = []
     for r in sorted(placed):
         L = TAP_NAME.get(vals.get(r, "")) if r.startswith("J") else None
-        if L:
+        if L == "TAP":
+            # Small, upright, and tight against the jack on its SMA side --
+            # the same side in the TILE's frame on both columns, and away from
+            # JP01.  A first try let part_text range 8 mm, and on the
+            # right-hand units "TAP" landed on JP01's top edge, where it reads
+            # as the jumper's setting.  Nowhere near the jack: no label.
+            _u, _slot = unit_of(r)
+            _rot = TILE[_slot][2]
+            px_, py_, prot_ = placed[r]
+            at = None
+            # The tile's y axis is across the board (the tiles stand at 90 and
+            # 270); the U.FL's courtyard is 2.5 mm each side of it.  The SMA
+            # side first on both columns, over a tented via if need be (the
+            # right-hand units have a ground via there; ink on a tented via is
+            # legal, as for designators) -- only then the jumper side.
+            # 0.8 x 0.16: JLCPCB's minimum height and the board's minimum silk
+            # stroke (0.155), the same as a designator.
+            w_ = len(L) * adv(L, 0.8) + 0.16
+            for ty, kinds in ((-3.2, ALL), (-3.2, PROSE), (3.2, ALL)):
+                bx, by = to_board(prot_, *to_local(_rot, 0.0, ty))
+                for ddx, ddy in spiral(0.15, 0.6):
+                    ax_, ay_ = px_ + bx + ddx, py_ + by + ddy + w_ / 2.0
+                    bb = ink(ax_, ay_, L, 0.8, 0.16, "left", 90)
+                    if not blocked(bb, kinds=kinds) and inside_home(r, bb):
+                        silk(ax_, ay_, L, 0.8, 0.16, angle=90)
+                        _owned.append((r, L, bb))
+                        at = (ax_, ay_)
+                        break
+                if at:
+                    break
+            if not at:
+                _tapless.append(r)
+        elif L:
             part_text(r, 0.0, 3.7, L, 1.2, 0.22, rmax=2.0,
                       alts=((3.9, 0.0), (-3.9, 0.0)))
 
@@ -3267,13 +3324,12 @@ def build():
     #   on the left -- and centred across its two pins, which in the part's
     #   own frame are (0, 0) and (0, 2.54).
     REFPREF = {}
-    # Rev B: the tap U.FL left of itself, in the corner under the SMA; its 1k
-    # and the park 100k each in the 1.65 mm strip between them and JP01; R51
-    # beside itself, above the tile's heater.  Without these the placer gave
-    # J03's name to R21's spot and R21's to R51's.
+    # Rev B: the tap's 1k and the park 100k each in the 1.65 mm strip between
+    # them and JP01; R51 beside itself, above the tile's heater.  (The tap
+    # U.FL itself prints "TAP", not its J number: see TAP_NAME above.)
     # JP01's own name moves to the SPINE side of the header, between it and
     # C01: rev A's spot on the far side is now R21's.
-    TILE_REF = {"J03": (0.0, -4.0), "R21": (1.55, 0.0), "R22": (1.55, 0.0),
+    TILE_REF = {"R21": (1.55, 0.0), "R22": (1.55, 0.0),
                 "R51": (0.0, -2.6), "JP01": (1.95, 1.27)}
     for u in sorted(byunit):
         for slot, r in byunit[u].items():
@@ -3300,6 +3356,38 @@ def build():
         return ({"U": 0, "Q": 0, "J": 1, "X": 1, "Y": 1, "D": 2,
                  "TP": 9}.get(pre, 5), r)
 
+    # A designator prints only where its OWN part is the nearest one
+    # (2026-10-10).  Inside a unit's box the last-resort search took any clear
+    # spot up to 12 mm away, and 236 names ended nearer another part than
+    # their own -- R222 at TP202, R251 under the heater R2002, R204 under
+    # JP201: the heater read as R251.  Round 41's rule, a name by the wrong
+    # part is worse than none, holds inside a unit as well as across units.
+    _bgrid = {}
+    for _r2, _b2 in boxes.items():
+        if _r2.startswith("MH") or _r2 == "J4001":       # holes; the underside socket
+            continue
+        for _gx in range(int(_b2[0] // 5), int(_b2[2] // 5) + 1):
+            for _gy in range(int(_b2[1] // 5), int(_b2[3] // 5) + 1):
+                _bgrid.setdefault((_gx, _gy), []).append(_r2)
+
+    def _bdist(a, t):
+        dx = max(a[0] - t[2], t[0] - a[2], 0.0)
+        dy = max(a[1] - t[3], t[1] - a[3], 0.0)
+        return (dx * dx + dy * dy) ** 0.5
+
+    def nearest_ok(r, t, slack=NEAR_SLACK):
+        own = _bdist(boxes[r], t)
+        seen = set()
+        for _gx in range(int((t[0] - 5) // 5), int((t[2] + 5) // 5) + 1):
+            for _gy in range(int((t[1] - 5) // 5), int((t[3] + 5) // 5) + 1):
+                for o in _bgrid.get((_gx, _gy), ()):
+                    if o == r or o in seen:
+                        continue
+                    seen.add(o)
+                    if _bdist(boxes[o], t) + slack < own:
+                        return False
+        return True
+
     for r in sorted(placed, key=ref_order):
         if r not in fpof:
             continue
@@ -3309,6 +3397,9 @@ def build():
             continue
         if r == "J4001":
             continue                           # underside, mirrored, leave it
+        if vals.get(r, "") in TAP_NAME:
+            reflayer[r] = "F.Fab"              # a tap is named, not numbered
+            continue
         rx, ry, rrot = placed[r]
         w = len(r) * adv(r, 0.8) + 0.16
         found = None
@@ -3319,28 +3410,21 @@ def build():
         # board, and the clear board is usually straight above or below.
         b0, b1, b2, b3 = boxes[r]
         cw, ch = (b2 - b0) / 2.0 + 0.7, (b3 - b1) / 2.0 + 0.7
-        # The tap U.FL's name (rev B) is useful only BESIDE it.  On the
-        # right-hand units the unit's numeral fills that spot, and the wider
-        # searches below gave J803's name to R821's place -- so it gets its own
-        # spot or F.Fab, like any name that does not fit.
-        near_only = bool(re.match(r"^J(\d|1[0-3])03$", r))
         seeds = [p for p in (REFPREF.get(r), default_ref(d, name)) if p]
         seeds = [to_board(rrot, p[0], p[1]) for p in seeds]
         seeds += [(0.0, -ch), (0.0, ch), (-cw - w / 2.0, 0.0),
                   (cw + w / 2.0, 0.0)]
-        if near_only:
-            seeds = seeds[:1]
         for bx, by in seeds:
-            for dx, dy in spiral(0.45, 1.0 if near_only else 3.6):
+            for dx, dy in spiral(0.45, 3.6):
                 cx, cy = rx + bx + dx, ry + by + dy
                 bb = (cx - w / 2.0, cy - 0.48, cx + w / 2.0, cy + 0.48)
-                if not blocked(bb) and inside_home(r, bb):
+                if not blocked(bb) and inside_home(r, bb) and nearest_ok(r, bb):
                     found = (cx, cy, bb)
                     break
             if found:
                 break
         hb = home_of(r)
-        if not found and hb and not near_only:
+        if not found and hb:
             # Round 41: every clear spot inside the part's OWN box, nearest
             # first, before giving up -- a designator in the next unit's box
             # names the wrong part, which is worse than none.
@@ -3361,7 +3445,7 @@ def build():
                     if _d2 > 12.0 ** 2:
                         break
                     bb = (cx - w / 2.0, cy - 0.48, cx + w / 2.0, cy + 0.48)
-                    if not blocked(bb, kinds=kinds):
+                    if not blocked(bb, kinds=kinds) and nearest_ok(r, bb):
                         found = (cx, cy, bb)
                         break
                 if found:
@@ -3390,6 +3474,8 @@ def build():
     import sys as _sl
     print("silkscreen: %d designators placed, %d moved to F.Fab %s"
           % (len(refat), len(_nlost), sorted(_nlost)[:40]), file=_sl.stderr)
+    if _tapless:
+        print("silkscreen: no room for TAP beside %s" % sorted(_tapless), file=_sl.stderr)
 
     # ---- round 41: nothing that belongs to a box may print outside it -----
     # Every part of a unit tile inside its own box, and every designator and
@@ -3411,6 +3497,19 @@ def build():
                                % ((ref,) + tuple(pb) + (hb,)))
         return bad
 
+    # Who owns every label, and every unit's boxes, for
+    # pcb/check_unit_labels.py -- which reads the WRITTEN board with KiCad's
+    # own text boxes, so it also sees labels nothing here registered.
+    import json as _js
+
+    def _mkd(d):
+        os.makedirs(d, exist_ok=True)
+        return d
+    _js.dump({"owned": [(r_, s_, list(b_)) for r_, s_, b_ in _owned],
+              "ubox": {"%s|%s" % k: list(v) for k, v in sorted(ubox.items())},
+              "home": {r_: list(home_of(r_)) for r_ in sorted(placed) if home_of(r_)},
+              "placed": {r_: list(v) for r_, v in sorted(placed.items())}},
+             open(os.path.join(_mkd(os.path.join(ROOT, "build")), "silk_owned.json"), "w"))
     _bad_owned = check_owned()
     _tile_fab = sorted(r for r in _nlost if home_of(r))
     print("silkscreen boxes: %d owned labels checked, %d outside their box; "

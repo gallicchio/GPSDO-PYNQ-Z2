@@ -161,7 +161,16 @@ def main():
     # refuses to write one that fails; this reads it back independently).
     keep.append(run([sys.executable, "pcb/check_silk_boxes.py",
                      os.path.join(ROOT, NAME + ".kicad_pcb")]).strip().splitlines()[-1])
+    # Rev B (2026-10-10): EVERY text on F.SilkS, owned or not, against the
+    # unit boxes, with KiCad's own text boxes.  The in-tile heaters had no
+    # home, so the check above never saw their designators land in the next
+    # unit's box.  `python3 pcb/check_unit_labels.py --stamps DIR` draws it.
+    o = run(kicad_env.kicad_python() + ["pcb/check_unit_labels.py",
+                                        os.path.join(ROOT, NAME + ".kicad_pcb")], ok=(0, 1))
+    keep += [l for l in o.splitlines() if l.startswith(("unit labels:", "UNIT LABEL:"))]
     s.done("\n    ".join(l.strip() for l in keep))
+    if any(l.startswith("UNIT LABEL:") for l in keep):
+        raise SystemExit("FAILED: silkscreen in the wrong unit's box")
 
     if not a.no_drc:
         s = Step("5/7  DRC, and the zones poured INTO the board")
