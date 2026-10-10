@@ -74,7 +74,7 @@ def build(s, u):
                "paging through this PDF shows only real differences.\n\n"
                "The 10 MHz half above is fully populated, and its SMA is fed by a coax patch "
                "lead from whatever you want to measure the instrument against:\n\n"
-               "    the CLK1 OUT jack on the Helper sheet  -  Si5351 CLK1 at exactly "
+               "    the HO jack on the Helper sheet  -  Si5351C CLK2, buffered, at exactly "
                "10.000000 MHz, from PLLB in integer mode (25 MHz x 32 / 80) while the helper "
                "is PLLA: one TCXO, so the beat is exactly %.1f Hz, but two PLLs, so what this "
                "channel reports is the front end plus whatever the PLLs do not share.  An UPPER "
@@ -116,7 +116,8 @@ def _ten_mhz(s, R, beat, hclk, rser, rsh2, term, L):
     s.wire(p3[0], p3[1], p3[0] - 2.54, p3[1])
     s.label(p3[0] - 2.54, p3[1], "PARK", justify="right bottom")
     s.text(78.74, y + 33.02, "1-2 = 50 ohm terminate (ON except ZED-F9T)", size=1.4, italic=True)
-    s.text(78.74, y + 36.83, "2-3 = PARK: an unused channel, quiet", size=1.4, italic=True)
+    s.text(78.74, y + 36.83, "2-3 = PARK: source off or unplugged (not 50R)", size=1.4,
+           italic=True)
     s.text(78.74, y + 40.64, "neither = a driven, unterminated input", size=1.4, italic=True)
 
     # --- shunt: current limit + defined DC level ---------------------------
@@ -142,17 +143,25 @@ def _ten_mhz(s, R, beat, hclk, rser, rsh2, term, L):
     s.wire(116.84, y, 137.16, y)
     c_h(s, 140.97, y, R("C"), "10n C0G")
     s.wire(144.78, y, 160.02, y)
-    s.text(132.08, y - 6.35, "AC couple", size=1.4, italic=True)
-    # item 19: a U.FL tap through 1k, the resistor at the node
-    s.junction(156.21, y)
-    s.wire(156.21, y, 156.21, y - 5.08)
-    r_v(s, 156.21, y - 8.89, "R%d21" % R.block, "1k", left=True)    # rev B: new parts from 21
+    # under the cap: above it is the input tap's ground symbol since order day
+    s.text(135.89, y + 5.08, "AC couple", size=1.4, italic=True)
+    # item 19: a U.FL tap through 1k, the resistor at the node -- on the
+    # SOURCE side of the 10n (2026-10-10, order day).  It was on the gate
+    # side, where the only DC is the replica's 1M: a DC-coupled scope there
+    # (50 ohm, or an ADALM2000's 1M) pulled the gate's bias from 1.5 V to
+    # 2 mV or 0.75 V and the channel stopped squaring while it was plugged
+    # in.  At 10 MHz the 10n is 1.6 ohm, so this side shows the same
+    # waveform, and the scope's DC path lands on the 51R and 2k2.
+    xi = 128.27
+    s.junction(xi, y)
+    s.wire(xi, y, xi, y - 5.08)
+    r_v(s, xi, y - 8.89, "R%d21" % R.block, "1k", left=True)    # rev B: new parts from 21
     pu = D.P["UFL"]
     # Jx03, not the next number: Jx01 (10 MHz) and Jx02 (pps) keep rev A's names
-    tap = s.sym(pu["lib"], 156.21, y - 15.24, 90, ref="J%d03" % R.block, value="TAP IN",
+    tap = s.sym(pu["lib"], xi, y - 15.24, 90, ref="J%d03" % R.block, value="TAP IN",
                 footprint=pu["fp"],
                 lcsc=pu["lcsc"], ref_dxy=(5.08, -2.54), val_dxy=(5.08, 0.0))
-    s.wire(156.21, y - 12.7, *tap.pin(1))
+    s.wire(xi, y - 12.7, *tap.pin(1))
     gnd(s, *tap.pin(2), drop=3.81, R=R)
 
     # --- optional clamp (DNP) ---------------------------------------------
@@ -172,8 +181,11 @@ def _ten_mhz(s, R, beat, hclk, rser, rsh2, term, L):
     s.wire(160.02, y, 176.53, y)
     r_h(s, 180.34, y, R("R"), "330R")
     pi = D.P["INV2"]
+    # names right-justified, ending left of VCC's pin 5 (2026-10-10: the
+    # value ran across that pin's number)
     inv = s.sym(pi["lib"], 215.90, y, 0, ref=R("U"), value=pi["val"], footprint=pi["fp"],
-                lcsc=pi["lcsc"], ref_dxy=(-7.62, -12.7), val_dxy=(-7.62, -10.16))
+                lcsc=pi["lcsc"], ref_dxy=(-8.89, -12.7), val_dxy=(-8.89, -10.16),
+                justify="right")
     s.wire(184.15, y, *inv.pin(1))
     gnd(s, *inv.pin(2), drop=6.35, R=R)
     decouple(s, inv.pin(5)[0], inv.pin(5)[1], RAIL_A, R)

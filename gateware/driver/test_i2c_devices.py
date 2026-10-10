@@ -283,3 +283,56 @@ class TestClk2Witness(unittest.TestCase):
             chip.program(Si5351Config(clk2=choice))
             self.assertEqual(bus.regs[Si5351.ADDR][REG_OEB], want, choice)
 
+
+
+class TestSi5351BoardRev(unittest.TestCase):
+    """2026-10-10, rev B order day.  Rev B's Si5351C takes the TCXO on CLKIN
+    and leaves XA/XB floating, so LOS_XTAL is always set there: a lock check
+    that counted it said NOT LOCKED for ever, and every script that put back
+    "the standard image" programmed rev A's, whose PLLs listen to XA."""
+
+    REV_A, REV_B, NO_REF = 0x11, 0x09, 0x19        # raw register 0, revid 1
+
+    def chip(self, raw, rev=None):
+        bus = MockBus()
+        bus.regs[Si5351.ADDR][0] = raw
+        return bus, Si5351(bus, rev=rev)
+
+    def test_the_chip_says_which_board_it_is_on(self):
+        self.assertEqual(self.chip(self.REV_A)[1].detect_rev(), 'A')     # every rev A log
+        self.assertEqual(self.chip(self.REV_B)[1].detect_rev(), 'B')
+        self.assertIsNone(self.chip(self.NO_REF)[1].detect_rev())
+        self.assertIsNone(self.chip(0x01)[1].detect_rev())             # both clear: neither
+
+    def test_board_rev_is_remembered_and_refuses_to_guess(self):
+        bus, c = self.chip(self.REV_B)
+        self.assertEqual(c.board_rev(), 'B')
+        bus.regs[Si5351.ADDR][0] = self.NO_REF        # the TCXO stops later: still rev B
+        self.assertEqual(c.board_rev(), 'B')
+        with self.assertRaises(RuntimeError):
+            self.chip(self.NO_REF)[1].board_rev()
+        self.assertEqual(self.chip(self.NO_REF, rev='A')[1].board_rev(), 'A')
+
+    def test_lock_counts_the_reference_the_board_uses(self):
+        self.assertTrue(self.chip(self.REV_A)[1].lock_status())
+        self.assertTrue(self.chip(self.REV_B)[1].lock_status())      # LOS_XTAL set, still locked
+        self.assertFalse(self.chip(self.REV_B | 0x20)[1].lock_status())  # LOL_A
+        self.assertFalse(self.chip(self.NO_REF)[1].lock_status())
+        # named rev B, its CLKIN lost: not locked, whatever XA says
+        self.assertFalse(self.chip(0x11, rev='B')[1].lock_status())
+
+    def test_sticky_reference_flag_follows_the_board(self):
+        bus, c = self.chip(self.REV_B)
+        bus.regs[Si5351.ADDR][1] = 0x08                # LOS_XTAL latched: normal on rev B
+        self.assertFalse(c.ref_lost(c.sticky()))
+        bus.regs[Si5351.ADDR][1] = 0x18                # ...and LOS_CLKIN: the TCXO dropped
+        self.assertTrue(c.ref_lost(c.sticky()))
+        bus, c = self.chip(self.REV_A)
+        bus.regs[Si5351.ADDR][1] = 0x08
+        self.assertTrue(c.ref_lost(c.sticky()))
+
+    def test_the_image_for_the_detected_board(self):
+        for raw, src in ((self.REV_A, 0x00), (self.REV_B, 0x0C)):
+            bus, c = self.chip(raw)
+            c.program(Si5351Config(f_helper=F_HELPER, rev=c.board_rev()))
+            self.assertEqual(bus.regs[Si5351.ADDR][REG_PLL_SRC], src)

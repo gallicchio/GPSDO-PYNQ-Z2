@@ -3167,7 +3167,9 @@ def build():
         v = vals.get(r, "")
         L = LB.TP_LETTER.get(v)
         if not L:
-            continue
+            # a test point the legend cannot name is a pad nobody can find
+            raise SystemExit("test point %s (%s) has no letter in labels.TP_LETTER"
+                             % (r, v))
         sz = 1.3 if len(L) > 1 else 1.5
         dx, dy = TP_OFF.get(v, (2.2, 0.0))
         part_text(r, dx, dy, L, sz, 0.26, rmax=2.2,
@@ -3236,6 +3238,67 @@ def build():
         elif L:
             part_text(r, 0.0, 3.7, L, 1.2, 0.22, rmax=2.0,
                       alts=((3.9, 0.0), (-3.9, 0.0)))
+
+    # ---- what each 50R/PARK header selects, beside its own pins -----------
+    # Rev B order day (2026-10-10).  The legend says "JP 1-2 = 50R, 2-3 =
+    # PARK", which asks the reader to find pin 1 -- and with a shunt on, the
+    # square pad is under it; and the right-hand units stand at 180 degrees,
+    # so "the left pair" is 50R on unit 1 and PARK on unit 2.  Fitting PARK
+    # where 50R was meant leaves an OCXO unterminated, which the handbook
+    # forbids.  So every header says it itself: "50R" beside pin 1, "PARK"
+    # beside pin 3, a tick at the common pin (CLAUDE_PCB.md's 3-pin jumper
+    # rule).  On both columns 50R is the end toward the SMA.  The side away
+    # from the 1k/100k pair first, which is where the designator used to go.
+    # The header's own name then goes to F.Fab, as a tap's does: it says what
+    # it does, and on the first build its displaced "JP101" took the 1k's
+    # place below it.  Other names keep 2 mm clear of the words' ends: at
+    # 0.6 mm "C101 50R | PARK" read as one line, the cap's value.
+    _jpless, _jplabelled = [], set()
+    for u in sorted(byunit):
+        r = byunit[u].get("JP01")
+        if not r or r not in placed or r not in fpof:
+            continue
+        _dd, _nm = fpof[r]
+        pin = {q[0]: (q[1], q[2]) for q in P.pads(_dd, _nm, *placed[r])}
+        (x1_, y1_), (x2_, y2_), (x3_, y3_) = pin["1"], pin["2"], pin["3"]
+        ex, ey = (x3_ - x1_) / 5.08, (y3_ - y1_) / 5.08
+        sides = [(-ey, ex), (ey, -ex)]
+        r21 = byunit[u].get("R21")
+        if r21 in placed and ((placed[r21][0] - x2_) * sides[0][0]
+                              + (placed[r21][1] - y2_) * sides[0][1]) > 0:
+            sides.reverse()
+        done = False
+        for kinds in (ALL, PROSE):
+            for nx, ny in sides:
+                for off in (1.97, 2.1, 2.25):
+                    want = []
+                    for (px_, py_), s_ in (((x1_, y1_), "50R"), ((x3_, y3_), "PARK")):
+                        cx, cy = px_ + nx * off, py_ + ny * off
+                        want.append((cx, cy, s_, ink(cx, cy, s_, 0.8, 0.16, "center")))
+                    # the tick: from the header's outline (1.33 + its stroke)
+                    # out to the words' far edge, at the centre pin
+                    t0 = (x2_ + nx * 1.5, y2_ + ny * 1.5)
+                    t1 = (x2_ + nx * (off + 0.4), y2_ + ny * (off + 0.4))
+                    tb = (min(t0[0], t1[0]) - 0.08, min(t0[1], t1[1]) - 0.08,
+                          max(t0[0], t1[0]) + 0.08, max(t0[1], t1[1]) + 0.08)
+                    if any(blocked(w_[3], kinds=kinds) or not inside_home(r, w_[3])
+                           for w_ in want) or blocked(tb, kinds=kinds):
+                        continue
+                    for cx, cy, s_, bb in want:
+                        silk(cx, cy, s_, 0.8, 0.16, just="center")
+                        _owned.append((r, s_, bb))
+                        obstruct((bb[0] - 2.0, bb[1], bb[2] + 2.0, bb[3]))
+                    _jplabelled.add(r)
+                    out.append(line(t0[0], t0[1], t1[0], t1[1], "F.SilkS", 0.16))
+                    obstruct(tb)
+                    done = True
+                    break
+                if done:
+                    break
+            if done:
+                break
+        if not done:
+            _jpless.append(r)
 
     # ---- a pin-1 dot where the footprint forgot one ------------------------
     # ROUND 35.  Every other package on this board marks pin 1 with a filled
@@ -3558,6 +3621,9 @@ def build():
         if vals.get(r, "") in TAP_NAME:
             reflayer[r] = "F.Fab"              # a tap is named, not numbered
             continue
+        if r in _jplabelled:
+            reflayer[r] = "F.Fab"              # 50R | PARK says what it is
+            continue
         rx, ry, rrot = placed[r]
         w = len(r) * adv(r, 0.8) + 0.16
         found = None
@@ -3634,6 +3700,8 @@ def build():
           % (len(refat), len(_nlost), sorted(_nlost)[:40]), file=_sl.stderr)
     if _tapless:
         print("silkscreen: no room for a tap's name beside %s" % sorted(_tapless), file=_sl.stderr)
+    if _jpless:
+        print("silkscreen: no room for 50R/PARK beside %s" % sorted(_jpless), file=_sl.stderr)
 
     # ---- round 41: nothing that belongs to a box may print outside it -----
     # Every part of a unit tile inside its own box, and every designator and

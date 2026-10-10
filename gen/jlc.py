@@ -31,8 +31,9 @@ number is IPC-2221 class 2 and the note says so.
 # ---------------------------------------------------------------------------
 RULES = [
  ("min_clearance",           "copper clearance",        0.0889, 0.15,
-  "3.5 mil is JLC's 4-layer minimum; 0.15 is set by the Si5351's MSOP-10, "
-  "whose own pads sit 0.2 mm apart"),
+  "3.5 mil is JLC's 4-layer minimum; 0.15 is set by the finest pitch here, "
+  "the Si5351C's 0.5 mm QFN-20 (rev A: an MSOP-10), whose own pads sit "
+  "0.25 mm apart"),
  ("min_track_width",         "track width",             0.0889, 0.20,
   "every track on this board is 0.25 (signal) or 0.5 (power); 0.2 is the "
   "floor the DRC enforces"),

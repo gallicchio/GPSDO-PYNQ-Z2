@@ -2010,6 +2010,18 @@
 		)
 		(uuid "42473537-885f-a3e8-2cd6-5deaf7d26a43")
 	)
+	(text "2-3 = PARK: source off or unplugged (not 50R)"
+		(exclude_from_sim no)
+		(at 78.74 142.24 0)
+		(effects
+			(font
+				(size 1.4 1.4)
+				(italic yes)
+			)
+			(justify left bottom)
+		)
+		(uuid "47ed217b-2e63-f196-d14e-6782cf13f187")
+	)
 	(text "10 MHz DDMTD front end + 1 pps front end.  Every unit sheet has this same layout; only the names, the per-channel population and the expected levels differ."
 		(exclude_from_sim no)
 		(at 15.24 26.67 0)
@@ -2094,6 +2106,18 @@
 		)
 		(uuid "8e928804-d9ab-ea83-4862-fed94702825a")
 	)
+	(text "AC couple"
+		(exclude_from_sim no)
+		(at 135.89 110.49 0)
+		(effects
+			(font
+				(size 1.4 1.4)
+				(italic yes)
+			)
+			(justify left bottom)
+		)
+		(uuid "9050b916-5eed-ddcb-b4f8-698a735b52f0")
+	)
 	(text "jumper is off, and sets the"
 		(exclude_from_sim no)
 		(at 124.46 125.73 0)
@@ -2153,30 +2177,6 @@
 			(justify left bottom)
 		)
 		(uuid "ba4f3d20-f13c-58b6-a6a0-8ddeb8987322")
-	)
-	(text "2-3 = PARK: an unused channel, quiet"
-		(exclude_from_sim no)
-		(at 78.74 142.24 0)
-		(effects
-			(font
-				(size 1.4 1.4)
-				(italic yes)
-			)
-			(justify left bottom)
-		)
-		(uuid "cf5c4be5-570c-e31b-8792-6192daa8b53a")
-	)
-	(text "AC couple"
-		(exclude_from_sim no)
-		(at 132.08 99.06 0)
-		(effects
-			(font
-				(size 1.4 1.4)
-				(italic yes)
-			)
-			(justify left bottom)
-		)
-		(uuid "dc4c4891-f5cf-26a4-0c96-938edd3936e8")
 	)
 	(text "REPLICA BIAS.  Half 2, its input tied to its output, sits at"
 		(exclude_from_sim no)
@@ -2440,6 +2440,12 @@
 		(uuid "113eb5ae-d3e8-6bfb-db71-d8a01a5cbcb9")
 	)
 	(junction
+		(at 128.27 105.41)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "3c3b76ae-6b28-04ce-3382-903acd880855")
+	)
+	(junction
 		(at 215.9 72.39)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -2452,22 +2458,10 @@
 		(uuid "56ef420d-758b-aa59-3f38-2b8726b06e20")
 	)
 	(junction
-		(at 156.21 105.41)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "57a0442b-0d9e-f108-7aac-8fd24d0f47f4")
-	)
-	(junction
 		(at 309.88 69.85)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "5ea53bf2-687b-7f2e-38ef-2f79e4083328")
-	)
-	(junction
-		(at 130.81 295.91)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "69bf9406-f959-d89f-7d71-4551525b1d85")
 	)
 	(junction
 		(at 210.82 262.89)
@@ -2554,6 +2548,12 @@
 		(uuid "d84f936b-ab97-4d88-3832-bcc80492a3ac")
 	)
 	(junction
+		(at 130.81 295.91)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "e3a758f2-a275-3e62-4c25-b81e9c2aa628")
+	)
+	(junction
 		(at 406.4 69.85)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -2572,6 +2572,16 @@
 			(type default)
 		)
 		(uuid "03860073-5af8-d224-4587-0ebd4d1a355e")
+	)
+	(wire
+		(pts
+			(xy 133.35 90.17) (xy 133.35 93.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "042ea120-5ce7-8102-edfc-227bcabbe0bc")
 	)
 	(wire
 		(pts
@@ -2602,16 +2612,6 @@
 			(type default)
 		)
 		(uuid "0821b71e-9c00-139d-ab52-4697d9803f02")
-	)
-	(wire
-		(pts
-			(xy 144.78 105.41) (xy 156.21 105.41)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "08d9d0b7-e319-ab12-1393-d2cb178991e6")
 	)
 	(wire
 		(pts
@@ -2675,16 +2675,6 @@
 	)
 	(wire
 		(pts
-			(xy 156.21 92.71) (xy 156.21 95.25)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "187e0caf-a044-eb6e-05ec-30424da7528d")
-	)
-	(wire
-		(pts
 			(xy 265.43 110.49) (xy 288.29 110.49)
 		)
 		(stroke
@@ -2725,16 +2715,6 @@
 	)
 	(wire
 		(pts
-			(xy 161.29 90.17) (xy 161.29 93.98)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "26040e6a-ea6a-b009-1573-038b64484810")
-	)
-	(wire
-		(pts
 			(xy 165.1 130.81) (xy 165.1 127)
 		)
 		(stroke
@@ -2742,16 +2722,6 @@
 			(type default)
 		)
 		(uuid "28abcc54-1c93-fc5e-347c-2db27e689091")
-	)
-	(wire
-		(pts
-			(xy 156.21 105.41) (xy 160.02 105.41)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "2a37a253-3359-0157-6923-3671777b64da")
 	)
 	(wire
 		(pts
@@ -2782,6 +2752,16 @@
 			(type default)
 		)
 		(uuid "2fd1c98c-bd51-0389-6b14-d75b69d30b37")
+	)
+	(wire
+		(pts
+			(xy 128.27 105.41) (xy 128.27 100.33)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "34142188-98b2-f887-3113-f1120880ec64")
 	)
 	(polyline
 		(pts
@@ -3025,6 +3005,16 @@
 	)
 	(wire
 		(pts
+			(xy 128.27 92.71) (xy 128.27 95.25)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7479f8e0-7b9b-7539-fa99-e9a4ce447b54")
+	)
+	(wire
+		(pts
 			(xy 397.51 118.11) (xy 397.51 125.73)
 		)
 		(stroke
@@ -3052,6 +3042,16 @@
 			(type default)
 		)
 		(uuid "75115c45-c843-106c-7086-83f8c75d1869")
+	)
+	(wire
+		(pts
+			(xy 144.78 105.41) (xy 160.02 105.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "760a4cdc-e31f-fdd9-6680-46c46f227080")
 	)
 	(wire
 		(pts
@@ -3192,6 +3192,16 @@
 			(type default)
 		)
 		(uuid "8fae22ae-aa08-d83d-af89-d78e396a04fa")
+	)
+	(wire
+		(pts
+			(xy 116.84 105.41) (xy 128.27 105.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9270acd6-d457-e635-bf93-4c687659a2f4")
 	)
 	(wire
 		(pts
@@ -3342,6 +3352,16 @@
 			(type default)
 		)
 		(uuid "b1bc19c2-ab80-8e42-d0a4-d475905c3b1a")
+	)
+	(wire
+		(pts
+			(xy 128.27 105.41) (xy 137.16 105.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b3318d82-206f-e4d1-71af-b97b63b5360f")
 	)
 	(wire
 		(pts
@@ -3583,16 +3603,6 @@
 		)
 		(uuid "e188ddf6-6b4e-3dd0-ab56-67f0c55838dd")
 	)
-	(wire
-		(pts
-			(xy 156.21 105.41) (xy 156.21 100.33)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "e3d11556-c56a-54ff-6a89-300dc5bd30b1")
-	)
 	(polyline
 		(pts
 			(xy 110.49 104.14) (xy 109.22 101.6)
@@ -3662,16 +3672,6 @@
 			(type default)
 		)
 		(uuid "ee5726fe-8f3d-2b0e-490d-3f53eba6ef9b")
-	)
-	(wire
-		(pts
-			(xy 116.84 105.41) (xy 137.16 105.41)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ee67eb05-7971-503e-c2bb-73899a2d0b54")
 	)
 	(wire
 		(pts
@@ -4050,6 +4050,102 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/2ddfa133-8e29-f5af-2a53-551fd68f3c74"
 					(reference "#PWR903")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Connector:Conn_Coaxial")
+		(at 128.27 90.17 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "0df32ff7-bc8c-e2e0-14bc-d86850363e66")
+		(property "Reference" "J903"
+			(at 133.35 87.63 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "TAP IN"
+			(at 133.35 90.17 270)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Connector_Coaxial:U.FL_Hirose_U.FL-R-SMT-1_Vertical"
+			(at 128.27 90.17 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 128.27 90.17 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 128.27 90.17 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "LCSC" "C88374"
+			(at 128.27 90.17 270)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "09154205-6eb8-2cf4-c80d-6a903ef89c1b")
+		)
+		(pin "2"
+			(uuid "8260981e-431e-d9df-3b9d-b1749652b1d5")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/2ddfa133-8e29-f5af-2a53-551fd68f3c74"
+					(reference "J903")
 					(unit 1)
 				)
 			)
@@ -4475,6 +4571,88 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/2ddfa133-8e29-f5af-2a53-551fd68f3c74"
 					(reference "R922")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 133.35 93.98 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "21dd4c75-982f-40de-e635-8e4d5b30cd30")
+		(property "Reference" "#PWR904"
+			(at 133.35 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "GND"
+			(at 133.35 97.79 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 133.35 93.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 133.35 93.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 133.35 93.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "02103810-38d7-544a-3f59-26d01e3a5a47")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/2ddfa133-8e29-f5af-2a53-551fd68f3c74"
+					(reference "#PWR904")
 					(unit 1)
 				)
 			)
@@ -6029,88 +6207,6 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 161.29 93.98 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "57e3c3c7-c227-1e9e-efdc-6af2929257dd")
-		(property "Reference" "#PWR904"
-			(at 161.29 91.44 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "GND"
-			(at 161.29 97.79 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 161.29 93.98 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 161.29 93.98 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 161.29 93.98 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "02103810-38d7-544a-3f59-26d01e3a5a47")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/2ddfa133-8e29-f5af-2a53-551fd68f3c74"
-					(reference "#PWR904")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
 		(at 210.82 312.42 0)
 		(unit 1)
 		(body_style 1)
@@ -6538,6 +6634,90 @@
 	)
 	(symbol
 		(lib_id "Device:R")
+		(at 128.27 96.52 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "6d02bc26-3f82-77f3-b16d-1d639f1452ed")
+		(property "Reference" "R921"
+			(at 124.46 95.25 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "1k"
+			(at 124.46 99.06 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 128.27 96.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Datasheet" ""
+			(at 128.27 96.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Description" ""
+			(at 128.27 96.52 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "1"
+			(uuid "bbd563d5-d61f-a558-f22d-75ed4adfffac")
+		)
+		(pin "2"
+			(uuid "5c6f8b25-ef5d-f3ad-606b-bfbc2dd9f6e0")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/2ddfa133-8e29-f5af-2a53-551fd68f3c74"
+					(reference "R921")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
 		(at 100.33 295.91 90)
 		(unit 1)
 		(body_style 1)
@@ -6716,25 +6896,25 @@
 		(dnp no)
 		(uuid "735208c5-4a53-bf73-598a-9ca566e37da5")
 		(property "Reference" "U901"
-			(at 208.28 92.71 0)
+			(at 207.01 92.71 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(property "Value" "74LVC2GU04"
-			(at 208.28 95.25 0)
+			(at 207.01 95.25 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(property "Footprint" "Package_TO_SOT_SMD:SOT-363_SC-70-6"
@@ -6746,7 +6926,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(property "Datasheet" ""
@@ -6758,7 +6938,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(property "Description" ""
@@ -6770,7 +6950,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(property "LCSC" "C116660"
@@ -6782,7 +6962,7 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 			)
 		)
 		(pin "1"
@@ -7308,102 +7488,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/2ddfa133-8e29-f5af-2a53-551fd68f3c74"
 					(reference "#PWR917")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Connector:Conn_Coaxial")
-		(at 156.21 90.17 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "8cc167e6-9d0a-8bbb-44df-284f796de5b5")
-		(property "Reference" "J903"
-			(at 161.29 87.63 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "TAP IN"
-			(at 161.29 90.17 270)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Connector_Coaxial:U.FL_Hirose_U.FL-R-SMT-1_Vertical"
-			(at 156.21 90.17 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 156.21 90.17 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 156.21 90.17 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "LCSC" "C88374"
-			(at 156.21 90.17 270)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "09154205-6eb8-2cf4-c80d-6a903ef89c1b")
-		)
-		(pin "2"
-			(uuid "8260981e-431e-d9df-3b9d-b1749652b1d5")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/2ddfa133-8e29-f5af-2a53-551fd68f3c74"
-					(reference "J903")
 					(unit 1)
 				)
 			)
@@ -8830,90 +8914,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/2ddfa133-8e29-f5af-2a53-551fd68f3c74"
 					(reference "#PWR915")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 156.21 96.52 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "e5e22982-15da-6f5a-f617-dd95df8ea8f2")
-		(property "Reference" "R921"
-			(at 152.4 95.25 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Value" "1k"
-			(at 152.4 99.06 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 156.21 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Datasheet" ""
-			(at 156.21 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Description" ""
-			(at 156.21 96.52 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(pin "1"
-			(uuid "bbd563d5-d61f-a558-f22d-75ed4adfffac")
-		)
-		(pin "2"
-			(uuid "5c6f8b25-ef5d-f3ad-606b-bfbc2dd9f6e0")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/2ddfa133-8e29-f5af-2a53-551fd68f3c74"
-					(reference "R921")
 					(unit 1)
 				)
 			)

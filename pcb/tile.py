@@ -189,11 +189,16 @@ def routes_10m(head=RAIL_HEAD):
     R.append((("J01", "1"), W_SIG, [(0, 6.088), (3.0, 6.088), (3.0, 6.6)]))
     # --- 51R down to the header's pin 1 (pin 2 is ground: 1-2 = 50R)
     R.append((("R01", "2"), W_SIG, [(-2.9, 7.912), (-2.9, 11.6)]))
-    # --- the tap (item 19): the AC-coupled node, through 1k, to the U.FL.
+    # --- the tap (item 19): the input node, through 1k, to the U.FL.
     #     J03's pin is 1.5 mm in from its ground pads, so the track runs
-    #     down the gap between those pads and JP01.
+    #     down the gap between those pads and JP01.  The 1k's node end
+    #     crosses JP01's column between pins 1 and 2 and climbs to the
+    #     0R-to-10n link between R01's track and C01: the SOURCE side of the
+    #     coupling cap (order day, 2026-10-10 -- on the gate side a DC-coupled
+    #     scope pulled the squarer off its bias; see the unit sheet).
     R.append((("J03", "1"), W_SIG, [(-5.075, 7.3), (-5.075, 10.3), (-6.6, 11.488)]))
-    R.append((("R21", "2"), W_SIG, [(-6.6, 13.312), (-6.6, 12.87), (0, 12.87)]))
+    R.append((("R21", "2"), W_SIG, [(-6.6, 13.312), (-6.6, 12.87), (-1.5, 12.87),
+                                    (-1.5, 9.0), (0, 9.0)]))
     # --- the park (item 11): the squarer input through 100k to pin 3
     R.append((("R22", "1"), W_SIG, [(-6.6, 15.488), (-6.6, 15.41), (0, 15.41), (0, 15.912)]))
     R.append((("R22", "2"), W_SIG, [(-6.6, 17.312), (-3.4, 17.312)]))

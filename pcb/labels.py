@@ -34,7 +34,11 @@ import design as D                                        # noqa: E402
 # characters on purpose; everything else is one.
 TP_LETTER = {"TP_IN": "In", "TP_SQ": "S", "TP_BEAT": "B", "TP_PPS": "P",
              "TP_5V": "5", "TP_3V3_A": "A", "TP_3V3_D": "D",
-             "TP_XA": "X", "TP_1W": "W"}
+             "TP_REF": "X", "TP_1W": "W"}
+# Rev B renamed rev A's TP_XA (the Si5351's XA) to TP_REF (CLKIN), and this
+# table kept the old name: the board printed no X at all, under a legend that
+# explains X (found by gen/handbook_figs.py, 2026-10-10).  build_pcb.py now
+# refuses a test point with no letter.
 
 # (key, schematic value, where it is, what you should see)
 TEST_POINTS = [
@@ -46,7 +50,7 @@ TEST_POINTS = [
     ("S",  "TP_SQ",    "10 MHz box, at the squarer's input",
      "a sine or a rounded triangle, NOT a square: this is the squarer's "
      "INPUT, AC coupled about the gate's own threshold (%.2f V by design; "
-     "rev A's sit near 1.4 V); 0.6-3.3 Vpp.  The squared signal is on the "
+     "rev A's sit near 1.4 V); 0.6-3.3 Vpp.  PARKED: ~0.14 V DC, still.  The squared signal is on the "
      "U.FL marked SQ (rev B; 1k, so /21 into a 50 ohm scope).  This is the node whose slew rate sets the channel's noise "
      "floor, and a 10x probe's ~20 pF through the 330 R rounds what you see "
      "(round 41: a 10x probe divides the resistance by ten, not the "
@@ -113,7 +117,10 @@ def helper_key():
 # putting 8 Vpp into an unterminated ZED-F9T channel, and a column of jacks is
 # 25 to 49 mm wide, which is what sets how long the sub-heading may be.
 def col_head_pps():
-    return ("1 pps IN", "0 to 5.5 V DC")
+    """Rev B item 21: the threshold as well as the range.  2.3 V is the
+    74LVC1G17's worst-case VT+ (2.08 V at 3.3 V) through the 1k/10k divider;
+    round 45 measured 1.88-1.98 V rising at the jack."""
+    return ("1 pps IN", "0-5.5 V, high >2.3 V")
 
 
 def col_head_10m():
@@ -192,24 +199,52 @@ PYNQ_POWER_LINE = "Power the PYNQ with its barrel jack, J9.  Not (only) through 
 # posts, where they read as a warning about the 5 V input.
 BARREL_LINES = ["15 V DC, 1 A MIN", "HEATER ONLY, CENTRE +"]
 
+# Rev B (2026-10-10): the header is three pins and three states, and the
+# board prints 50R and PARK beside its own pins (pcb/build_pcb.py).
+_HOT = [n for n, (_s, vo, _v) in sorted(D.SOURCES.items()) if vo > D.V_SMA_ABSMAX]
+
 TERM_NOTE = """\
 Every channel is populated identically -- `R_S` is a 0R link and `R_SH` is 2k2 --
-so the only thing that differs between channels is whether the **50R TERM
-jumper** is pushed onto its two pins.  Fitting it on a channel that should not
-have it is the only way to damage a source from this board:
+so the only thing that differs between channels is where the shunt sits on
+its three-pin header, `JPk01` for unit k.  Rev B prints what the header does
+instead of its name (which is on the assembly drawing), beside the pins:
+**`50R` at pin 1's end, which is the end toward the SMA on both columns,
+`PARK` at pin 3's**, and a tick at pin 2, the common ground.
 
-* **Units 2 and 3 (ZED-F9T): NEVER fit the jumper.**  TIMEPULSE is 5 mA
-  absolute maximum and 3.3 V into 50R asks for 66 mA.  Unterminated, the load
-  is `R_SH` alone: 1.5 mA.
-* **Unit 1 (TM-4): the jumper MUST be fitted.**  Unterminated, its %.1f Vpp
-  open-circuit output rectifies through the gate's ESD diode into the coupling
+| shunt | pins | what it does | for |
+|:---|:---|:---|:---|
+| **50R** | 1-2 | 51R from the input node to ground: the 50 ohm termination | a running source that drives 50 ohm; the null channel |
+| **none** | -- | the input sees `R_SH`, 2k2, alone | a running ZED-F9T, and nothing else |
+| **PARK** | 2-3 | 100k from the squarer's gate to ground: the gate sits at ~0.14 V, out of its linear region, and draws nothing | every channel whose source is off or unplugged |
+
+Three rules, and the first two are the only ways to damage something from
+this board:
+
+* **Units 2 and 3 (ZED-F9T): NEVER 50R.**  TIMEPULSE is 5 mA absolute
+  maximum and 3.3 V into 50R asks for 66 mA.  Unterminated, the load is
+  `R_SH` alone: 1.5 mA.  (Their IN U.FL into a 50 ohm scope adds 3.1 mA, 4.6 mA
+  in all: leave it unplugged on these two; S and SQ show what matters.)
+* **A source over %(abs).1f Vpp open circuit gets 50R BEFORE its cable goes on**:
+  %(hot)s, and the bench OCXO (6.0 Vpp).  Unterminated, the TM-4's
+  %(vopen).1f Vpp rectifies through the gate's ESD diode into the coupling
   capacitor and floats the input to about +7.4 V, past the gate's 6.5 V
-  absolute maximum.  With the jumper in, the SMA sees %.2f Vpp.  **This is why
-  the silkscreen prints the board's %.1f Vpp ceiling and not a source's
-  open-circuit rating** -- they are different numbers and only one is a
-  limit.
-* Everything else drives 50R happily and wants the jumper in.""" % (
-    D.V_SMA_OPEN_MAX, D.levels(1, "IN", "0R", "2k2")["v_sma"], D.V_SMA_ABSMAX)
+  absolute maximum.  PARK does not prevent that: it biases the gate, it does
+  not terminate the input.  With 50R, the TM-4 delivers %(v1).2f Vpp.  **This is
+  why the silkscreen prints the board's %(abs).1f Vpp ceiling and not a source's
+  open-circuit rating** -- they are different numbers and only one is a limit.
+* **A channel with nothing driving it is PARKED, not left on 50R.**  A 50R
+  shunt does not quiet the gate: with its source off, the gate sits at its
+  threshold and draws 10-15 mA, exactly as with no shunt at all.  Every channel
+  driven or parked: +3V3_A carries 160-250 mA of the TPS7A2033's 300 mA.
+  Nothing driven or parked: 290-420 mA, through its 360 mA minimum current
+  limit, and up to ~520 mA through F2001, a 500 mA polyfuse that trips sooner
+  when warm.  Each idle unparked channel adds 10-15 mA: three at a time stay
+  inside the 300 mA at the budget's worst case, about seven typically.  The
+  first power-up is all thirteen on PARK.
+""" % dict(abs=D.V_SMA_ABSMAX, vopen=D.V_SMA_OPEN_MAX,
+           v1=D.levels(1, "IN", "0R", "2k2")["v_sma"],
+           hot=", ".join("unit %d (%s, %.1f Vpp)" % (n, D.UNITS[n - 1][3], D.SOURCES[n][1])
+                         for n in _HOT))
 
 
 # ---------------------------------------------------------------------------

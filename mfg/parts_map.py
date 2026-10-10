@@ -92,11 +92,13 @@ MAP = {
 # Things that are NOT on the board but that you cannot use it without.
 EXTRAS = [
     ("C5305", 13, "2.54 mm open-top jumper shunts for the thirteen 50R/PARK "
-                  "headers: 1-2 = 50R for a 50-ohm source, 2-3 = PARK on every "
-                  "channel with nothing plugged in (rev B item 11).  The board "
-                  "ships with them OFF -- 50R on a ZED-F9T channel destroys its "
-                  "TIMEPULSE output (see the unit sheet warning), so each is a "
-                  "decision per channel"),
+                  "headers: 1-2 = 50R for a running 50-ohm source, 2-3 = PARK on "
+                  "every channel whose source is off or unplugged (rev B item 11; "
+                  "a 50R shunt does not park).  They ship loose: all thirteen go "
+                  "on PARK before the first power-up (handbook section 8), then "
+                  "each moves as its source arrives -- 50R on a ZED-F9T channel "
+                  "destroys its TIMEPULSE output (see the unit sheet warning), so "
+                  "each is a decision per channel"),
 ]
 
 # Parts that are DNP on this board but that someone might one day fit.  These

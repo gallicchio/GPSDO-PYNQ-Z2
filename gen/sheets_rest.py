@@ -231,13 +231,17 @@ def power(s):
            "threshold: rev A measured 180 mA on +3V3_A from 14 of them (round 41.5), not the "
            "3 mA each this note used to say.\n"
            "+3V3_A: each channel's REPLICA gate is always biased, 13 x 10-15 = 130-195 mA; its "
-           "signal gate adds as much again unless the channel is driven (a few mA) or PARKED "
-           "(none); 26 x 74LVC1G80 ~26 mA.  Every channel driven or parked: 160-250 mA of the "
-           "TPS7A2033's 300 mA.  NO SHUNTS FITTED: 260-390 mA, into its 360 mA minimum "
-           "current limit - fit every JP shunt (50R or PARK) before the first power-up.\n"
-           "+3V3_D: Si5351, two LMK1C1108, the helper squarer, eight TMP1075, the DS2482 and "
-           "the DAC, ~100 mA (estimate).  F2001 carries both rails: 260-350 mA, under its "
-           "500 mA hold.",
+           "signal gate adds as much again unless the channel is DRIVEN (a few mA) or PARKED "
+           "(none).  A 50R shunt is not a park: with its source off or unplugged, the gate "
+           "sits at its threshold as if no shunt were fitted.  26 x 74LVC1G80 ~26 mA.  Every "
+           "channel driven or parked: 160-250 mA of the TPS7A2033's 300 mA, and each idle "
+           "unparked channel adds 10-15 mA.  Nothing driven or parked: 290-420 mA, through its "
+           "360 mA minimum current limit.  FIRST POWER-UP: all 13 shunts on PARK; move one to "
+           "50R (or off, for a ZED-F9T) once its source is running.\n"
+           "+3V3_D: Si5351, two LMK1C1108, the helper squarer, the HO buffer, eight TMP1075, "
+           "the DS2482 and the DAC, ~100 mA (estimate).  F2001 carries both rails: 260-350 mA "
+           "driven or parked, under its 500 mA hold; up to ~520 mA with nothing driven or "
+           "parked, where a warm PPTC can trip.",
            size=1.4, color=NOTE, cols=80)
 
     # ---------------- 12 V heater ---------------------------------------
@@ -293,9 +297,11 @@ def power(s):
     s.wire(114.3, yj, 114.3, yj - 10.16)
     s.sym("power:PWR_FLAG", 114.3, yj - 10.16, 0, ref=R.pwr(), value="PWR_FLAG",
           in_bom=False, on_board=True, hide_ref=True, val_dxy=(0, -3.81))
-    s.text(45.72, yj + 10.16, "reverse-polarity Schottky, RESETTABLE 500 mA fuse and a 16 V",
+    # right of the jack's GND symbol, which the first line used to run across;
+    # F2002 is the 1.1 A part since 45.28, and the TVS an 18 V SMAJ18A
+    s.text(53.34, yj + 10.16, "reverse-polarity Schottky, a RESETTABLE 1.1 A fuse and",
            size=1.3, italic=True)
-    s.text(45.72, yj + 13.97, "TVS: a wrong supply trips the fuse, and it resets itself",
+    s.text(53.34, yj + 13.97, "an 18 V TVS: a wrong supply trips the fuse, which resets",
            size=1.3, italic=True)
 
     # Heater array: TWENTY-FOUR in parallel, not eight.  The copper's lateral
@@ -370,7 +376,9 @@ def power(s):
         # would run straight through the first row's resistors and short them
         x = xht + col * 21.59 + row * 10.8
         y = yht + row * 11.43
-        rail(s, x, y - 7.62, "+15V_HTR", rise=5.08, R=R)
+        # the second row's rails rise higher: at 5.08 each arrow sat on the
+        # end of the first row's designator beside it (2026-10-10)
+        rail(s, x, y - 7.62, "+15V_HTR", rise=5.08 if row == 0 else 12.7, R=R)
         r_v(s, x, y, R("R"), "560R", footprint=FP_2010R)
         s.wire(x, y - 7.62, x, y - 3.81)
         s.wire(x, y + 3.81, x, ybus + g * 20.32)
@@ -490,7 +498,7 @@ def helper(s):
     # --- TCXO, straight into CLKIN ------------------------------------------
     x = s.sym("Oscillator:FT5HN", 45.72, y, 0, ref=R("X"), value="FT5HNBPK25.0-T1",
               footprint="Oscillator:Oscillator_SMD_Fox_FT5H_5.0x3.2mm",
-              lcsc="C5742665", ref_dxy=(-21.59, -8.89), val_dxy=(-21.59, -6.35))
+              lcsc="C5742665", ref_dxy=(-26.67, -8.89), val_dxy=(-26.67, -6.35))
     gnd(s, *x.pin(2), drop=7.62, R=R)
     vx, vy = x.pin(4)
     decouple(s, vx, vy, "+3V3_D", R)
@@ -503,7 +511,7 @@ def helper(s):
 
     si = s.sym("Oscillator:Si5351C-B-GM", 175.26, y, 0, ref=R("U"), value="SI5351C-B-GM",
                footprint="Package_DFN_QFN:QFN-20-1EP_4x4mm_P0.5mm_EP2.7x2.7mm",
-               lcsc="C3608122", ref_dxy=(-13.97, 27.94), val_dxy=(-13.97, 30.48))
+               lcsc="C3608122", ref_dxy=(-19.05, 27.94), val_dxy=(-19.05, 30.48))
     cix, ciy = si.pin(6)
     s.wires((69.85, oy), (cix - 12.7, oy), (cix - 12.7, ciy), (cix, ciy))
     s.note(62.23, 112.0, 70.0, 0,
@@ -605,7 +613,7 @@ def helper(s):
     s.wire(69.85, ys, 88.9, ys)
     yh = ys - 15.24
     s.glabel(40.64, yh, "HELPER_SRC", shape="input", justify="right", rot=180)
-    s.text(40.64, yh - 3.81, "10.0012344 MHz, 0/3.3 V CMOS, Si5351 CLK0", size=1.3, italic=True)
+    s.text(40.64, yh + 3.81, "10.0012344 MHz, 0/3.3 V CMOS, Si5351 CLK0", size=1.3, italic=True)
     s.wire(40.64, yh, 62.23, yh)
     r_h(s, 66.04, yh, R("R"), "0R")
     s.wire(69.85, yh, 88.9, yh)
@@ -618,7 +626,8 @@ def helper(s):
     r_h(s, 129.54, ys, R("R"), "330R")
     pi = D.P["INV2"]
     inv = s.sym(pi["lib"], 162.56, ys, 0, ref=R("U"), value=pi["val"], footprint=pi["fp"],
-                lcsc=pi["lcsc"], ref_dxy=(-7.62, -12.7), val_dxy=(-7.62, -10.16))
+                lcsc=pi["lcsc"], ref_dxy=(-8.89, -12.7), val_dxy=(-8.89, -10.16),
+                justify="right")              # clear of VCC's pin 5, as on the unit sheets
     s.wire(133.35, ys, *inv.pin(1))
     gnd(s, *inv.pin(2), drop=6.35, R=R)
     s.wire(inv.pin(5)[0], inv.pin(5)[1], inv.pin(5)[0], inv.pin(5)[1] - 2.54)
@@ -647,16 +656,20 @@ def helper(s):
     for c, lx in enumerate((76.2, 279.4)):
         u = s.sym(LMK, lx, yl, 0, ref=R("U"), value="LMK1C1108PWR",
                   footprint="Package_SO:TSSOP-16_4.4x5mm_P0.65mm", lcsc="C2868241",
-                  ref_dxy=(-20.32, -10.16), val_dxy=(-20.32, -7.62))
+                  # 15 mm of capitals: clear of the body's corner and of the
+                  # HELPER_SQ label below (2026-10-10)
+                  ref_dxy=(-24.13, -12.7), val_dxy=(-24.13, -10.16))
         cx_, cy_ = u.pin(1)
         s.wire(cx_ - 7.62, cy_, cx_, cy_)
         s.glabel(cx_ - 7.62, cy_, "HELPER_SQ", shape="input", justify="right")
         gx, gy = u.pin(2)                       # 1G: pulled up (internal pull-down)
-        s.wire(gx, gy, gx - 5.08, gy)
-        r_v(s, gx - 5.08, gy - 3.81 - 3.81, R("R"), "10k", left=True)
-        s.wire(gx - 5.08, gy - 3.81, gx - 5.08, gy)
-        s.wire(gx - 5.08, gy - 11.43, gx - 5.08, gy - 13.97)
-        s.label(gx - 5.08, gy - 13.97, "FO_VDD", justify="right bottom")
+        # Flat, to the left of 1G (2026-10-10).  Standing up to an FO_VDD
+        # label above, it ran through CLKIN's wire one pin higher, and the
+        # label sat on the LMK's designator.
+        s.wire(gx, gy, gx - 3.81, gy)
+        r_h(s, gx - 7.62, gy, R("R"), "10k", below=True)
+        s.wire(gx - 11.43, gy, gx - 13.97, gy)
+        s.label(gx - 13.97, gy, "FO_VDD", justify="right bottom")
         vs_ = [u.pin(n) for n in (5, 10, 14)]
         tv = vs_[0][1] - 5.08
         for vp in vs_:
@@ -673,7 +686,9 @@ def helper(s):
         outs = [u.pin(n) for n in (3, 16, 13, 15, 6, 11, 8, 9)]
         for m, (px, py) in enumerate(outs):
             nm = names[k]; k += 1
-            colx = px + 12.7 + (7 - m) * 10.16
+            # 12.7 apart, not 10.16: a 33R's designator beside it reached the
+            # next column's resistor (2026-10-10)
+            colx = px + 12.7 + (7 - m) * 12.7
             if nm is None:
                 s.nc(px, py)
                 continue
@@ -682,9 +697,11 @@ def helper(s):
             s.wire(colx, yl + 30.48, colx, yl + 33.02)
             if nm == "TAP":
                 pu = D.P["UFL"]
+                # names on the left ABOVE the shield pin: below it hangs the
+                # ground symbol, and on the right is HELPER_CLK's column
                 t = s.sym(pu["lib"], colx, yl + 35.56, 270, ref=R("J"), value="TAP HELPER",
-                          footprint=pu["fp"], lcsc=pu["lcsc"], ref_dxy=(-3.81, 2.54),
-                          val_dxy=(-3.81, 5.08), justify="right")
+                          footprint=pu["fp"], lcsc=pu["lcsc"], ref_dxy=(-3.81, -6.35),
+                          val_dxy=(-3.81, -3.81), justify="right")
                 gnd(s, *t.pin(2), drop=3.81, R=R)
             else:
                 s.glabel(colx, yl + 33.02, nm, shape="output", justify="right", rot=270)
@@ -830,9 +847,8 @@ def housekeeping(s):
     s.rect(15.24, 66.0, 564.0, 134.0)
     s.text(19.05, 72.0, "EIGHT BOARD THERMOMETERS      TMP1075D, SOIC-8, 8 addresses from "
            "A2:A0", size=2.6, bold=True)
-    where = ["board corner NW", "board corner NE", "board corner SW", "board corner SE",
-             "helper fan-out cluster", "beside the two LDOs",
-             "beside channel 0's squarer", "beside channel 12's squarer"]
+    # rev B's placement (2026-10-10: this list was older than rev A's board)
+    where = [w.split(":")[0] for w in D.TMP_WHERE]
     for i in range(8):
         x = 55.88 + i * 69.85
         y = 128.0
@@ -978,6 +994,10 @@ def housekeeping(s):
     # end nearest it.
     sigs = ["+5V_HDR", "ONEWIRE", "+3V3_A", "+3V3_D", "HTR_DRIVE",
             "I2C_SDA", "I2C_SCL", None, None, None]
+    # The ten grounds on one bus and one GND symbol (2026-10-10): a GND per
+    # pin, stepped diagonally, printed each one's name over the next one's
+    # symbol (check_overlap.py, once it read KiCad's vertical anchoring).
+    xg = dh.pin(2)[0] + 7.62
     for k in range(10):
         po, pe = dh.pin(2 * k + 1), dh.pin(2 * k + 2)
         if sigs[k] is None:
@@ -986,8 +1006,11 @@ def housekeeping(s):
             s.wire(po[0], po[1], po[0] - 17.78, po[1])
             s.glabel(po[0] - 17.78, po[1], sigs[k], shape="input", justify="right",
                      rot=180)
-        s.wire(pe[0], pe[1], pe[0] + 7.62 + k * 2.54, pe[1])
-        gnd(s, pe[0] + 7.62 + k * 2.54, pe[1], drop=0, R=R)
+        s.wire(pe[0], pe[1], xg, pe[1])
+        if k:
+            s.junction(xg, pe[1])
+    s.wire(xg, dh.pin(2)[1], xg, dh.pin(20)[1])
+    gnd(s, xg, dh.pin(20)[1], drop=5.08, R=R)
     s.note(200.0, 341.0, 122.0, 0,
            "A ground on every even pin, so a scope probe's spring ground reaches the signal "
            "beside it without a clip lead - which would otherwise show you its own loop rather "

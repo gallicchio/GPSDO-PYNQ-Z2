@@ -28,6 +28,12 @@ slipped 900-1400/s whenever CLK1 ran at 4 mA or more; at 8 mA, always.
 Round 42 repeated the matrix on the unreworked board, 2026-09-30T23:44Z, and
 got the same (logs/matrix_before_20260930T2344Z.log on the PYNQ).
 
+REV B (2026-10-10).  HO is CLK2 there (its own bank, buffered), CLK1 is
+off, and the PLLs take CLKIN; `--clk1` (or `--ho`) sets HO's drive on either
+board, and the latched-flag check watches LOS_CLKIN instead of LOS_XTAL,
+which is always latched on rev B because XA/XB float.  The board is read off
+the chip (Si5351.board_rev).
+
 `watch` runs whatever the chip holds, unless --clk0/--clk1 (2, 4, 6 or 8 mA)
 say otherwise; then it programs that first and puts the standard image back
 at the end.  Round 42: after the XA rework, a clean hour at CLK0 4 mA is the
@@ -142,25 +148,32 @@ def watch(core, seconds, unit=12, verbose=True):
 DRIVE_ID = {2: 0, 4: 1, 6: 2, 8: 3}
 
 
+def ho_reg(si):
+    """HO's CLKx_CONTROL register: CLK1 on rev A, CLK2 on rev B."""
+    from driver.i2c_devices import REG_CLK_CTRL
+    return REG_CLK_CTRL + (2 if si.board_rev() == 'B' else 1)
+
+
 def program(si, clk0_ma, clk1_ma):
-    """The standard image with CLK0/CLK1 at the given drives (mA, or
-    'off' for CLK1); waits for lock and settles."""
+    """The standard image with CLK0 and HO at the given drives (mA, or
+    'off' for HO); waits for lock and settles.  HO is CLK1 on rev A and
+    CLK2 on rev B; the argument keeps rev A's name."""
     from driver import F_HELPER
     from driver.i2c_devices import Si5351Config, REG_CLK_CTRL, CLK_PDN
     off1 = clk1_ma == 'off'
+    ho = ho_reg(si)
 
     class Cfg(Si5351Config):
         def registers(self):
             r = Si5351Config.registers(self)
             r[REG_CLK_CTRL] = (r[REG_CLK_CTRL] & ~3) | DRIVE_ID[clk0_ma]
-            r[REG_CLK_CTRL + 1] = (CLK_PDN if off1 else
-                                   (r[REG_CLK_CTRL + 1] & ~3) | DRIVE_ID[int(clk1_ma)])
+            r[ho] = (CLK_PDN if off1 else (r[ho] & ~3) | DRIVE_ID[int(clk1_ma)])
             return r
 
         def oeb(self):
             return 0xFE if off1 else Si5351Config.oeb(self)
 
-    si.program(Cfg(f_helper=F_HELPER))
+    si.program(Cfg(f_helper=F_HELPER, rev=si.board_rev()))
     t0 = time.time()
     while time.time() - t0 < 1.0 and not si.lock_status():
         time.sleep(0.02)
@@ -170,14 +183,22 @@ def program(si, clk0_ma, clk1_ma):
 def restore(si):
     from driver import F_HELPER
     from driver.i2c_devices import Si5351Config
-    si.program(Si5351Config(f_helper=F_HELPER))
+    si.program(Si5351Config(f_helper=F_HELPER, rev=si.board_rev()))
     time.sleep(1.0)
     print('put back the standard image: lock %s' % si.lock_status())
 
 
 def sticky(si):
-    s1 = si.read_reg(1)
-    return 'sticky LOL_A %d LOL_B %d LOS_XTAL %d' % (s1 >> 5 & 1, s1 >> 6 & 1, s1 >> 3 & 1)
+    st = si.sticky()
+    return 'sticky LOL_A %d LOL_B %d %s %d' % (
+        st['lol_a'], st['lol_b'], 'LOS_CLKIN' if si.board_rev() == 'B' else 'LOS_XTAL',
+        si.ref_lost(st))
+
+
+def latch_mask(si):
+    """Register 1's bits that mean trouble: LOL_B, LOL_A and the LOS of the
+    input the PLLs use (rev B's LOS_XTAL is always latched)."""
+    return 0x60 | (0x10 if si.board_rev() == 'B' else 0x08)
 
 
 def main():
@@ -190,11 +211,13 @@ def main():
     si = Si5351(PynqBus(ol.axi_iic_0))
     args = sys.argv[1:]
     opts = {}
-    for flag in ('--clk0', '--clk1'):
+    for flag in ('--clk0', '--clk1', '--ho'):
         if flag in args:
             i = args.index(flag)
-            opts[flag] = args[i + 1]
+            opts['--clk1' if flag == '--ho' else flag] = args[i + 1]
             del args[i:i + 2]
+    hr = ho_reg(si)
+    hname = 'HO (CLK%d)' % (hr - 16)
     mode = args[0] if args else ''
     if mode == 'watch' and len(args) >= 2:
         seconds = float(args[1])
@@ -202,10 +225,10 @@ def main():
         if opts:
             d1 = opts.get('--clk1', '8')
             program(si, int(opts.get('--clk0', '2')), d1 if d1 == 'off' else int(d1))
-        print('CLK0 %d mA, CLK1 %s as programmed; watching in 60 s chunks'
-              % (2 * ((si.read_reg(16) & 3) + 1),
-                 'off' if si.read_reg(17) & 0x80 else
-                 '%d mA' % (2 * ((si.read_reg(17) & 3) + 1))), flush=True)
+        print('CLK0 %d mA, %s %s as programmed; watching in 60 s chunks'
+              % (2 * ((si.read_reg(16) & 3) + 1), hname,
+                 'off' if si.read_reg(hr) & 0x80 else
+                 '%d mA' % (2 * ((si.read_reg(hr) & 3) + 1))), flush=True)
         si.write_reg(1, 0x00)
         tot = [0.0, 0, 0, 0, 0]
         lol_events = 0
@@ -220,7 +243,7 @@ def main():
             r = watch(core, min(60.0, left), unit)
             left -= 60.0
             s1 = si.read_reg(1)
-            if s1 & 0x68:                              # LOL_B, LOL_A, LOS_XTAL
+            if s1 & latch_mask(si):                    # LOL_B, LOL_A, the LOS in use
                 lol_events += 1
                 print('      LATCHED: %s' % sticky(si), flush=True)
                 si.write_reg(1, 0x00)
@@ -245,7 +268,7 @@ def main():
                 for _ in range(trials):
                     program(si, c0, c1 if c1 == 'off' else int(c1))
                     si.write_reg(1, 0x00)
-                    print('CLK0 %d mA, CLK1 %-5s' % (c0, c1 if c1 == 'off' else c1 + ' mA'),
+                    print('CLK0 %d mA, %s %-5s' % (c0, hname, c1 if c1 == 'off' else c1 + ' mA'),
                           end='')
                     watch(core, seconds, unit)
                     print('      ' + sticky(si))

@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Program the Si5351's two drives and leave them so -- round 45 (T2).
 
-    ./pynq-run si_set.py 2 4          # CLK0 (helper) 2 mA, CLK1 (HO) 4 mA
+    ./pynq-run si_set.py 2 4          # CLK0 (helper) 2 mA, HO 4 mA
     ./pynq-run si_set.py 2 off        # HO off
-    ./pynq-run si_set.py standard     # the driver's image: CLK0 2 mA, CLK1 8 mA
+    ./pynq-run si_set.py standard     # the driver's image for this board
+
+HO is CLK1 on rev A and CLK2 on rev B; the board is read off the chip
+(Si5351.board_rev).  The standard image is CLK0 2 mA with HO at 8 mA on
+rev A, 2 mA on rev B.
 
 si_watch.py's `matrix` programs a case, measures it and moves on; this leaves
 the chip in the case so that another program (beats.py) can record it.  It
@@ -34,6 +38,7 @@ if args == ['standard']:
 else:
     c0, c1 = int(args[0]), args[1] if args[1] == 'off' else int(args[1])
     W.program(si, c0, c1)
-    print('programmed: CLK0 %d mA, CLK1 %s' % (c0, c1 if c1 == 'off' else '%d mA' % c1))
+    print('programmed: CLK0 %d mA, HO (CLK%d) %s'
+          % (c0, W.ho_reg(si) - 16, c1 if c1 == 'off' else '%d mA' % c1))
 sl = core.helper_slips(1.0)
 print('lock %s; helper slips (rate, n, other, span) %s' % (si.lock_status(), sl), flush=True)

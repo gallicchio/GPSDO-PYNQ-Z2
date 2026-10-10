@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Does anything on a generated sheet land on top of anything else?
 
+2026-10-10: power symbols are bodies too (a note had sat on a GND symbol,
+unseen); only a power symbol's own name may sit on its own graphic.
+
 Reads a .kicad_sch back with no knowledge of how it was written and reports
 
   A  text sitting on other text
@@ -22,10 +25,16 @@ LEAD = 1.35         # line pitch for multi-line text
 TOL = 0.3           # mm of overlap to ignore
 
 
+_VJ = "center"      # the last _eff()'s vertical justification, for text_box
+
+
 def _eff(node):
-    """(height, justify, hidden) from an (effects ...) child."""
+    """(height, justify, hidden) from an (effects ...) child; the vertical
+    justification is left in _VJ for the text_box() that follows."""
+    global _VJ
     e = kid(node, "effects")
     h, just, hidden = 1.27, "center", False
+    _VJ = "center"
     if e:
         f = kid(e, "font")
         if f and kid(f, "size"):
@@ -36,6 +45,8 @@ def _eff(node):
             for t in toks:
                 if t in ("left", "right"):
                     just = t
+                if t in ("top", "bottom"):
+                    _VJ = t
         hd = kid(e, "hide")
         if hd and val(hd[1]) in ("yes", "true"):
             hidden = True
@@ -47,9 +58,21 @@ def _eff(node):
     return h, just, hidden
 
 
+def _width(line):
+    """A line's advance in glyph heights, by character class (2026-10-10).
+    ADV's 0.82 is prose's average; capitals and digits run 0.87-0.99 in
+    KiCad's own PDF (LMK1C1108PWR 0.99, U3005 0.97, HELPER_SQ 0.94), and the
+    average had let a 15 mm value 2.5 mm into its own symbol's body."""
+    n = 0.0
+    for c in line:
+        n += (0.98 if c.isupper() or c.isdigit() else
+              0.80 if c.islower() else 0.55 if c == " " else 0.70)
+    return n
+
+
 def text_box(s, x, y, h, just, rot):
     lines = s.split("\n")
-    w = max((len(l) for l in lines), default=0) * h * ADV
+    w = max((_width(l) for l in lines), default=0) * h
     ht = (len(lines) - 1) * h * LEAD + h
     if just == "left":
         x0 = x
@@ -57,7 +80,11 @@ def text_box(s, x, y, h, just, rot):
         x0 = x - w
     else:
         x0 = x - w / 2.0
-    y0 = y - h                      # KiCad anchors on the first line's baseline
+    # KiCad CENTRES a text on its anchor unless it says top or bottom; this
+    # used to assume the baseline for all of them, which put every field's box
+    # half a glyph too high -- and a GND's name 0.13 mm into the note beside
+    # it, under the tolerance, where the eye saw it on top (2026-10-10)
+    y0 = y - h if _VJ == "bottom" else (y if _VJ == "top" else y - h / 2.0)
     if rot in (90, 270):
         return (x - ht / 2.0, y0, x + ht / 2.0, y0 + w)
     return (x0, y0, x0 + w, y0 + ht)
@@ -95,7 +122,7 @@ def collect(path):
         h, just, hidden = _eff(t)
         if hidden or not s.strip():
             continue
-        texts.append((s, text_box(s, num(at, 1), num(at, 2), h, just, num(at, 3))))
+        texts.append((s, text_box(s, num(at, 1), num(at, 2), h, just, num(at, 3)), None))
 
     for tb in kids(doc, "text_box"):
         s = val(tb[1]); at = kid(tb, "at"); sz = kid(tb, "size")
@@ -112,9 +139,13 @@ def collect(path):
                 continue
             rot = num(at, 3)
             pad = 1.6 * h if kind != "label" else 0.0   # flag graphics
-            b = text_box(s + "  ", num(at, 1), num(at, 2), h,
-                         "left" if rot in (0, 90) else "right", rot)
-            texts.append((s, b))
+            # The written justification wins over the angle: kigen writes a
+            # left-pointing label as angle 0 with (justify right), and KiCad
+            # draws it to the LEFT of its anchor (2026-10-10).
+            side = just if just in ("left", "right") else (
+                "left" if rot in (0, 90) else "right")
+            b = text_box(s + "  ", num(at, 1), num(at, 2), h, side, rot)
+            texts.append((s, b, None))
 
     for w in kids(doc, "wire"):
         p = kids(kid(w, "pts"), "xy")
@@ -135,6 +166,7 @@ def collect(path):
         for pr in kids(sy, "property"):
             if val(pr[1]) == "Reference":
                 ref = val(pr[2])
+        for pr in kids(sy, "property"):
             h, just, hidden = _eff(pr)
             pat = kid(pr, "at")
             if not hidden and pat and val(pr[2]).strip():
@@ -146,9 +178,7 @@ def collect(path):
                 fang = (rot + num(pat, 3)) % 360
                 texts.append((val(pr[2]),
                               text_box(val(pr[2]), num(pat, 1), num(pat, 2),
-                                       h, just, fang)))
-        if ref.startswith("#PWR") or ref.startswith("#FLG"):
-            continue        # a power symbol's own name sits under its graphic
+                                       h, just, fang), ref))
         c = [(b[0], b[1]), (b[2], b[1]), (b[0], b[3]), (b[2], b[3])]
         pts = []
         for (px, py) in c:
@@ -201,7 +231,7 @@ def main(paths):
                 if o:
                     rows.append(("text/text", o[0] * o[1], texts[i][0], texts[j][0],
                                  texts[i][1]))
-        for s, b in texts:
+        for s, b, own in texts:
             for p, q in wires:
                 if abs(p[0] - q[0]) > 1e-6 and abs(p[1] - q[1]) > 1e-6:
                     continue                      # diagonal: skip
@@ -209,6 +239,8 @@ def main(paths):
                 if o and o[0] > 0.6 and o[1] > 0.6:
                     rows.append(("text/wire", o[0] * o[1], s, "wire %s-%s" % (p, q), b))
             for ref, bb in bodies:
+                if ref == own and own.startswith(("#PWR", "#FLG")):
+                    continue        # a power symbol's name sits under its graphic
                 o = ov(b, bb)
                 if o and o[0] > 0.6 and o[1] > 0.6:
                     rows.append(("text/body", o[0] * o[1], s, ref, b))

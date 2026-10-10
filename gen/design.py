@@ -249,10 +249,20 @@ SOURCES = {
  10: ("sine", 3.30, 1.50),   # ZYT GPSDO (Samsung UCCM-LPK)
  11: ("sine", 4.30, 2.20),   # TF-GNSSDO-10 IRIG-B
  12: ("sine", 2.80, 1.56),   # HP 10811B  (FE-5680A on this channel: 0.95 / 0.72)
- 13: ("cmos", 3.30, 1.65),   # NULL: Si5351 CLK1 at exactly 10.000000 MHz
+ 13: ("cmos", 3.30, 1.65),   # NULL: HO, Si5351C CLK2 via a 74LVC1G125 + 33R, 10.000000 MHz
 }
 
 VTH = 1.65        # self-biased 74LVC1GU04 switching threshold on a 3.3 V rail
+
+# Where the eight TMP1075s are, by address (0x48 + i, A2:A0 = i), as rev B
+# places them (pcb/build_pcb.py `temps`): the schematic prints this beside
+# each part and the handbook's I2C table repeats it.  Units 1, 3, ... run down
+# the left column and 2, 4, ... down the right.
+TMP_WHERE = ["left edge, by unit 1", "right edge, by unit 2",
+             "left edge, between units 5 and 7", "right edge, by unit 6",
+             "left edge, by unit 11", "right edge, between units 10 and 12",
+             "centre line, beside the helper fan-out: the thermostat's sensor",
+             "bottom-left corner, below unit 13"]
 F   = 10.0e6      # Hz
 
 

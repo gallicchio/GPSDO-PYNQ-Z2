@@ -2836,6 +2836,18 @@
 		)
 		(uuid "3a533836-7f73-95d9-5ce6-324de273ebc1")
 	)
+	(text "an 18 V TVS: a wrong supply trips the fuse, which resets"
+		(exclude_from_sim no)
+		(at 53.34 261.62 0)
+		(effects
+			(font
+				(size 1.3 1.3)
+				(italic yes)
+			)
+			(justify left bottom)
+		)
+		(uuid "3f0b81af-822a-0a61-b0e9-bdb7dee6016a")
+	)
 	(text "EN from LDO_EN: only while the host's 5 V is present"
 		(exclude_from_sim no)
 		(at 142.24 125.73 0)
@@ -2847,18 +2859,6 @@
 			(justify left bottom)
 		)
 		(uuid "4eeaeb5e-fecf-e9de-82e1-c15083cb6e35")
-	)
-	(text "TVS: a wrong supply trips the fuse, and it resets itself"
-		(exclude_from_sim no)
-		(at 45.72 261.62 0)
-		(effects
-			(font
-				(size 1.3 1.3)
-				(italic yes)
-			)
-			(justify left bottom)
-		)
-		(uuid "53e4cd1d-a440-0574-d922-6a3a005428da")
 	)
 	(text "3.3 V RAILS      header 5 V  ->  filter  ->  TPS7A2033 x2"
 		(exclude_from_sim no)
@@ -2895,6 +2895,18 @@
 			(justify left bottom)
 		)
 		(uuid "96329776-1cf3-4479-1e18-f615103ac516")
+	)
+	(text "reverse-polarity Schottky, a RESETTABLE 1.1 A fuse and"
+		(exclude_from_sim no)
+		(at 53.34 257.81 0)
+		(effects
+			(font
+				(size 1.3 1.3)
+				(italic yes)
+			)
+			(justify left bottom)
+		)
+		(uuid "9cb48f82-2aab-9d6d-0540-61c4a6020c56")
 	)
 	(text "MONITOR TAPS (item 19)   1k into a U.FL:  /21 into 50R (3-5 mA),  x1 into 1M"
 		(exclude_from_sim no)
@@ -2944,18 +2956,6 @@
 		)
 		(uuid "d16b8e11-e75d-19ac-6d03-07125dc0ba50")
 	)
-	(text "reverse-polarity Schottky, RESETTABLE 500 mA fuse and a 16 V"
-		(exclude_from_sim no)
-		(at 45.72 257.81 0)
-		(effects
-			(font
-				(size 1.3 1.3)
-				(italic yes)
-			)
-			(justify left bottom)
-		)
-		(uuid "d83e70aa-51e2-f528-f7b6-39c6c70b24fe")
-	)
 	(text "FRONT-END RAIL"
 		(exclude_from_sim no)
 		(at 147.32 81.28 0)
@@ -3004,10 +3004,10 @@
 		)
 		(uuid "fbcfe111-49ee-963b-740a-fddc4253601a")
 	)
-	(text_box "CURRENT BUDGET (rev B).  A self-biased unbuffered gate draws ~10-15 mA at its\nthreshold: rev A measured 180 mA on +3V3_A from 14 of them (round 41.5), not the\n3 mA each this note used to say.\n+3V3_A: each channel's REPLICA gate is always biased, 13 x 10-15 = 130-195 mA;\nits signal gate adds as much again unless the channel is driven (a few mA) or\nPARKED (none); 26 x 74LVC1G80 ~26 mA.  Every channel driven or parked: 160-250\nmA of the TPS7A2033's 300 mA.  NO SHUNTS FITTED: 260-390 mA, into its 360 mA\nminimum current limit - fit every JP shunt (50R or PARK) before the first power-\nup.\n+3V3_D: Si5351, two LMK1C1108, the helper squarer, eight TMP1075, the DS2482 and\nthe DAC, ~100 mA (estimate).  F2001 carries both rails: 260-350 mA, under its\n500 mA hold."
+	(text_box "CURRENT BUDGET (rev B).  A self-biased unbuffered gate draws ~10-15 mA at its\nthreshold: rev A measured 180 mA on +3V3_A from 14 of them (round 41.5), not the\n3 mA each this note used to say.\n+3V3_A: each channel's REPLICA gate is always biased, 13 x 10-15 = 130-195 mA;\nits signal gate adds as much again unless the channel is DRIVEN (a few mA) or\nPARKED (none).  A 50R shunt is not a park: with its source off or unplugged, the\ngate sits at its threshold as if no shunt were fitted.  26 x 74LVC1G80 ~26 mA.\nEvery channel driven or parked: 160-250 mA of the TPS7A2033's 300 mA, and each\nidle unparked channel adds 10-15 mA.  Nothing driven or parked: 290-420 mA,\nthrough its 360 mA minimum current limit.  FIRST POWER-UP: all 13 shunts on\nPARK; move one to 50R (or off, for a ZED-F9T) once its source is running.\n+3V3_D: Si5351, two LMK1C1108, the helper squarer, the HO buffer, eight TMP1075,\nthe DS2482 and the DAC, ~100 mA (estimate).  F2001 carries both rails: 260-350\nmA driven or parked, under its 500 mA hold; up to ~520 mA with nothing driven or\nparked, where a warm PPTC can trip."
 		(exclude_from_sim no)
 		(at 403.86 100.33 0)
-		(size 121.92 34.29)
+		(size 121.92 43.18)
 		(margins 0.9525 0.9525 0.9525 0.9525)
 		(stroke
 			(width 0)
@@ -3469,6 +3469,16 @@
 	)
 	(wire
 		(pts
+			(xy 321.31 243.84) (xy 321.31 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "024624f9-8cd2-eb60-713b-24b09e175102")
+	)
+	(wire
+		(pts
 			(xy 292.1 110.49) (xy 292.1 134.62)
 		)
 		(stroke
@@ -3476,6 +3486,16 @@
 			(type default)
 		)
 		(uuid "05d24471-9ec2-f7eb-e263-1a7ffc32c734")
+	)
+	(wire
+		(pts
+			(xy 256.54 243.84) (xy 256.54 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "06e9b0d4-1610-eb6c-e3a2-f23a00e9e8ae")
 	)
 	(wire
 		(pts
@@ -3539,6 +3559,16 @@
 	)
 	(wire
 		(pts
+			(xy 213.36 243.84) (xy 213.36 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0dd9009d-48c9-46e6-028c-37614c78ddd9")
+	)
+	(wire
+		(pts
 			(xy 129.54 90.17) (xy 152.4 90.17)
 		)
 		(stroke
@@ -3596,6 +3626,16 @@
 			(type default)
 		)
 		(uuid "12a5b455-613b-d581-cae7-eef6cb980b42")
+	)
+	(wire
+		(pts
+			(xy 342.9 243.84) (xy 342.9 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "12e130d8-8ab1-88fe-c902-4bc539956d7a")
 	)
 	(wire
 		(pts
@@ -3679,26 +3719,6 @@
 	)
 	(wire
 		(pts
-			(xy 364.49 243.84) (xy 364.49 238.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "1a34342a-16a1-0873-b8fe-fcb49861228e")
-	)
-	(wire
-		(pts
-			(xy 213.36 243.84) (xy 213.36 238.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "1ae97195-123a-6039-6aae-718ebec38ed9")
-	)
-	(wire
-		(pts
 			(xy 312.42 118.11) (xy 312.42 127)
 		)
 		(stroke
@@ -3706,16 +3726,6 @@
 			(type default)
 		)
 		(uuid "1c2d8ca8-bc0e-c88b-61e6-396475054c28")
-	)
-	(wire
-		(pts
-			(xy 321.31 243.84) (xy 321.31 238.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "1efca0c1-cb12-52f8-9992-1346822f54d1")
 	)
 	(wire
 		(pts
@@ -3736,6 +3746,16 @@
 			(type default)
 		)
 		(uuid "20cccdc8-63c0-13ed-4f1a-75498ce30ecf")
+	)
+	(wire
+		(pts
+			(xy 234.95 243.84) (xy 234.95 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "238d4f19-569a-fca8-bc06-fd735c0788b2")
 	)
 	(wire
 		(pts
@@ -3889,6 +3909,16 @@
 	)
 	(wire
 		(pts
+			(xy 191.77 243.84) (xy 191.77 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "30e876c1-c86a-3d74-d4a3-d479cb5821c5")
+	)
+	(wire
+		(pts
 			(xy 74.93 247.65) (xy 92.71 247.65)
 		)
 		(stroke
@@ -3936,16 +3966,6 @@
 			(type default)
 		)
 		(uuid "3cbe452b-7c7e-c150-8cc6-4adf65e121b1")
-	)
-	(wire
-		(pts
-			(xy 386.08 243.84) (xy 386.08 238.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "3ec43cb3-6a7d-8f8e-f3d2-32da368673e6")
 	)
 	(wire
 		(pts
@@ -4019,16 +4039,6 @@
 	)
 	(wire
 		(pts
-			(xy 342.9 243.84) (xy 342.9 238.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "4d0100fe-37b6-f358-f01c-ce8f49566743")
-	)
-	(wire
-		(pts
 			(xy 467.36 76.2) (xy 467.36 80.01)
 		)
 		(stroke
@@ -4036,6 +4046,16 @@
 			(type default)
 		)
 		(uuid "4d0d3300-f865-8622-bdab-0d42a82cc5ef")
+	)
+	(wire
+		(pts
+			(xy 299.72 243.84) (xy 299.72 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4d2d2ea3-f3c8-2e0b-7c32-4b9261b3954d")
 	)
 	(wire
 		(pts
@@ -4139,16 +4159,6 @@
 	)
 	(wire
 		(pts
-			(xy 256.54 243.84) (xy 256.54 238.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "5817b6d2-67ec-df34-e90a-9503b1ae95d1")
-	)
-	(wire
-		(pts
 			(xy 321.31 255.27) (xy 321.31 288.29)
 		)
 		(stroke
@@ -4209,16 +4219,6 @@
 	)
 	(wire
 		(pts
-			(xy 234.95 243.84) (xy 234.95 238.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "5f428707-f3e4-52c4-4ce5-c59f87eff607")
-	)
-	(wire
-		(pts
 			(xy 224.79 243.84) (xy 224.79 267.97)
 		)
 		(stroke
@@ -4266,16 +4266,6 @@
 			(type default)
 		)
 		(uuid "60c367b8-547f-f701-a046-8696f4063c28")
-	)
-	(wire
-		(pts
-			(xy 278.13 243.84) (xy 278.13 238.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6103a2e4-0b65-70aa-58f1-6d55f5146fd9")
 	)
 	(wire
 		(pts
@@ -4396,16 +4386,6 @@
 			(type default)
 		)
 		(uuid "78d75335-0e2f-82b5-330b-2c1bae829d22")
-	)
-	(wire
-		(pts
-			(xy 170.18 243.84) (xy 170.18 238.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "7ad32923-ef51-5f8b-2c7e-b031d437d537")
 	)
 	(wire
 		(pts
@@ -4709,6 +4689,16 @@
 	)
 	(wire
 		(pts
+			(xy 364.49 243.84) (xy 364.49 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9c45ad03-70cf-75fe-7f8d-d4717cce3aba")
+	)
+	(wire
+		(pts
 			(xy 342.9 308.61) (xy 354.33 308.61)
 		)
 		(stroke
@@ -4809,6 +4799,16 @@
 	)
 	(wire
 		(pts
+			(xy 278.13 243.84) (xy 278.13 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b04fbe33-c9a6-e7e4-f3e4-db37f935cad9")
+	)
+	(wire
+		(pts
 			(xy 256.54 288.29) (xy 267.97 288.29)
 		)
 		(stroke
@@ -4869,13 +4869,13 @@
 	)
 	(wire
 		(pts
-			(xy 299.72 243.84) (xy 299.72 238.76)
+			(xy 407.67 243.84) (xy 407.67 231.14)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "b6e69f15-ab54-8a59-5fb8-1a7ce0e88504")
+		(uuid "b5b4c704-e7c2-757f-da91-4f8a80dc5b1b")
 	)
 	(wire
 		(pts
@@ -4959,6 +4959,16 @@
 	)
 	(wire
 		(pts
+			(xy 170.18 243.84) (xy 170.18 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c190f18a-3762-73cd-36c1-9e77f0641e2f")
+	)
+	(wire
+		(pts
 			(xy 407.67 255.27) (xy 407.67 308.61)
 		)
 		(stroke
@@ -5026,16 +5036,6 @@
 			(type default)
 		)
 		(uuid "cad221fe-eace-6120-142d-2f64c1382f9d")
-	)
-	(wire
-		(pts
-			(xy 191.77 243.84) (xy 191.77 238.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ccd36b2a-5fa0-5eeb-3487-db0d82875bab")
 	)
 	(wire
 		(pts
@@ -5149,16 +5149,6 @@
 	)
 	(wire
 		(pts
-			(xy 407.67 243.84) (xy 407.67 238.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "dc75292c-52a7-f37e-ba6e-fe9141365054")
-	)
-	(wire
-		(pts
 			(xy 234.95 267.97) (xy 250.19 267.97)
 		)
 		(stroke
@@ -5176,6 +5166,16 @@
 			(type default)
 		)
 		(uuid "e379172a-f01f-fcc3-c66d-eb6065ea6f4e")
+	)
+	(wire
+		(pts
+			(xy 386.08 243.84) (xy 386.08 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e38a68ac-8224-4260-b8e6-6ab0b4c2af50")
 	)
 	(wire
 		(pts
@@ -5443,6 +5443,88 @@
 		)
 	)
 	(symbol
+		(lib_id "power:+12V")
+		(at 170.18 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "028ff8a7-968a-8ada-5c49-249c6f0671a3")
+		(property "Reference" "#PWR2026"
+			(at 170.18 228.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "+15V_HTR"
+			(at 170.18 227.33 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 170.18 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 170.18 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 170.18 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "c60039f2-d46e-b7f3-c628-84bd881ccffd")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
+					(reference "#PWR2026")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 508 80.01 0)
 		(unit 1)
@@ -5519,6 +5601,88 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "#PWR2050")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+12V")
+		(at 191.77 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "08040916-e515-d90b-1942-297dfd10a750")
+		(property "Reference" "#PWR2028"
+			(at 191.77 228.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "+15V_HTR"
+			(at 191.77 227.33 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 191.77 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 191.77 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 191.77 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "0f058286-e276-53e5-892a-704237b4900d")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
+					(reference "#PWR2028")
 					(unit 1)
 				)
 			)
@@ -5683,6 +5847,88 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "#PWR2044")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+12V")
+		(at 256.54 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "11b178b7-83a7-a638-d8ec-7ad04eb8ed98")
+		(property "Reference" "#PWR2027"
+			(at 256.54 228.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "+15V_HTR"
+			(at 256.54 227.33 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 256.54 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 256.54 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 256.54 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "cd88013b-3183-6941-4b1a-2c2d511dc51e")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
+					(reference "#PWR2027")
 					(unit 1)
 				)
 			)
@@ -5962,7 +6208,7 @@
 		(dnp no)
 		(uuid "172d923f-31df-cd52-a5f3-66f457fc17d0")
 		(property "Reference" "J2004"
-			(at 435.61 74.93 90)
+			(at 436.88 73.66 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -5973,7 +6219,7 @@
 			)
 		)
 		(property "Value" "TAP +5V"
-			(at 435.61 77.47 90)
+			(at 436.88 76.2 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -6123,6 +6369,170 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "#PWR2017")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+12V")
+		(at 386.08 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "18304a60-744c-dfed-987e-20ed1b0ecc83")
+		(property "Reference" "#PWR2037"
+			(at 386.08 228.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "+15V_HTR"
+			(at 386.08 227.33 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 386.08 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 386.08 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 386.08 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "872a3253-0127-7911-2a89-d236ecfce311")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
+					(reference "#PWR2037")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+12V")
+		(at 321.31 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "193f6bd9-5bcb-283a-31ee-f1c21a6e6a04")
+		(property "Reference" "#PWR2041"
+			(at 321.31 228.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "+15V_HTR"
+			(at 321.31 227.33 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 321.31 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 321.31 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 321.31 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "807c5be8-64c5-2f4d-9d28-6dc9ae7beb96")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
+					(reference "#PWR2041")
 					(unit 1)
 				)
 			)
@@ -6537,6 +6947,88 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "#PWR2023")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+12V")
+		(at 407.67 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "2b60e435-b1d6-ac7f-faf5-124e24f2996c")
+		(property "Reference" "#PWR2038"
+			(at 407.67 228.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "+15V_HTR"
+			(at 407.67 227.33 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 407.67 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 407.67 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 407.67 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "2456020e-35e3-f533-6d5a-123ab992fd6c")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
+					(reference "#PWR2038")
 					(unit 1)
 				)
 			)
@@ -7078,170 +7570,6 @@
 		)
 	)
 	(symbol
-		(lib_id "power:+12V")
-		(at 191.77 238.76 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "37b41e33-49aa-9108-9de0-defd61bbaa3b")
-		(property "Reference" "#PWR2028"
-			(at 191.77 236.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "+15V_HTR"
-			(at 191.77 234.95 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 191.77 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 191.77 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 191.77 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "0f058286-e276-53e5-892a-704237b4900d")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2028")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+12V")
-		(at 386.08 238.76 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "3a705f56-1bc7-93ec-29c8-f3d3e3b527f3")
-		(property "Reference" "#PWR2037"
-			(at 386.08 236.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "+15V_HTR"
-			(at 386.08 234.95 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 386.08 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 386.08 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 386.08 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "872a3253-0127-7911-2a89-d236ecfce311")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2037")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 121.92 270.51 0)
 		(unit 1)
@@ -7400,88 +7728,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "#PWR2003")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+12V")
-		(at 364.49 238.76 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "43cf88ec-4199-163a-271d-a8d28c44ed99")
-		(property "Reference" "#PWR2036"
-			(at 364.49 236.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "+15V_HTR"
-			(at 364.49 234.95 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 364.49 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 364.49 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 364.49 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "99b95543-010e-c027-0b44-2a63e24895f4")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2036")
 					(unit 1)
 				)
 			)
@@ -7907,7 +8153,7 @@
 	)
 	(symbol
 		(lib_id "power:+12V")
-		(at 321.31 238.76 0)
+		(at 278.13 231.14 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -7915,9 +8161,9 @@
 		(on_board no)
 		(in_pos_files yes)
 		(dnp no)
-		(uuid "4f10137f-c48e-63f0-c01f-2a4ada084d43")
-		(property "Reference" "#PWR2041"
-			(at 321.31 236.22 0)
+		(uuid "4bfeba1c-1c96-8069-58a7-db9119646445")
+		(property "Reference" "#PWR2029"
+			(at 278.13 228.6 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7929,7 +8175,7 @@
 			)
 		)
 		(property "Value" "+15V_HTR"
-			(at 321.31 234.95 0)
+			(at 278.13 227.33 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -7940,7 +8186,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 321.31 238.76 0)
+			(at 278.13 231.14 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7952,7 +8198,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 321.31 238.76 0)
+			(at 278.13 231.14 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7964,7 +8210,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 321.31 238.76 0)
+			(at 278.13 231.14 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7976,12 +8222,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "807c5be8-64c5-2f4d-9d28-6dc9ae7beb96")
+			(uuid "c4acfca0-b5dd-a84e-63a9-055ed34a0cdc")
 		)
 		(instances
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2041")
+					(reference "#PWR2029")
 					(unit 1)
 				)
 			)
@@ -8314,88 +8560,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "D2005")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+12V")
-		(at 256.54 238.76 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "51a29c42-c0db-cdff-e58e-21d71aed1e65")
-		(property "Reference" "#PWR2027"
-			(at 256.54 236.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "+15V_HTR"
-			(at 256.54 234.95 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 256.54 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 256.54 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 256.54 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "cd88013b-3183-6941-4b1a-2c2d511dc51e")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2027")
 					(unit 1)
 				)
 			)
@@ -8817,88 +8981,6 @@
 	)
 	(symbol
 		(lib_id "power:+12V")
-		(at 234.95 238.76 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "5de85751-9833-d5cc-f4eb-1b2af96f99d3")
-		(property "Reference" "#PWR2040"
-			(at 234.95 236.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "+15V_HTR"
-			(at 234.95 234.95 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 234.95 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 234.95 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 234.95 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "29aebbf5-4150-c7f5-8bb1-4fe42556699c")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2040")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+12V")
 		(at 267.97 227.33 0)
 		(unit 1)
 		(body_style 1)
@@ -9075,7 +9157,7 @@
 		(dnp no)
 		(uuid "6494bc5f-3442-1693-b4fe-57145cc32fa3")
 		(property "Reference" "J2006"
-			(at 516.89 74.93 90)
+			(at 518.16 73.66 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9086,7 +9168,7 @@
 			)
 		)
 		(property "Value" "TAP +3V3_D"
-			(at 516.89 77.47 90)
+			(at 518.16 76.2 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -9596,6 +9678,88 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "#PWR2022")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+12V")
+		(at 234.95 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "71fefde1-202f-8bf2-7ea9-8c777eee9701")
+		(property "Reference" "#PWR2040"
+			(at 234.95 228.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "+15V_HTR"
+			(at 234.95 227.33 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 234.95 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 234.95 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 234.95 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "29aebbf5-4150-c7f5-8bb1-4fe42556699c")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
+					(reference "#PWR2040")
 					(unit 1)
 				)
 			)
@@ -10187,6 +10351,88 @@
 	)
 	(symbol
 		(lib_id "power:+12V")
+		(at 213.36 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "77f78cfd-4c51-9a19-1c43-75d3457708e4")
+		(property "Reference" "#PWR2030"
+			(at 213.36 228.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "+15V_HTR"
+			(at 213.36 227.33 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 213.36 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 213.36 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 213.36 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "0d670994-fe2c-2882-eb33-9e47699e1b2d")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
+					(reference "#PWR2030")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+12V")
 		(at 137.16 234.95 0)
 		(unit 1)
 		(body_style 1)
@@ -10346,88 +10592,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "C2004")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+12V")
-		(at 213.36 238.76 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "80154979-2a73-b3db-22d4-44f4d8bc5710")
-		(property "Reference" "#PWR2030"
-			(at 213.36 236.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "+15V_HTR"
-			(at 213.36 234.95 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 213.36 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 213.36 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 213.36 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "0d670994-fe2c-2882-eb33-9e47699e1b2d")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2030")
 					(unit 1)
 				)
 			)
@@ -10868,88 +11032,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "TP2001")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+12V")
-		(at 278.13 238.76 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "94e9b263-d8a0-1275-9c7f-0599f3a06406")
-		(property "Reference" "#PWR2029"
-			(at 278.13 236.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "+15V_HTR"
-			(at 278.13 234.95 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 278.13 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 278.13 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 278.13 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "c4acfca0-b5dd-a84e-63a9-055ed34a0cdc")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2029")
 					(unit 1)
 				)
 			)
@@ -12038,88 +12120,6 @@
 		)
 	)
 	(symbol
-		(lib_id "power:+12V")
-		(at 407.67 238.76 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "b5caec1a-7fd9-ba5c-bc55-6a436267054a")
-		(property "Reference" "#PWR2038"
-			(at 407.67 236.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "+15V_HTR"
-			(at 407.67 234.95 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 407.67 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 407.67 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 407.67 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "2456020e-35e3-f533-6d5a-123ab992fd6c")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2038")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "Device:R")
 		(at 332.74 240.03 0)
 		(unit 1)
@@ -12198,88 +12198,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "R2014")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+12V")
-		(at 170.18 238.76 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "b8f28f5a-3b11-e491-0775-a00e8ae1e45b")
-		(property "Reference" "#PWR2026"
-			(at 170.18 236.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "+15V_HTR"
-			(at 170.18 234.95 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 170.18 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 170.18 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 170.18 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "c60039f2-d46e-b7f3-c628-84bd881ccffd")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2026")
 					(unit 1)
 				)
 			)
@@ -13227,7 +13145,7 @@
 		(dnp no)
 		(uuid "dbe63cd7-31f6-e915-ae4d-f1109980f4c9")
 		(property "Reference" "J2005"
-			(at 476.25 74.93 90)
+			(at 477.52 73.66 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13238,7 +13156,7 @@
 			)
 		)
 		(property "Value" "TAP +3V3_A far"
-			(at 476.25 77.47 90)
+			(at 477.52 76.2 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13388,6 +13306,88 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "#PWR2012")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+12V")
+		(at 342.9 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "dd513a77-c441-87d5-499a-b2440dd3265a")
+		(property "Reference" "#PWR2035"
+			(at 342.9 228.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "+15V_HTR"
+			(at 342.9 227.33 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 342.9 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 342.9 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 342.9 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "54f2f428-f3b7-ca38-0024-8f5200419b7e")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
+					(reference "#PWR2035")
 					(unit 1)
 				)
 			)
@@ -13575,88 +13575,6 @@
 		)
 	)
 	(symbol
-		(lib_id "power:+12V")
-		(at 299.72 238.76 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "df146bf3-a816-20b8-fbc7-46af90a18ea5")
-		(property "Reference" "#PWR2039"
-			(at 299.72 236.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "+15V_HTR"
-			(at 299.72 234.95 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 299.72 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 299.72 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 299.72 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "4dc57e15-bbfa-1b70-ee09-5ac4d78b3eb7")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2039")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 345.44 125.73 0)
 		(unit 1)
@@ -13823,6 +13741,170 @@
 		)
 	)
 	(symbol
+		(lib_id "power:+12V")
+		(at 299.72 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "e28a65e1-b073-6432-702f-303c0e0f2c33")
+		(property "Reference" "#PWR2039"
+			(at 299.72 228.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "+15V_HTR"
+			(at 299.72 227.33 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 299.72 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 299.72 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 299.72 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "4dc57e15-bbfa-1b70-ee09-5ac4d78b3eb7")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
+					(reference "#PWR2039")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+12V")
+		(at 364.49 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "eb7013a9-45d8-0169-1731-4a1a8faf67d7")
+		(property "Reference" "#PWR2036"
+			(at 364.49 228.6 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "+15V_HTR"
+			(at 364.49 227.33 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 364.49 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" ""
+			(at 364.49 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" ""
+			(at 364.49 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "1"
+			(uuid "99b95543-010e-c027-0b44-2a63e24895f4")
+		)
+		(instances
+			(project "GPSDO-PYNQ-Z2"
+				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
+					(reference "#PWR2036")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 467.36 80.01 0)
 		(unit 1)
@@ -13981,88 +14063,6 @@
 			(project "GPSDO-PYNQ-Z2"
 				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
 					(reference "#PWR2032")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+12V")
-		(at 342.9 238.76 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom no)
-		(on_board no)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "f066d325-8d2c-c927-9a02-860fcb72bd77")
-		(property "Reference" "#PWR2035"
-			(at 342.9 236.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "+15V_HTR"
-			(at 342.9 234.95 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 342.9 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Datasheet" ""
-			(at 342.9 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Description" ""
-			(at 342.9 238.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(pin "1"
-			(uuid "54f2f428-f3b7-ca38-0024-8f5200419b7e")
-		)
-		(instances
-			(project "GPSDO-PYNQ-Z2"
-				(path "/a19d71aa-4fa1-8ba3-bb39-2ea032d9b083/408501c7-015d-002e-74f7-54799cf27f61"
-					(reference "#PWR2035")
 					(unit 1)
 				)
 			)

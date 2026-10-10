@@ -41,7 +41,7 @@ __all__ = ['Bus', 'MockBus', 'PynqBus', 'SmbusBus',
 
 # The bus as the board is built: address -> what should answer there.
 EXPECTED_DEVICES = {0x18: 'DS2482-100 1-Wire bridge',
-                    0x60: 'Si5351A helper synthesiser',
+                    0x60: 'Si5351 helper synthesiser (A on rev A, C on rev B)',
                     0x61: 'MCP4725 heater DAC (A0 high)'}
 for _i in range(8):
     EXPECTED_DEVICES[0x48 + _i] = 'TMP1075 #%d' % _i
@@ -441,8 +441,10 @@ class Si5351Config(object):
 class Si5351(object):
     ADDR = 0x60
 
-    def __init__(self, bus, addr=ADDR):
-        self.bus, self.addr = bus, addr
+    def __init__(self, bus, addr=ADDR, rev=None):
+        """rev: 'A' or 'B', the board this chip is on; None finds out from
+        the chip itself the first time it matters (detect_rev)."""
+        self.bus, self.addr, self.rev = bus, addr, rev
 
     def write_reg(self, reg, val):
         self.bus.write(self.addr, bytes([reg & 0xFF, val & 0xFF]))
@@ -496,9 +498,58 @@ class Si5351(object):
                 bad[reg] = (want, got)
         return bad
 
+    # Which board is this?  The chip says, before or after programming: the
+    # LOS flags watch the two reference INPUTS, not the PLLs' choice of one.
+    #   rev A: an Si5351A, its reference driven into XA.  LOS_XTAL clear, and
+    #          LOS_CLKIN (a pin the 10-pin part does not have) reads SET --
+    #          raw 0x11 in every rev A log.
+    #   rev B: an Si5351C, the TCXO on CLKIN and XA/XB floating (REVB_CHANGES
+    #          items 9 and RA1).  LOS_CLKIN clear, LOS_XTAL set.
+    # Both set is neither board with a live reference: the TCXO is dead or
+    # unpowered (test point X).  The same holds for a bare Si5351A breakout
+    # with its own crystal (handbook section 2): that reads as rev A.
+    @staticmethod
+    def rev_of(status):
+        """'A', 'B', or None (no reference on either input), from a status dict."""
+        if not status['los_xtal'] and status['los_clkin']:
+            return 'A'
+        if status['los_xtal'] and not status['los_clkin']:
+            return 'B'
+        return None
+
+    def detect_rev(self):
+        return self.rev_of(self.status)
+
+    def board_rev(self):
+        """self.rev, or what the chip says, remembered.  Raises when the
+        chip sees no reference at all, rather than guess an image for it."""
+        if self.rev is None:
+            s = self.status
+            r = self.rev_of(s)
+            if r is None:
+                raise RuntimeError(
+                    'Si5351: no reference on XA (rev A) or CLKIN (rev B) -- status %s.  '
+                    'Is the TCXO powered (test point X)?  Pass the rev explicitly to '
+                    'program it anyway.' % s)
+            self.rev = r
+        return self.rev
+
+    def ref_lost(self, s):
+        """The LOS flag of the input this board's PLLs take, from a status
+        (or sticky) dict: LOS_CLKIN on rev B, LOS_XTAL on rev A.  The board
+        comes from the LIVE status (board_rev), never from `s`: a latched
+        LOS_XTAL on rev A would otherwise read as rev B's normal state."""
+        try:
+            rev = self.board_rev()
+        except RuntimeError:
+            return True                         # no reference on either input
+        return s['los_clkin'] if rev == 'B' else s['los_xtal']
+
     def lock_status(self):
+        """Both PLLs locked and the reference they use present.  Rev B's
+        LOS_XTAL is always set (XA/XB float), so it must not count there."""
         s = self.status
-        return (not s['lol_a']) and (not s['lol_b']) and not s['los_xtal']
+        return (not s['lol_a']) and (not s['lol_b']) and not self.ref_lost(s)
 
     # Register 1 latches each status flag until it is written back to 0, so a
     # loss of lock between two reads is not lost -- which is what a multi-day

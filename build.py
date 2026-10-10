@@ -47,6 +47,7 @@ PRODUCTS = [
     "*.kicad_sch", NAME + ".kicad_pcb", NAME + ".kicad_pro",
     "sym-lib-table", "fp-lib-table", "library", "build",
     "mfg/release", "mfg/_netlist.net", "fp-info-cache", "HANDBOOK.md",
+    "docs/handbook",
 ]
 # ...and this is what is NOT a product, listed so the distinction is explicit.
 SOURCES = ["gen/*.py", "pcb/*.py", "mfg/*.py (except release/)", "build.py",
@@ -253,7 +254,20 @@ def main():
         s.done("\n    ".join(l.strip() for l in keep))
 
     s = Step("7/7  HANDBOOK.md  <- gen/handbook.py")
-    s.done(run([sys.executable, "gen/handbook.py"]).strip())
+    # 2026-10-10 (Jason): a picture of every place the bring-up sends you, and
+    # a check that the words the board prints there are beside that part and
+    # nearer it than any other of its kind.  The check reads the written board
+    # with KiCad's own text boxes; the pictures need PIL and kicad-cli.
+    o = run(kicad_env.kicad_python() + ["gen/handbook_figs.py", "--check",
+                                        os.path.join(ROOT, NAME + ".kicad_pcb")], ok=(0, 1))
+    bad = [l for l in o.splitlines() if l.startswith("WRONG")]
+    figline = [l for l in o.splitlines() if l.startswith("handbook figures:")]
+    if bad or not figline or " 0 not beside" not in figline[0]:
+        sys.stderr.write(o)
+        raise SystemExit("FAILED: a place the handbook names is not beside its words")
+    keep = [figline[0], run([sys.executable, "gen/handbook_figs.py", "--draw"]).strip()]
+    keep.append(run([sys.executable, "gen/handbook.py"]).strip())
+    s.done("\n    ".join(keep))
 
     print("\nBUILT in %.1f s" % (time.time() - t0))
     return 0

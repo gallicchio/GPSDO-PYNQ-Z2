@@ -36,7 +36,7 @@ def main():
     ol = Overlay(os.path.join(HERE, 'dmtd_top.bit'), download=False)
     core = attach(ol)
     si = Si5351(PynqBus(ol.axi_iic_0))
-    cfg = Si5351Config(f_helper=F_HELPER)
+    cfg = Si5351Config(f_helper=F_HELPER, rev=si.board_rev())
     units = [u for u in range(1, N_BEAT + 1) if u not in plugged]
 
     def counts():

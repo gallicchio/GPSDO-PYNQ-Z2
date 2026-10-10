@@ -15941,3 +15941,179 @@ have to hold something for more than a few seconds, make them U.FL."
 - **Release:** 2 boards, $107.13 parts + ~$88 fees = $195.09. The board stays
   207 × 180 mm.
 - `CLAUDE_PCB.md` has the lessons (Jason: "Write to CLAUDE_PCB").
+
+### 45.30 The bring-up written for rev B, and what writing it found
+
+**Jason:** "Rewrite the bring up and jumper section for RevB, paying special
+attention to anything that might make you realize mistakes or improvements
+that could be made before ordering the boards."
+
+Writing each step with the reading it should give found three mistakes in the
+design and four in its documents.
+
+**In the design (fixed before the order):**
+
+- **The IN tap disturbed the channel it watched.** Its 1 kΩ joined the GATE
+  side of the 10 nF coupling cap, where the only DC is the replica's 1 MΩ.
+  - A 50 Ω scope is DC-coupled, and so is the ADALM2000's 1 MΩ. Plugged in,
+    either pulled the gate's bias from ~1.5 V to 2 mV or 0.75 V, and the
+    channel stopped squaring while it was watched.
+  - It now joins the SOURCE side of the cap, the 0R-to-10n link. At 10 MHz the
+    10 nF is 1.6 Ω, so the waveform is the same, and the scope's DC path lands
+    on the 51R and 2k2. `In` and `IN` are now really the same node.
+  - In the tile, R?21's node track still crosses JP01 between pins 1 and 2,
+    then climbs to that link at x = -1.5 instead of running to the cap's far
+    pad.
+  - On the two ZED-F9T channels, a 50 Ω scope there would draw 4.6 mA of
+    TIMEPULSE's 5 mA. The handbook says to leave those two unplugged.
+- **"Fit every JP shunt (50R or PARK) before the first power-up" was wrong.**
+  I wrote it in 45.28. A 50R shunt does not quiet the gate: with its source
+  off, it sits at threshold and draws 10-15 mA, as if no shunt were fitted.
+  - First power-up with 11 channels on 50R and no sources would have been
+    290-420 mA on the TPS7A2033 (300 mA, current limit 360 mA min). Up to
+    ~520 mA would have gone through F2001, a 500 mA polyfuse that trips sooner
+    when warm.
+  - Now: **all thirteen on PARK** first. Each shunt moves to 50R, or none,
+    when its source is running. It goes back to PARK when the source goes off.
+  - Fixed on the power sheet's budget note, in the handbook, in the BOM's
+    shunt note and in `CLAUDE_PCB.md`.
+- **Every header now says what it selects.** `50R` is printed beside pin 1,
+  `PARK` beside pin 3, with a tick at the common pin. The header's own name
+  (`JP101`) moves to F.Fab, as a tap's does. On the first build the
+  displaced name took the 1k's place below the header and pushed `R121`
+  off the silk.
+  - The legend's "1-2 = 50R" asked you to find pin 1, which a fitted shunt
+    hides.
+  - The right-hand units stand at 180°, so "the left pair" is 50R on unit 1
+    and PARK on unit 2.
+  - PARK where 50R was meant leaves a hot source unterminated.
+
+**In the software:**
+
+- **`bringup.py` was rev A's.** It programmed the PLLs from XA. Rev B's
+  Si5351C has XA and XB floating, so its LOS_XTAL is always set and "LOCKED"
+  could never print.
+  - The driver now reads the board off the chip: rev A reads LOS_CLKIN set
+    and LOS_XTAL clear (raw 0x11 in every rev A log); rev B the reverse.
+    `Si5351.board_rev()` refuses to guess when neither input has a
+    reference.
+  - `lock_status()` and the sticky check look at the input the PLLs use.
+  - `bringup.py --rev auto|A|B` programs the right image and names HO's output
+    (CLK1 on rev A, CLK2 on rev B).
+  - `si_watch.py`, `si_set.py` and `unplugged.py` restore the right image.
+    `si_watch` also stopped counting rev B's permanently latched LOS_XTAL as
+    an event.
+  - Five new tests, 77 in all, pass.
+
+**In the documents:**
+
+- `HANDBOOK.md` sections 5-8 rewritten for rev B:
+  - the three-state header, with three rules;
+  - a table of the U.FL taps, with what each shows and what plugging it in
+    costs;
+  - the power order: board on an unpowered PYNQ, sources one at a time with
+    the shunt first;
+  - the bench posts as the ammeter for the first power-up: 0.25-0.35 A with
+    everything parked;
+  - the bring-up steps with the reading at each.
+- **Two observations for bring-up:**
+  - Watch the helper on `HCLK`, a spare fan-out output, not `CLK0`. A scope
+    on CLK0 loads the Si5351's own pin, and load on its outputs is what made
+    rev A slip.
+  - Try the null channel with its shunt OFF. HO's 33 Ω already
+    back-terminates the cable. The 74LVC1G125 then stops sourcing ~35 mA
+    peaks (over its 24 mA rating) and the null input gets 3.3 Vpp at twice
+    the slew.
+- **Stale facts corrected:**
+  - the schematic's thermometer locations (five of eight were wrong; now one
+    list, `design.TMP_WHERE`, for the sheet and the handbook);
+  - the null channel's source (HO, CLK2, buffered);
+  - the DRC table's reason for 0.15 mm clearance (the QFN-20, not rev A's
+    MSOP-10);
+  - the handbook's "the SMAs are hand soldered" (only J4001 is);
+  - "Si5351A" in the bus map.
+- **Item 21's pps threshold is on the silkscreen:** `0-5.5 V, high >2.3 V`
+  over each pps column.
+- **The schematic overlap check was missing whole classes of overlap.**
+  Moving the IN tap put its GND symbol on the "AC couple" note, and
+  `check_overlap.py` passed it. It had four faults:
+  - It anchored every text on its baseline. KiCad centres a text on its
+    anchor unless the text says top or bottom, so every field's box sat half
+    a glyph too high.
+  - It ignored power symbols as bodies.
+  - It read a label's direction from its angle and ignored the written
+    justification: kigen writes a left-pointing label as angle 0 with
+    `justify right`.
+  - It sized every text at prose's 0.82 × height per character. Capitals
+    and digits run 0.87-0.99 in KiCad's own PDF. "LMK1C1108PWR" is 15.1 mm,
+    not 12.5, and it ran 2.5 mm into its own symbol.
+  - Fixed, it found these, all real when rendered:
+    - the helper sheet: each LMK1C1108's 1G pull-up stood up across CLKIN's
+      wire, and its FO_VDD label sat on the LMK's designator (the 10k now
+      lies flat to the left of 1G); the helper-source note over R_INT's
+      `0R`; `TAP HELPER` over its own ground;
+    - the debug header: ten staggered GND symbols, each one's name over the
+      next (now one ground bus, one symbol);
+    - the heater-jack note over the jack's ground. Its words were also stale:
+      "500 mA fuse, 16 V TVS" for what is 1.1 A and an SMAJ18A;
+    - each fan-out 33R's designator in the next column's resistor (the
+      columns are now 12.7 mm apart, not 10.16); the LMKs' values in their
+      bodies; the Si5351C's value on a GND symbol; each heater designator
+      under the next row's +15V_HTR arrow (that row's rails rise higher).
+  - A scan of KiCad's exported PDF (`pdftotext -bbox`, words overlapping by
+    more than half a line) then found three more the code check does not
+    model, each a name on a pin number: the TCXO's value, each board-level
+    U.FL's designator, and every 74LVC2GU04's value on its VCC pin. All are
+    moved. What the scan still reports is rotated pin names, which
+    pdftotext boxes badly.
+  - None of this touches the netlist or the board.
+
+**Jason:** "as you refer to places on the PCB in the bringup plans, include a
+thumbnail around the 3D render so that I can easily find the reference on a
+crowded board, which sits on a crowded desk.  Double check that the reference
+is actually next to the component or probe point you want me to probe."
+
+- **Sixteen pictures**, `docs/handbook/*.png`, one for each place sections 7
+  and 8 send you. Each has the whole board with a red box, and beside it
+  that box cut from the board's own 3D render (`kicad-cli pcb render`, high
+  quality). The part or pin is circled in red; the words the board prints
+  for it are boxed in yellow. They are drawn as the board sits behind the
+  PYNQ, socket edge nearest you. The test-point and tap tables in section 6
+  link to them.
+- **The check** (`gen/handbook_figs.py --check`, build step 7) reads the
+  written board with KiCad's own text boxes. For each of the 40 spots it
+  fails if:
+  - the words are further than their kind allows from the part (2-2.5 mm
+    for a test point, U.FL or pin; 4 mm for a jack); or
+  - another part of the same kind is nearer the words' centre: another test
+    point, U.FL, jack, or another pin of the same header or socket.
+  - 39 of the 40 passed first time.
+- **The fortieth was a real fault: the board printed no `X`.** Rev B renamed
+  the TCXO test point's value from rev A's `TP_XA` to `TP_REF`, and the
+  letter table kept the old key. So the pad had no letter, under a legend
+  that explains `X`. Fixed, and the letter placer now stops the build on a
+  test point it cannot name, instead of skipping it.
+- **Step 1's ohmmeter check is now one that tests something.** Socket pins
+  1 and 17 each connect to nothing, so "pin 1 to pin 17 open" was always
+  true. Now each is checked against pin 2 (`5V`) and pin 6 (`GND`), which
+  the socket's top silk names.
+- **Seen in the 3D view, not changed:**
+  - On the right-hand units, R?21/R?22's names sit partly under the fitted
+    header's plastic (the known row in REVB_CHANGES).
+  - The barrel jack's body covers its own designator; its function text is
+    printed beside it.
+
+**Verified on the final build:**
+
+- ERC 0; schematic overlaps 0 by the corrected check.
+- The poured board: DRC 0 violations, 0 unconnected.
+- 788 silkscreen texts, 0 in another unit's box; 41 handbook spots, each
+  beside its own words.
+- Pad connectivity against the committed board: the only change is R?21's
+  pad 2 moving from C?01's gate side to its source side, on all 13 units.
+- Driver tests: 77 pass.
+- Release unchanged at $195.09 for 2 boards.
+- Silkscreen cost: 23 more designators on F.Fab than at 45.29, net. Thirteen
+  are the headers' own (deliberately). The rest are coupling caps and 330Rs
+  on some units, a 51R on units 10-13, and R3025 beside the new `X`. All
+  are still on the assembly drawing.

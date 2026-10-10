@@ -1,6 +1,6 @@
 # Annotated BOM - GPSDO DDMTD front end
 
-Generated 2026-10-10T11:47:10-07:00 for **2 board(s)**.  Prices and stock come from JLCPCB's parts API; each row carries the timestamp of its own query.  JLCPCB's quote at checkout is authoritative -- the fee model below is an estimate stated so it can be checked.
+Generated 2026-10-10T13:27:23-07:00 for **2 board(s)**.  Prices and stock come from JLCPCB's parts API; each row carries the timestamp of its own query.  JLCPCB's quote at checkout is authoritative -- the fee model below is an estimate stated so it can be checked.
 
 ## What it costs
 
@@ -89,5 +89,5 @@ Generated 2026-10-10T11:47:10-07:00 for **2 board(s)**.  Prices and stock come f
 
 | LCSC | MPN | Value | Pkg | Type | Qty | Order | Unit | Line | Stock | Queried | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| C5305 | 2.54Short Circuit Cap Opening | (not on the board) | P=2.54mm | Extended | 26 | 31 | $0.0098 | $0.3038 | 967,219 | 2026-10-10 06:13 | 2.54 mm open-top jumper shunts for the thirteen 50R/PARK headers: 1-2 = 50R for a 50-ohm source, 2-3 = PARK on every channel with nothing plugged in (rev B item 11).  The board ships with them OFF -- 50R on a ZED-F9T channel destroys its TIMEPULSE output (see the unit sheet warning), so each is a decision per channel |
+| C5305 | 2.54Short Circuit Cap Opening | (not on the board) | P=2.54mm | Extended | 26 | 31 | $0.0098 | $0.3038 | 967,219 | 2026-10-10 06:13 | 2.54 mm open-top jumper shunts for the thirteen 50R/PARK headers: 1-2 = 50R for a running 50-ohm source, 2-3 = PARK on every channel whose source is off or unplugged (rev B item 11; a 50R shunt does not park).  They ship loose: all thirteen go on PARK before the first power-up (handbook section 8), then each moves as its source arrives -- 50R on a ZED-F9T channel destroys its TIMEPULSE output (see the unit sheet warning), so each is a decision per channel |
 

@@ -165,10 +165,13 @@ revision's fallback would go.
     ./pynq-run bringup.py --scan          # who answers on the bus
     ./pynq-run bringup.py --no-heater     # program the Si5351, check lock
 
-Add `--clk2 helper` and the Si5351's third output carries a second copy of the
-helper, so a scope or an ADALM2000 on CLK1 and CLK2 sees 1234.4 Hz of beat --
-the number this whole instrument is built on -- with no board in the system.
-It is off by default because the front-end board routes nothing to CLK2.
+`bringup.py` asks the chip which board it is on (`--rev auto`): a breakout's
+crystal is on XA, so it reads as rev A and gets rev A's image -- the helper on
+CLK0, the null on CLK1.  Add `--clk2 helper` and the third output carries a
+second copy of the helper, so a scope or an ADALM2000 on CLK1 and CLK2 sees
+1234.4 Hz of beat -- the number this whole instrument is built on -- with no
+board in the system.  It is off by default, and refused on rev B, whose CLK2
+is `HO`.
 
     ./pynq-run bringup.py --no-heater --clk2 helper   # on the PYNQ
     python3 gateware/board/m2k_beat.py                # on the laptop
@@ -194,15 +197,15 @@ real board's is).
 | address | device | on the board |
 |:---|:---|:---|
 | 0x18 | DS2482-100 1-Wire bridge | U6001, behind the five screw terminals |
-| 0x48 | TMP1075 #0 | U5001, a TMP1075 in the margins |
-| 0x49 | TMP1075 #1 | U5002, a TMP1075 in the margins |
-| 0x4A | TMP1075 #2 | U5003, a TMP1075 in the margins |
-| 0x4B | TMP1075 #3 | U5004, a TMP1075 in the margins |
-| 0x4C | TMP1075 #4 | U5005, a TMP1075 in the margins |
-| 0x4D | TMP1075 #5 | U5006, a TMP1075 in the margins |
-| 0x4E | TMP1075 #6 | U5007, a TMP1075 in the margins |
-| 0x4F | TMP1075 #7 | U5008, a TMP1075 in the margins |
-| 0x60 | Si5351A helper synthesiser | U3001, on the helper block at the centre line |
+| 0x48 | TMP1075 #0 | U5001, left edge, by unit 1 |
+| 0x49 | TMP1075 #1 | U5002, right edge, by unit 2 |
+| 0x4A | TMP1075 #2 | U5003, left edge, between units 5 and 7 |
+| 0x4B | TMP1075 #3 | U5004, right edge, by unit 6 |
+| 0x4C | TMP1075 #4 | U5005, left edge, by unit 11 |
+| 0x4D | TMP1075 #5 | U5006, right edge, between units 10 and 12 |
+| 0x4E | TMP1075 #6 | U5007, centre line, beside the helper fan-out: the thermostat's sensor |
+| 0x4F | TMP1075 #7 | U5008, bottom-left corner, below unit 13 |
+| 0x60 | Si5351 helper synthesiser (A on rev A, C on rev B) | U3001, on the helper block at the centre line |
 | 0x61 | MCP4725 heater DAC (A0 high) | U5009, in the housekeeping block |
 
 Addresses are fixed by strapping on the board; the eight TMP1075 differ only
@@ -263,7 +266,7 @@ plan in section 4.
 180 +------------------+---------------------------------+--------------------------------------------------+
 
     (n)  10 MHz SMA for unit n        (Pn)  that unit's 1 pps SMA
-    (HIN)/(HO)  external helper in / CLK1 out, beside the Si5351
+    (HIN)/(HO)  external helper in / HO out (CLK2, buffered)
     [Wn] 1-Wire screw terminal        (O) M3 hole   [=] M3 slot
     numbers down the left and across the top are millimetres
 ```
@@ -284,63 +287,89 @@ Every connector is on an edge, and every edge is one kind of thing:
 
 ## 5  The thirteen channels
 
-| unit | 10 MHz SMA | 1 pps SMA | source | 50R jumper | beat net | pin | ball | pps net | pin | driver slot |
+| unit | 10 MHz SMA | 1 pps SMA | source | shunt, source running | beat net | pin | ball | pps net | pin | driver slot |
 |---:|:---|:---|:---|:---|:---|---:|:---|:---|---:|:---|
-| 1 | `1` | `P1` | Spectrum Instruments TM-4 | **FIT** | `BEAT_00` | 23 | W10 | `PPS_00` | 26 | beat 0, pps 16 |
-| 2 | `2` | `P2` | ZED-F9T #1 | **LEAVE OFF** | `BEAT_01` | 7 | Y18 | `PPS_01` | 8 | beat 1, pps 17 |
-| 3 | `3` | `P3` | ZED-F9T #2 | **LEAVE OFF** | `BEAT_02` | 27 | Y16 | `PPS_02` | 28 | beat 2, pps 18 |
-| 4 | `4` | `P4` | Leo Bodnar LBE-1421 #1 | **FIT** | `BEAT_03` | 11 | U7 | `PPS_03` | 10 | beat 3, pps 19 |
-| 5 | `5` | `P5` | Leo Bodnar LBE-1421 #2 | **FIT** | `BEAT_04` | 29 | Y19 | `PPS_04` | 32 | beat 4, pps 20 |
-| 6 | `6` | `P6` | LB Precision GPS Ref 2021 | **FIT** | `BEAT_05` | 13 | V7 | `PPS_05` | 12 | beat 5, pps 21 |
-| 7 | `7` | `P7` | LB Mini Precision | **FIT** | `BEAT_06` | 31 | U18 | `PPS_06` | 36 | beat 6, pps 22 |
-| 8 | `8` | `P8` | BG7TBL GPSDO green 2019 | **FIT** | `BEAT_07` | 15 | U8 | `PPS_07` | 16 | beat 7, pps 23 |
-| 9 | `9` | `P9` | TM4313 | **FIT** | `BEAT_08` | 33 | W8 | `PPS_08` | 38 | beat 8, pps 24 |
-| 10 | `10` | `P10` | ZYT GPSDO (Samsung UCCM) | **FIT** | `BEAT_09` | 19 | V8 | `PPS_09` | 22 | beat 9, pps 25 |
-| 11 | `11` | `P11` | TF-GNSSDO-10 IRIG-B | **FIT** | `BEAT_10` | 35 | Y8 | `PPS_10` | 40 | beat 10, pps 26 |
-| 12 | `12` | `P12` | HP 10811B / FE-5680A Rb | **FIT** | `BEAT_11` | 21 | V10 | `PPS_11` | 24 | beat 11, pps 27 |
-| 13 | `13` | -- | NULL CHANNEL | **FIT** | `BEAT_12` | 37 | W9 | -- | -- | beat 12 |
+| 1 | `1` | `P1` | Spectrum Instruments TM-4 | **50R** | `BEAT_00` | 23 | W10 | `PPS_00` | 26 | beat 0, pps 16 |
+| 2 | `2` | `P2` | ZED-F9T #1 | **none** (never 50R) | `BEAT_01` | 7 | Y18 | `PPS_01` | 8 | beat 1, pps 17 |
+| 3 | `3` | `P3` | ZED-F9T #2 | **none** (never 50R) | `BEAT_02` | 27 | Y16 | `PPS_02` | 28 | beat 2, pps 18 |
+| 4 | `4` | `P4` | Leo Bodnar LBE-1421 #1 | **50R** | `BEAT_03` | 11 | U7 | `PPS_03` | 10 | beat 3, pps 19 |
+| 5 | `5` | `P5` | Leo Bodnar LBE-1421 #2 | **50R** | `BEAT_04` | 29 | Y19 | `PPS_04` | 32 | beat 4, pps 20 |
+| 6 | `6` | `P6` | LB Precision GPS Ref 2021 | **50R** | `BEAT_05` | 13 | V7 | `PPS_05` | 12 | beat 5, pps 21 |
+| 7 | `7` | `P7` | LB Mini Precision | **50R** | `BEAT_06` | 31 | U18 | `PPS_06` | 36 | beat 6, pps 22 |
+| 8 | `8` | `P8` | BG7TBL GPSDO green 2019 | **50R** | `BEAT_07` | 15 | U8 | `PPS_07` | 16 | beat 7, pps 23 |
+| 9 | `9` | `P9` | TM4313 | **50R** | `BEAT_08` | 33 | W8 | `PPS_08` | 38 | beat 8, pps 24 |
+| 10 | `10` | `P10` | ZYT GPSDO (Samsung UCCM) | **50R** | `BEAT_09` | 19 | V8 | `PPS_09` | 22 | beat 9, pps 25 |
+| 11 | `11` | `P11` | TF-GNSSDO-10 IRIG-B | **50R** | `BEAT_10` | 35 | Y8 | `PPS_10` | 40 | beat 10, pps 26 |
+| 12 | `12` | `P12` | HP 10811B / FE-5680A Rb | **50R** | `BEAT_11` | 21 | V10 | `PPS_11` | 24 | beat 11, pps 27 |
+| 13 | `13` | -- | NULL CHANNEL | **50R** | `BEAT_12` | 37 | W9 | -- | -- | beat 12 |
+
+The shunt column is for a RUNNING source.  **Whenever a channel's source is
+off or unplugged, its shunt goes on PARK** -- the third rule below.
 
 Unit 13 is the **null channel**: no 1 pps, and its 10 MHz input is meant to be
-cabled from `HO` -- the Si5351's CLK1 at exactly 10.000000 MHz -- into the
-jack marked `13` (`J1301`) with a short SMA jumper.  Subtracting it removes everything common to the
-board and leaves the difference between the GPSDOs, which is the measurement.
+cabled from `HO` -- the Si5351C's CLK2 at exactly 10.000000 MHz, through a
+74LVC1G125 and 33 R -- into the jack marked `13` (`J1301`) with a short
+SMA cable.  Subtracting it removes everything common to the board and leaves
+the difference between the GPSDOs, which is the measurement.
 
-### The 50 ohm jumper is the one thing you can break the board with
+### The 50R/PARK header is the one thing you can break something with
 
 Every channel is populated identically -- `R_S` is a 0R link and `R_SH` is 2k2 --
-so the only thing that differs between channels is whether the **50R TERM
-jumper** is pushed onto its two pins.  Fitting it on a channel that should not
-have it is the only way to damage a source from this board:
+so the only thing that differs between channels is where the shunt sits on
+its three-pin header, `JPk01` for unit k.  Rev B prints what the header does
+instead of its name (which is on the assembly drawing), beside the pins:
+**`50R` at pin 1's end, which is the end toward the SMA on both columns,
+`PARK` at pin 3's**, and a tick at pin 2, the common ground.
 
-* **Units 2 and 3 (ZED-F9T): NEVER fit the jumper.**  TIMEPULSE is 5 mA
-  absolute maximum and 3.3 V into 50R asks for 66 mA.  Unterminated, the load
-  is `R_SH` alone: 1.5 mA.
-* **Unit 1 (TM-4): the jumper MUST be fitted.**  Unterminated, its 8.0 Vpp
-  open-circuit output rectifies through the gate's ESD diode into the coupling
+| shunt | pins | what it does | for |
+|:---|:---|:---|:---|
+| **50R** | 1-2 | 51R from the input node to ground: the 50 ohm termination | a running source that drives 50 ohm; the null channel |
+| **none** | -- | the input sees `R_SH`, 2k2, alone | a running ZED-F9T, and nothing else |
+| **PARK** | 2-3 | 100k from the squarer's gate to ground: the gate sits at ~0.14 V, out of its linear region, and draws nothing | every channel whose source is off or unplugged |
+
+Three rules, and the first two are the only ways to damage something from
+this board:
+
+* **Units 2 and 3 (ZED-F9T): NEVER 50R.**  TIMEPULSE is 5 mA absolute
+  maximum and 3.3 V into 50R asks for 66 mA.  Unterminated, the load is
+  `R_SH` alone: 1.5 mA.  (Their IN U.FL into a 50 ohm scope adds 3.1 mA, 4.6 mA
+  in all: leave it unplugged on these two; S and SQ show what matters.)
+* **A source over 4.1 Vpp open circuit gets 50R BEFORE its cable goes on**:
+  unit 1 (Spectrum Instruments TM-4, 8.0 Vpp), unit 8 (BG7TBL GPSDO green 2019, 4.2 Vpp), unit 11 (TF-GNSSDO-10 IRIG-B, 4.3 Vpp), and the bench OCXO (6.0 Vpp).  Unterminated, the TM-4's
+  8.0 Vpp rectifies through the gate's ESD diode into the coupling
   capacitor and floats the input to about +7.4 V, past the gate's 6.5 V
-  absolute maximum.  With the jumper in, the SMA sees 2.00 Vpp.  **This is why
-  the silkscreen prints the board's 4.1 Vpp ceiling and not a source's
-  open-circuit rating** -- they are different numbers and only one is a
-  limit.
-* Everything else drives 50R happily and wants the jumper in.
+  absolute maximum.  PARK does not prevent that: it biases the gate, it does
+  not terminate the input.  With 50R, the TM-4 delivers 2.00 Vpp.  **This is
+  why the silkscreen prints the board's 4.1 Vpp ceiling and not a source's
+  open-circuit rating** -- they are different numbers and only one is a limit.
+* **A channel with nothing driving it is PARKED, not left on 50R.**  A 50R
+  shunt does not quiet the gate: with its source off, the gate sits at its
+  threshold and draws 10-15 mA, exactly as with no shunt at all.  Every channel
+  driven or parked: +3V3_A carries 160-250 mA of the TPS7A2033's 300 mA.
+  Nothing driven or parked: 290-420 mA, through its 360 mA minimum current
+  limit, and up to ~520 mA through F2001, a 500 mA polyfuse that trips sooner
+  when warm.  Each idle unparked channel adds 10-15 mA: three at a time stay
+  inside the 300 mA at the budget's worst case, about seven typically.  The
+  first power-up is all thirteen on PARK.
+
 
 ### Expected levels, channel by channel
 
-| unit | source | at the SMA | at the squarer input | slew rate | load |
-|---:|:---|:---|:---|:---|:---|
-| 1 | Spectrum Instruments TM-4 | 2.00 Vpp, center 0 V | 2.00 Vpp, center 1.65 V | 63 mV/ns | 51R || 2k2 = 49.8 ohm |
-| 2 | ZED-F9T #1 | 3.30 Vpp, center 1.65 V | 3.30 Vpp, center 1.65 V | ~1650 mV/ns | 2k2 only (1.5 mA peak) |
-| 3 | ZED-F9T #2 | 3.30 Vpp, center 1.65 V | 3.30 Vpp, center 1.65 V | ~1650 mV/ns | 2k2 only (1.5 mA peak) |
-| 4 | Leo Bodnar LBE-1421 #1 | 1.64 Vpp, center 0.82 V | 1.64 Vpp, center 1.65 V | ~820 mV/ns | 51R || 2k2 = 49.8 ohm |
-| 5 | Leo Bodnar LBE-1421 #2 | 1.64 Vpp, center 0.82 V | 1.64 Vpp, center 1.65 V | ~820 mV/ns | 51R || 2k2 = 49.8 ohm |
-| 6 | LB Precision GPS Ref 2021 | 2.30 Vpp, center 1.15 V | 2.30 Vpp, center 1.65 V | ~1150 mV/ns | 51R || 2k2 = 49.8 ohm |
-| 7 | LB Mini Precision | 1.20 Vpp, center 0.60 V | 1.20 Vpp, center 1.65 V | ~600 mV/ns | 51R || 2k2 = 49.8 ohm |
-| 8 | BG7TBL GPSDO green 2019 | 2.60 Vpp, center 0 V | 2.60 Vpp, center 1.65 V | 82 mV/ns | 51R || 2k2 = 49.8 ohm |
-| 9 | TM4313 | 2.00 Vpp, center 0 V | 2.00 Vpp, center 1.65 V | 63 mV/ns | 51R || 2k2 = 49.8 ohm |
-| 10 | ZYT GPSDO (Samsung UCCM) | 1.50 Vpp, center 0 V | 1.50 Vpp, center 1.65 V | 47 mV/ns | 51R || 2k2 = 49.8 ohm |
-| 11 | TF-GNSSDO-10 IRIG-B | 2.20 Vpp, center 0 V | 2.20 Vpp, center 1.65 V | 69 mV/ns | 51R || 2k2 = 49.8 ohm |
-| 12 | HP 10811B / FE-5680A Rb | 1.56 Vpp, center 0 V | 1.56 Vpp, center 1.65 V | 49 mV/ns | 51R || 2k2 = 49.8 ohm |
-| 13 | NULL CHANNEL | 1.65 Vpp, center 0.82 V | 1.65 Vpp, center 1.65 V | ~825 mV/ns | 51R || 2k2 = 49.8 ohm |
+| unit | source | at the SMA | at the squarer input | slew rate | load | IN U.FL into 50 ohm |
+|---:|:---|:---|:---|:---|:---|:---|
+| 1 | Spectrum Instruments TM-4 | 2.00 Vpp, center 0 V | 2.00 Vpp, center 1.65 V | 63 mV/ns | 51R || 2k2 = 49.8 ohm | 95 mVpp |
+| 2 | ZED-F9T #1 | 3.30 Vpp, center 1.65 V | 3.30 Vpp, center 1.65 V | ~1650 mV/ns | 2k2 only (1.5 mA peak) | leave unplugged |
+| 3 | ZED-F9T #2 | 3.30 Vpp, center 1.65 V | 3.30 Vpp, center 1.65 V | ~1650 mV/ns | 2k2 only (1.5 mA peak) | leave unplugged |
+| 4 | Leo Bodnar LBE-1421 #1 | 1.64 Vpp, center 0.82 V | 1.64 Vpp, center 1.65 V | ~820 mV/ns | 51R || 2k2 = 49.8 ohm | 78 mVpp |
+| 5 | Leo Bodnar LBE-1421 #2 | 1.64 Vpp, center 0.82 V | 1.64 Vpp, center 1.65 V | ~820 mV/ns | 51R || 2k2 = 49.8 ohm | 78 mVpp |
+| 6 | LB Precision GPS Ref 2021 | 2.30 Vpp, center 1.15 V | 2.30 Vpp, center 1.65 V | ~1150 mV/ns | 51R || 2k2 = 49.8 ohm | 110 mVpp |
+| 7 | LB Mini Precision | 1.20 Vpp, center 0.60 V | 1.20 Vpp, center 1.65 V | ~600 mV/ns | 51R || 2k2 = 49.8 ohm | 57 mVpp |
+| 8 | BG7TBL GPSDO green 2019 | 2.60 Vpp, center 0 V | 2.60 Vpp, center 1.65 V | 82 mV/ns | 51R || 2k2 = 49.8 ohm | 124 mVpp |
+| 9 | TM4313 | 2.00 Vpp, center 0 V | 2.00 Vpp, center 1.65 V | 63 mV/ns | 51R || 2k2 = 49.8 ohm | 95 mVpp |
+| 10 | ZYT GPSDO (Samsung UCCM) | 1.50 Vpp, center 0 V | 1.50 Vpp, center 1.65 V | 47 mV/ns | 51R || 2k2 = 49.8 ohm | 71 mVpp |
+| 11 | TF-GNSSDO-10 IRIG-B | 2.20 Vpp, center 0 V | 2.20 Vpp, center 1.65 V | 69 mV/ns | 51R || 2k2 = 49.8 ohm | 105 mVpp |
+| 12 | HP 10811B / FE-5680A Rb | 1.56 Vpp, center 0 V | 1.56 Vpp, center 1.65 V | 49 mV/ns | 51R || 2k2 = 49.8 ohm | 74 mVpp |
+| 13 | NULL CHANNEL | 1.65 Vpp, center 0.82 V | 1.65 Vpp, center 1.65 V | ~825 mV/ns | 51R || 2k2 = 49.8 ohm | 79 mVpp |
 
 ---
 
@@ -353,14 +382,14 @@ this board has jacks called `1`.
 
 | letter | net / node | where | what you should see |
 |:---|:---|:---|:---|
-| **In** | `TP_IN` | 10 MHz box, beside the SMA | the input as it arrives: 0.7-3.3 Vpp AC, 10 MHz.  4.1 Vpp is the board's ceiling; a 50 ohm source's OPEN-CIRCUIT rating is a different number and is not what arrives here -- see the jumper note |
-| **S** | `TP_SQ` | 10 MHz box, at the squarer's input | a sine or a rounded triangle, NOT a square: this is the squarer's INPUT, AC coupled about the gate's own threshold (1.65 V by design; rev A's sit near 1.4 V); 0.6-3.3 Vpp.  The squared signal is on the U.FL marked SQ (rev B; 1k, so /21 into a 50 ohm scope).  This is the node whose slew rate sets the channel's noise floor, and a 10x probe's ~20 pF through the 330 R rounds what you see (round 41: a 10x probe divides the resistance by ten, not the capacitance) |
-| **B** | `TP_BEAT` | 10 MHz box, at the far end | 0/3.3 V square at the beat frequency, 1234.4 Hz |
-| **P** | `TP_PPS` | 1 pps box | 0/3.3 V, one rising edge a second |
-| **5** | `TP_5V` | power block, by the 5 V fuse | 4.6-5.3 V |
-| **A** | `TP_3V3_A` | power block, at the analog LDO | 3.25-3.35 V.  Absent, by design, when the host is off |
-| **D** | `TP_3V3_D` | power block, at the digital LDO | 3.25-3.35 V.  Absent, by design, when the host is off |
-| **X** | `TP_REF` | helper block, at the Si5351C's CLKIN | 0/3.3 V HCMOS, 25 MHz: the TCXO, through 33 R, straight into CLKIN (rev B items 9 and RA1).  Rev A drove XA through a 3k3/1k divider instead, and that slow edge was the PLLA slip mechanism (round 45.20, O3) |
+| **In** | `TP_IN` | 10 MHz box, beside the SMA ([picture](docs/handbook/unit1.png)) | the input as it arrives: 0.7-3.3 Vpp AC, 10 MHz.  4.1 Vpp is the board's ceiling; a 50 ohm source's OPEN-CIRCUIT rating is a different number and is not what arrives here -- see the jumper note |
+| **S** | `TP_SQ` | 10 MHz box, at the squarer's input ([picture](docs/handbook/unit1.png)) | a sine or a rounded triangle, NOT a square: this is the squarer's INPUT, AC coupled about the gate's own threshold (1.65 V by design; rev A's sit near 1.4 V); 0.6-3.3 Vpp.  PARKED: ~0.14 V DC, still.  The squared signal is on the U.FL marked SQ (rev B; 1k, so /21 into a 50 ohm scope).  This is the node whose slew rate sets the channel's noise floor, and a 10x probe's ~20 pF through the 330 R rounds what you see (round 41: a 10x probe divides the resistance by ten, not the capacitance) |
+| **B** | `TP_BEAT` | 10 MHz box, at the far end ([picture](docs/handbook/unit1.png)) | 0/3.3 V square at the beat frequency, 1234.4 Hz |
+| **P** | `TP_PPS` | 1 pps box ([picture](docs/handbook/pps.png)) | 0/3.3 V, one rising edge a second |
+| **5** | `TP_5V` | power block, by the 5 V fuse ([picture](docs/handbook/rails.png)) | 4.6-5.3 V |
+| **A** | `TP_3V3_A` | power block, at the analog LDO ([picture](docs/handbook/rails.png)) | 3.25-3.35 V.  Absent, by design, when the host is off |
+| **D** | `TP_3V3_D` | power block, at the digital LDO ([picture](docs/handbook/rails.png)) | 3.25-3.35 V.  Absent, by design, when the host is off |
+| **X** | `TP_REF` | helper block, at the Si5351C's CLKIN ([picture](docs/handbook/ref.png)) | 0/3.3 V HCMOS, 25 MHz: the TCXO, through 33 R, straight into CLKIN (rev B items 9 and RA1).  Rev A drove XA through a 3k3/1k divider instead, and that slow edge was the PLLA slip mechanism (round 45.20, O3) |
 | **W** | `TP_1W` | 1-Wire block, on the bus | the DS18B20 bus: idle high at 3.3 V, with the conversion traffic on it |
 
 The two SMA ranges, which the board also prints along the bottom:
@@ -374,8 +403,32 @@ The two SMA ranges, which the board also prints along the bottom:
   8.0 Vpp open circuit and 2.0 Vpp at the SMA through its mandatory
   50 ohm jumper.  Round 29 printed the 8.0 on the silkscreen, which was
   backwards: see the jumper note above.
-* 1 pps in: 0 to 5.5 V DC.
-* `HO` out: 0/3.3 V CMOS, about 1.6 Vpp into 50 ohm.
+* 1 pps in: 0 to 5.5 V DC; it reads high above 2.3 V (the 74LVC1G17's
+  worst-case 2.08 V through the 1k/10k divider; round 45 measured 1.88-1.98 V
+  at the jack).
+* `HO` out: 0/3.3 V from a 74LVC1G125 through 33 R: ~1.8 Vpp into 50 ohm,
+  3.3 Vpp into a high impedance.  Into 50 ohm the buffer sources ~30-35 mA
+  peaks, over its 24 mA rating: fine for the null channel's short cable and a
+  counter, not for a long run into a 50 ohm instrument.
+
+### The U.FL taps
+
+Rev B puts a U.FL on every node worth watching for longer than a probe can be
+held (item 19).  Each is fed through its own resistor, so the ratio is built
+in: a stock U.FL-to-BNC pigtail into a **50 ohm** input reads the node /21
+through 1k.  Into 1 MOhm the pigtail's ~50-100 pF and the 1k roll a 10 MHz
+signal off; use 1 MOhm for the rails.  Unplugged, a tap costs its node under
+0.02 % of its amplitude.  The silkscreen names each one beside it; their J
+numbers are on the assembly drawing only.
+
+| U.FL | where | node | series | into a 50 ohm scope | plugging it in |
+|:---|:---|:---|:---|:---|:---|
+| **IN** | each 10 MHz box, between the SMA and the 50R/PARK header ([picture](docs/handbook/unit1.png)) | the input node, on the SMA side of the 10n: the same node as `In` | 1k | the input /21: the last column of the levels table | 1050 ohm on the input, 2-5 % of its amplitude, 50-100 ps while plugged in.  Not on units 2 and 3 (the jumper note's first rule) |
+| **SQ** | each 10 MHz box, beside the sampling flip-flop ([picture](docs/handbook/unit1.png)) | the squarer's output 1Y, the edge the flip-flop samples | 1k | a 0/3.3 V square /21, ~0.15 Vpp; near 50 % duty when the input is centred on the threshold.  Parked: ~0.16 V DC | ~3 mA from an unbuffered gate's output: it moves that channel's edge while plugged in |
+| **REF** | helper band, between the TCXO and the Si5351C ([picture](docs/handbook/ref.png)) | the TCXO at the Si5351C's CLKIN | 1k | 25 MHz HCMOS /21, ~0.15 Vpp | 3 mA from the TCXO: common to every channel |
+| **CLK0** | helper band, just below the Si5351C ([picture](docs/handbook/clk0.png)) | the helper at the Si5351C's pin, before the helper squarer's 10n | 1k | 10.0012344 MHz, 0/3.3 V /21 | load on the Si5351's own 2 mA output -- load on its outputs is what made rev A slip.  A look, not a long watch: use HCLK for that |
+| **HCLK** | helper band, beside the lower LMK1C1108 (U3005) ([picture](docs/handbook/hclk.png)) | a spare LMK1C1108 output, through 33 R like every channel's branch | 33R | the helper as every channel gets it: ~1.2 Vpp (the LMK's 50 ohm output and the 33 R against the scope's 50) | ~12 mA from the fan-out's supply, which every channel's branch shares: plug it in before a run and leave it, rather than during one |
+| **+5V, +3V3_A, +3V3_D** | bottom edge, in the housekeeping block, left to right ([picture](docs/handbook/rail_taps.png)) | the rails; +3V3_A at the far end of its plane, under unit 13 | 1k | DC /21 (0.24, 0.16, 0.16 V) and the ripple /21; into 1 MOhm the rail itself | 3-5 mA: nothing |
 
 ---
 
@@ -400,52 +453,157 @@ host off, this board makes no 3.3 V at all**, whatever is on the bench posts.
 R2026 (a DNP 0R link) bridges ENABLE back to the input for anyone who wants
 the old behaviour on a board that will never see a host.
 
+**The bench posts as an ammeter.**  With the PYNQ ON, a bench supply on the
+posts at 5.3 V, limited to 0.5 A, carries the whole board: the posts and the
+header meet at an OR-ing diode and the higher one wins.  Its display is then
+the board's current, which at the first power-up is the one number that says
+the thirteen squarers are parked and nothing is shorted.  Bench output off
+before the PYNQ goes off.
+
+![The bench 5 V posts, top edge: GND and +5V](docs/handbook/posts.png)
+
 Order of operations, every time:
 
-1. PYNQ-Z2 powered from **its own barrel jack J9** with the jumper at `REG`,
-   not from micro-USB alone.
-2. This board on the header.
+1. Everything off.  The shunts set -- the first time, **all thirteen on
+   PARK**.  This board onto the PYNQ-Z2's header.  Never plug it onto, or pull
+   it off, a powered PYNQ.
+2. The PYNQ-Z2 on, from **its own barrel jack J9** with the jumper at `REG`,
+   not from micro-USB alone.  This board's 3.3 V rails come up with it.
 3. `./pynq-run bringup.py` -- which writes the heater DAC's EEPROM to zero
    BEFORE anything else, because the part ships at mid-scale and that is
    1.65 V on three FET gates.
-4. Only then the 15 V jack.
+4. The sources, one at a time: the shunt to its setting FIRST (50R, or none
+   for a ZED-F9T), then the cable, then the source on.  A source that goes off
+   for long puts its shunt back on PARK.
+5. Only then the 15 V jack (the picture is in section 8, step 9).
+
+Power down in reverse: the 15 V jack, the bench supply if there is one, the
+PYNQ.  The sources may stay cabled to a board that is off: each reaches its
+squarer through a 10n, and the squarer's inputs have no diode to their supply.
 
 ---
 
 ## 8  Bring-up, in order
 
-1. **Before power.** Ohmmeter: pin 1 to pin 17 of the socket should read open
-   (this board does not use the host's 3.3 V).  5 V to GND, and each 3.3 V
-   rail to GND, should read high, not short.  **Rev B: a shunt on every JP
-   header** -- 50R on a channel with a source, PARK on every other.  With
-   none fitted all 26 squarer gates sit at their threshold, 260-390 mA on
-   +3V3_A against the TPS7A2033's 300 mA (the power sheet's budget).
-2. **Host only.** PYNQ on, board on the header, no 15 V.  Test point `5`
-   should read 4.6-5.3 V, `A` and `D` 3.25-3.35 V.
-3. **`./pynq-run bringup.py`**: the DAC made safe, the Si5351 programmed and
-   both PLLs locked, **zero helper slips**, eight thermometers read, the
-   1-Wire bus checked and its probes enumerated, and the core's selftest.
-   "Locked" is not enough: round 39's first board, with the helper output at
-   8 mA, cycle-slipped ~650 times a second with LOL clear, and at 4 mA it
-   still did whenever HO drove a 50 ohm cable (round 40).  The driver now
-   runs the helper output at 2 mA, and `bringup.py` counts the slips and
-   starts again if any.  `./pynq-run si_watch.py watch 600 12`, with HO on
-   unit 12, is the long test of both PLLs.
-4. **The helper.** Test point `X` (Si5351 XA) about 0.5-1.0 Vpp -- rev A
-   reads 0.2-0.4 Vpp, most likely why it can slip.  `HO` on a counter:
-   10.000000 MHz.  The core's helper counter: 10.001234 MHz.
-5. **The null channel first.** Cable `HO` to the jack marked `13`
-   (`J1301`), then `./pynq-run bringup.py --no-heater --inputs 13`
-   and `./pynq-run beats.py record 20 13`.  Its beat should be
-   1234.4 Hz and its phase reading should be flat -- that is the instrument
-   floor, and everything else is measured against it.  Judge a beat by
-   `python3 beats.py analyse` on the laptop, not by the edge count: the core
-   does not deglitch yet, so a real beat's edges chatter (round 39: 2-6
-   rising edges a transition).  An unplugged channel is quiet, chatters, or
-   oscillates at ~0.57 MHz, and none of those is a fault.
-6. **One source into two channels** through a splitter: the two readings
+Rev B's first board.  Each step says what to read and what it should be; stop
+at the first one that is not.
+
+Every picture here is cut from the board's own 3D render
+(`gen/handbook_figs.py`), drawn as the board sits behind the PYNQ-Z2: **the
+2x20 socket's edge nearest you**, the screw terminals and the 15 V jack
+furthest away.  On the left, the whole board and a red box; on the right, that
+box: the red circle is the part or pin, the yellow box the words the board
+prints for it.  The build checks every one of them: those words must be beside
+that part, and nearer it than any other part of its kind -- another test
+point, U.FL, jack or pin.
+
+1. **Before power, on the bench.**  Ohmmeter on the socket's pads from the
+   top, where each pin's name is printed.  Pins 1 and 17 (`nc`) connect to
+   nothing on this board: each reads open to pin 2 (`5V`) and to pin 6
+   (`GND`).  Then the rails: the `+5V` post, test point `A` and test point
+   `D` each to the `GND` post (pictures in step 2 and section 7) read high,
+   not a short.
+
+   ![The 2x20 socket from the top: pins 1 and 17 (nc), 2 (5V), 6 (GND)](docs/handbook/socket_pins.png)
+
+   **All thirteen shunts on PARK**: pins 2-3, the end of each header with
+   `PARK` printed beside it -- on every unit the end AWAY from its SMA.
+   Thirteen shunts a board ship loose in the bag, plus spares.
+
+   ![Unit 1's header: 50R at pin 1, toward the SMA (every left-hand unit)](docs/handbook/jp_left.png)
+   ![Unit 2's header: turned 180 degrees, 50R still toward the SMA (every right-hand unit)](docs/handbook/jp_right.png)
+
+2. **First power.**  Board on the header, PYNQ off; a bench supply on the
+   posts at 5.3 V, 0.5 A limit, output off.  The PYNQ on, then the bench
+   output on.
+   * The bench display: **0.25-0.35 A** with every channel parked (+3V3_A
+     160-220 mA, +3V3_D ~100 mA, both through their LDOs).  Over 0.45 A:
+     everything off, and look for a channel that is not parked, or a short.
+   * Test point `5` 4.9-5.3 V; `A` and `D` 3.25-3.35 V; the `+3V3_A` U.FL,
+     at the far end of the plane, a few tens of mV below `A` at most (rev A
+     lost 110 mV in its tracks; rev B's is a plane).
+
+     ![Test points 5, A and D, in the POWER block](docs/handbook/rails.png)
+     ![The rail U.FLs, bottom edge: +5V, +3V3_A (far end), +3V3_D](docs/handbook/rail_taps.png)
+
+   * `S` on every unit: **~0.14 V DC, still** -- parked.  The left-hand units
+     (odd numbers) all look like unit 1, the right-hand ones like unit 2.
+
+     ![Unit 1: jack 1, test points In, S, B, and the IN and SQ U.FLs (every left-hand unit)](docs/handbook/unit1.png)
+     ![Unit 2: the same, turned 180 degrees (every right-hand unit)](docs/handbook/unit2.png)
+
+   * `X`: 25 MHz, 0/3.3 V.
+
+     ![Test point X and the REF U.FL, between the TCXO and the Si5351C](docs/handbook/ref.png)
+
+3. **`./pynq-run bringup.py`.**  In order: every address in section 3
+   answering; the DAC made safe; "reference seen on: CLKIN (rev B)"; both
+   PLLs LOCKED; **zero helper slips**; eight thermometers within a few
+   kelvin of each other; the 1-Wire bus idle high with no short; and the
+   selftest with all thirteen channels quiet -- a parked squarer makes no
+   beat, and that is a pass.  "Locked" is not enough on its own: round 39's
+   first board cycle-slipped ~650 times a second with LOL clear, so
+   `bringup.py` counts the slips and reprograms if it sees any.  It reads the
+   board off the chip (`--rev auto`); if it says the reference is on NEITHER
+   input, the TCXO is not running: look at `X`.
+4. **The reference and the helper.**
+   * `REF` U.FL into 50 ohm (beside `X`, picture in step 2): 25 MHz,
+     ~0.15 Vpp; on a counter 25 MHz +/- 62 Hz (the TCXO's 2.5 ppm).
+   * `HCLK` U.FL: the helper as every channel gets it, 10.0012344 MHz; the
+     core's helper counter 10.001234 MHz.  For a long look use HCLK, not CLK0
+     (section 6).
+
+     ![The HCLK U.FL, beside the lower LMK1C1108](docs/handbook/hclk.png)
+     ![The CLK0 U.FL, just below the Si5351C](docs/handbook/clk0.png)
+
+   * `HO` on a counter: 10.000000 MHz.
+
+     ![HO, the null source's SMA, top centre](docs/handbook/ho.png)
+
+5. **The null channel first.**  Unit 13's header from PARK to 50R, then a
+   short SMA cable from `HO` to the jack marked `13` (`J1301`).
+   `./pynq-run bringup.py --no-heater --inputs 13`, then
+   `./pynq-run beats.py record 20 13`.  Its beat should be 1234.4 Hz and
+   its phase reading flat: that is the instrument floor, and everything else
+   is measured against it.  On unit 13, `S` shows the square about the
+   threshold and the `SQ` U.FL a 0/3.3 V square /21 near 50 % duty.  Judge a
+   beat by `python3 beats.py analyse` on the laptop, not by the edge count:
+   the core does not deglitch yet, so a real beat's edges chatter (round 39:
+   2-6 rising edges a transition).  `./pynq-run si_watch.py watch 600 13`
+   is the long test of both PLLs.
+
+   ![Unit 13, the null channel: its header, jack 13, S and SQ](docs/handbook/null.png)
+
+   *One comparison worth making*: the same with unit 13's shunt OFF
+   instead of 50R.  HO's 33 R already back-terminates the cable, so its far
+   end may be left open: the null input then sees 3.3 Vpp with twice the
+   slew, and the buffer stops sourcing its ~35 mA peaks from +3V3_D.  If the
+   floor is no worse, run the null channel that way.
+6. **The sources, one at a time** (section 5's table, and the header's three
+   rules): the shunt first, then the cable, then the source on.  For each,
+   on that unit (pictures of units 1 and 2 in step 2): the board's current up
+   by a few mA, not 10-15 (a driven gate is out of its linear region most of
+   each cycle); the `IN` U.FL the source as it arrives, /21 (the levels
+   table's last column; not on units 2 and 3); `S` the sine or triangle
+   about the threshold; `SQ` a square near 50 % duty; a beat.  A channel
+   left on 50R with its source off is quiet, chatters, or oscillates at
+   ~0.57 MHz, and draws its 10-15 mA: park it.
+7. **One source into two channels** through a splitter: the two readings
    should differ by a constant, not a drift (`beats.py`, "pairs").
-7. **Each unit's own pps** against its own 10 MHz edge.
+8. **Each unit's own pps** against its own 10 MHz edge.  The `P` jacks are
+   the outer column on each side; `P` is the test point.
+
+   ![Unit 1's 1 pps: jack P1 and test point P](docs/handbook/pps.png)
+
+9. **The heater, last.**  With the DAC made safe by step 3, the 15 V jack;
+   then `./pynq-run heater.py on`: ~9.6 W, and every thermometer rises.
+   U5007 (0x4E), beside the fan-out and marked `T`, is the sensor rev B's
+   thermostat will hold (item 20); the loop is still to be written
+   (`Heater.duty_cycle` is its helper).  `heater.py off` before the jack
+   comes out.
+
+   ![The 15 V heater jack, top right](docs/handbook/jack15.png)
+   ![U5007, the thermostat's sensor (0x4E), marked T, beside the fan-out](docs/handbook/u5007.png)
 
 ---
 
@@ -501,7 +659,7 @@ inside their capability by construction.
 
 | rule | JLCPCB minimum | our DRC | margin | why |
 |:---|---:|---:|:---|:---|
-| copper clearance | 0.0889 mm | 0.15 mm | 69% over | 3.5 mil is JLC's 4-layer minimum; 0.15 is set by the Si5351's MSOP-10, whose own pads sit 0.2 mm apart |
+| copper clearance | 0.0889 mm | 0.15 mm | 69% over | 3.5 mil is JLC's 4-layer minimum; 0.15 is set by the finest pitch here, the Si5351C's 0.5 mm QFN-20 (rev A: an MSOP-10), whose own pads sit 0.25 mm apart |
 | track width | 0.0889 mm | 0.2 mm | 125% over | every track on this board is 0.25 (signal) or 0.5 (power); 0.2 is the floor the DRC enforces |
 | via diameter | 0.4 mm | 0.6 mm | 50% over | one via size on the board: 0.6 mm pad, 0.3 mm drill |
 | via annular ring | 0.13 mm | 0.15 mm | 15% over | (0.6 - 0.3)/2 = 0.15 exactly |
@@ -529,6 +687,7 @@ Two things KiCad does not check and this project therefore does itself:
 The closest SMT pad to the board edge is **1.20 mm**, on `Q2003`.  No KiCad rule checks this -- `copper_edge_clearance` is about copper, not about whether a placement nozzle and an edge clamp can both reach -- and it is the one figure in this project that is NOT comfortably inside a published capability.  JLCPCB's SMT line holds the panel by its edges; if 1.20 mm is inside their rail allowance the board needs a break-away rail, which is a different panel and a different price.  Ask them rather than moving the part: `Q2003` is where it is because of what it decouples.
 
 Everything nearer the edge than that is through hole -- the SMA jacks, the
-five screw terminals, the barrel jack, the two bench posts and the 2x20
-socket -- and is hand soldered after assembly, not placed.  Bottom side: the
-socket, and nothing else.
+five screw terminals, the barrel jack and the two bench posts -- and JLCPCB
+fits it on the top side.  Bottom side: the 2x20 socket, J4001, and nothing
+else; it is the one part soldered by hand (`hand_solder_bom.csv`).  The
+thirteen jumper shunts ship loose.

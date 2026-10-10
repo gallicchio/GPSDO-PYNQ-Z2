@@ -1,17 +1,17 @@
 GPSDO DDMTD front end -- manufacturing release, rev B, 2026-10-10
-generated 2026-10-10T11:47:10-07:00 for 2 board(s)
+generated 2026-10-10T13:27:24-07:00 for 2 board(s)
 
 board 207.0 x 180.0 mm, 4 layers, 577 SMT placements, 45 distinct parts
 
 FABRICATION_NOTES.txt                        11718 bytes  sha256:3f2d1776c3f1
-GPSDO-PYNQ-Z2_assembly_bottom.pdf           362474 bytes  sha256:bb72b461a4a7
-GPSDO-PYNQ-Z2_assembly_top.pdf              431177 bytes  sha256:289f0fc8fb81
+GPSDO-PYNQ-Z2_assembly_bottom.pdf           362473 bytes  sha256:2d749dafdc8c
+GPSDO-PYNQ-Z2_assembly_top.pdf              431749 bytes  sha256:788a209efe7e
 GPSDO-PYNQ-Z2_bom.csv                         4960 bytes  sha256:89e38b1dd8f5
 GPSDO-PYNQ-Z2_cpl_jlcpcb_upload.csv          21172 bytes  sha256:457b81637fa6
 GPSDO-PYNQ-Z2_cpl_kicad_native.csv           21154 bytes  sha256:68c1f46ce54b
-GPSDO-PYNQ-Z2_gerbers.zip                  1339731 bytes  sha256:40ad34c55cf1
+GPSDO-PYNQ-Z2_gerbers.zip                  1337129 bytes  sha256:699c8539f201
 PLACEMENT_CHECKS.txt                          4735 bytes  sha256:55a6a2846506
-annotated_bom.csv                            14511 bytes  sha256:fa926f7f8a0d
-annotated_bom.md                             10432 bytes  sha256:503b345db749
+annotated_bom.csv                            14793 bytes  sha256:486b6fb50a63
+annotated_bom.md                             10573 bytes  sha256:47063d7adc6a
 excluded_from_assembly.csv                    8380 bytes  sha256:5211789fcbb4
-hand_solder_bom.csv                            466 bytes  sha256:14b5d4a9cdb7
+hand_solder_bom.csv                            607 bytes  sha256:7f47301a7cc7

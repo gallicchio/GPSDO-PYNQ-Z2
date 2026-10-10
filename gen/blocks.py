@@ -173,6 +173,6 @@ def ufl_tap(s, x, y, rref, jref, label, R, rval="1k", up=False):
     r_v(s, x, y + sgn * 6.35, rref, rval, left=True)
     p = D.P["UFL"]
     j = s.sym(p["lib"], x, y + sgn * 15.24, 90 if up else 270, ref=jref, value=label,
-              footprint=p["fp"], lcsc=p["lcsc"], ref_dxy=(3.81, -1.27), val_dxy=(3.81, 1.27))
+              footprint=p["fp"], lcsc=p["lcsc"], ref_dxy=(5.08, -2.54), val_dxy=(5.08, 0.0))
     gnd(s, *j.pin(2), drop=3.81, R=R)
     return j

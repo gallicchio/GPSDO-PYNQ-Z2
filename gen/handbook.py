@@ -33,6 +33,14 @@ import jlc                                                # noqa: E402
 import geom as G                                          # noqa: E402
 import tile as T                                          # noqa: E402
 import labels as L                                        # noqa: E402
+import handbook_figs as HF                                # noqa: E402
+
+
+def figs():
+    """{f_<name>: markdown image} for every picture gen/handbook_figs.py draws.
+    The paths are relative to HANDBOOK.md."""
+    return {"f_" + n: "![%s](docs/handbook/%s.png)" % (title, n)
+            for n, title, _items in HF.FIGS}
 
 
 def _i2c_devices():
@@ -211,7 +219,7 @@ def board_art():
             out.append("%3d %s" % (int(r * SY), s))
     out += ["",
             "    (n)  10 MHz SMA for unit n        (Pn)  that unit's 1 pps SMA",
-            "    (HIN)/(HO)  external helper in / CLK1 out, beside the Si5351",
+            "    (HIN)/(HO)  external helper in / HO out (CLK2, buffered)",
             "    [Wn] 1-Wire screw terminal        (O) M3 hole   [=] M3 slot",
             "    numbers down the left and across the top are millimetres"]
     return "\n".join(out)
@@ -231,7 +239,7 @@ def header_table():
 
 def channel_table():
     C = _gateware()
-    w = ["| unit | 10 MHz SMA | 1 pps SMA | source | 50R jumper | beat net | "
+    w = ["| unit | 10 MHz SMA | 1 pps SMA | source | shunt, source running | beat net | "
          "pin | ball | pps net | pin | driver slot |",
          "|---:|:---|:---|:---|:---|:---|---:|:---|:---|---:|:---|"]
     pin_of = {}
@@ -245,26 +253,84 @@ def channel_table():
             slot += ", pps %s" % C.PPS_SLOT[n - 1]
         w.append("| %d | `%s` | %s | %s | %s | `%s` | %s | %s | %s | %s | %s |"
                  % (n, "%d" % n, ("`P%d`" % n) if pps else "--", src,
-                    "**FIT**" if term == "IN" else "**LEAVE OFF**",
+                    "**50R**" if term == "IN" else "**none** (never 50R)",
                     beat, bp, bb, ("`%s`" % pps) if pps else "--", pp, slot))
     return "\n".join(w)
 
 
 def levels_table():
     w = ["| unit | source | at the SMA | at the squarer input | slew rate | "
-         "load |", "|---:|:---|:---|:---|:---|:---|"]
+         "load | IN U.FL into 50 ohm |", "|---:|:---|:---|:---|:---|:---|:---|"]
     for n, _b, _p, src, term, rs, rsh, _note in D.UNITS:
         lv = D.levels(n, term, rs, rsh)
-        w.append("| %d | %s | %s | %s | %s | %s |"
-                 % (n, src, lv["at_sma"], lv["at_gate"], lv["slew"], lv["load"]))
+        # the tap's 1k into the scope's 50R: /21 (rev B item 19)
+        tap = ("%.0f mVpp" % (1e3 * lv["v_sma"] * 50.0 / 1050.0) if term == "IN"
+               else "leave unplugged")
+        w.append("| %d | %s | %s | %s | %s | %s | %s |"
+                 % (n, src, lv["at_sma"], lv["at_gate"], lv["slew"], lv["load"], tap))
     return "\n".join(w)
+
+
+TP_FIG = {"In": "unit1", "S": "unit1", "B": "unit1", "P": "pps",
+          "5": "rails", "A": "rails", "D": "rails", "X": "ref"}
 
 
 def testpoint_table():
     w = ["| letter | net / node | where | what you should see |",
          "|:---|:---|:---|:---|"]
     for letter, value, where, expect in L.TEST_POINTS:
+        if letter in TP_FIG:
+            where += " ([picture](docs/handbook/%s.png))" % TP_FIG[letter]
         w.append("| **%s** | `%s` | %s | %s |" % (letter, value, where, expect))
+    return "\n".join(w)
+
+
+# Rev B item 19: every U.FL, what it watches, and what plugging it in does.
+# (silk name, where, node, series part, into a 50 ohm scope, plugged in)
+TAPS = [
+    ("IN", "each 10 MHz box, between the SMA and the 50R/PARK header",
+     "the input node, on the SMA side of the 10n: the same node as `In`", "1k",
+     "the input /21: the last column of the levels table",
+     "1050 ohm on the input, 2-5 % of its amplitude, 50-100 ps while plugged "
+     "in.  Not on units 2 and 3 (the jumper note's first rule)"),
+    ("SQ", "each 10 MHz box, beside the sampling flip-flop",
+     "the squarer's output 1Y, the edge the flip-flop samples", "1k",
+     "a 0/3.3 V square /21, ~0.15 Vpp; near 50 % duty when the input is "
+     "centred on the threshold.  Parked: ~0.16 V DC",
+     "~3 mA from an unbuffered gate's output: it moves that channel's edge "
+     "while plugged in"),
+    ("REF", "helper band, between the TCXO and the Si5351C",
+     "the TCXO at the Si5351C's CLKIN", "1k",
+     "25 MHz HCMOS /21, ~0.15 Vpp", "3 mA from the TCXO: common to every channel"),
+    ("CLK0", "helper band, just below the Si5351C",
+     "the helper at the Si5351C's pin, before the helper squarer's 10n", "1k",
+     "10.0012344 MHz, 0/3.3 V /21",
+     "load on the Si5351's own 2 mA output -- load on its outputs is what made "
+     "rev A slip.  A look, not a long watch: use HCLK for that"),
+    ("HCLK", "helper band, beside the lower LMK1C1108 (U3005)",
+     "a spare LMK1C1108 output, through 33 R like every channel's branch", "33R",
+     "the helper as every channel gets it: ~1.2 Vpp (the LMK's 50 ohm output "
+     "and the 33 R against the scope's 50)",
+     "~12 mA from the fan-out's supply, which every channel's branch shares: "
+     "plug it in before a run and leave it, rather than during one"),
+    ("+5V, +3V3_A, +3V3_D", "bottom edge, in the housekeeping block, left to right",
+     "the rails; +3V3_A at the far end of its plane, under unit 13", "1k",
+     "DC /21 (0.24, 0.16, 0.16 V) and the ripple /21; into 1 MOhm the rail itself",
+     "3-5 mA: nothing"),
+]
+
+
+# which picture (gen/handbook_figs.py) shows each tap
+TAP_FIG = {"IN": "unit1", "SQ": "unit1", "REF": "ref", "CLK0": "clk0", "HCLK": "hclk",
+           "+5V, +3V3_A, +3V3_D": "rail_taps"}
+
+
+def tap_table():
+    w = ["| U.FL | where | node | series | into a 50 ohm scope | plugging it in |",
+         "|:---|:---|:---|:---|:---|:---|"]
+    for name, where, node, ser, see, cost in TAPS:
+        where += " ([picture](docs/handbook/%s.png))" % TAP_FIG[name]
+        w.append("| **%s** | %s | %s | %s | %s | %s |" % (name, where, node, ser, see, cost))
     return "\n".join(w)
 
 
@@ -286,9 +352,9 @@ def i2c_table():
         if a is None:
             w.append("| -- | %s | |" % nm)
             continue
-        w.append("| 0x%02X | %s | %s |"
-                 % (a, nm, where.get(a, "U500%d, a TMP1075 in the margins"
-                                     % (a - 0x48 + 1))))
+        if a not in where:                     # the eight TMP1075s, 0x48..0x4F
+            where[a] = "U500%d, %s" % (a - 0x48 + 1, D.TMP_WHERE[a - 0x48])
+        w.append("| 0x%02X | %s | %s |" % (a, nm, where[a]))
     return "\n".join(w)
 
 
@@ -379,10 +445,13 @@ revision's fallback would go.
     ./pynq-run bringup.py --scan          # who answers on the bus
     ./pynq-run bringup.py --no-heater     # program the Si5351, check lock
 
-Add `--clk2 helper` and the Si5351's third output carries a second copy of the
-helper, so a scope or an ADALM2000 on CLK1 and CLK2 sees %(fb).1f Hz of beat --
-the number this whole instrument is built on -- with no board in the system.
-It is off by default because the front-end board routes nothing to CLK2.
+`bringup.py` asks the chip which board it is on (`--rev auto`): a breakout's
+crystal is on XA, so it reads as rev A and gets rev A's image -- the helper on
+CLK0, the null on CLK1.  Add `--clk2 helper` and the third output carries a
+second copy of the helper, so a scope or an ADALM2000 on CLK1 and CLK2 sees
+%(fb).1f Hz of beat -- the number this whole instrument is built on -- with no
+board in the system.  It is off by default, and refused on rev B, whose CLK2
+is `HO`.
 
     ./pynq-run bringup.py --no-heater --clk2 helper   # on the PYNQ
     python3 gateware/board/m2k_beat.py                # on the laptop
@@ -437,12 +506,16 @@ Every connector is on an edge, and every edge is one kind of thing:
 
 %(chan)s
 
-Unit %(nch)d is the **null channel**: no 1 pps, and its 10 MHz input is meant to be
-cabled from `HO` -- the Si5351's CLK1 at exactly 10.000000 MHz -- into the
-jack marked `%(nch)d` (`%(nulltag)s`) with a short SMA jumper.  Subtracting it removes everything common to the
-board and leaves the difference between the GPSDOs, which is the measurement.
+The shunt column is for a RUNNING source.  **Whenever a channel's source is
+off or unplugged, its shunt goes on PARK** -- the third rule below.
 
-### The 50 ohm jumper is the one thing you can break the board with
+Unit %(nch)d is the **null channel**: no 1 pps, and its 10 MHz input is meant to be
+cabled from `HO` -- the Si5351C's CLK2 at exactly 10.000000 MHz, through a
+74LVC1G125 and 33 R -- into the jack marked `%(nch)d` (`%(nulltag)s`) with a short
+SMA cable.  Subtracting it removes everything common to the board and leaves
+the difference between the GPSDOs, which is the measurement.
+
+### The 50R/PARK header is the one thing you can break something with
 
 %(termnote)s
 
@@ -472,8 +545,25 @@ The two SMA ranges, which the board also prints along the bottom:
   %(vopen).1f Vpp open circuit and 2.0 Vpp at the SMA through its mandatory
   50 ohm jumper.  Round 29 printed the %(vopen).1f on the silkscreen, which was
   backwards: see the jumper note above.
-* 1 pps in: 0 to 5.5 V DC.
-* `HO` out: 0/3.3 V CMOS, about 1.6 Vpp into 50 ohm.
+* 1 pps in: 0 to 5.5 V DC; it reads high above 2.3 V (the 74LVC1G17's
+  worst-case 2.08 V through the 1k/10k divider; round 45 measured 1.88-1.98 V
+  at the jack).
+* `HO` out: 0/3.3 V from a 74LVC1G125 through 33 R: ~1.8 Vpp into 50 ohm,
+  3.3 Vpp into a high impedance.  Into 50 ohm the buffer sources ~30-35 mA
+  peaks, over its 24 mA rating: fine for the null channel's short cable and a
+  counter, not for a long run into a 50 ohm instrument.
+
+### The U.FL taps
+
+Rev B puts a U.FL on every node worth watching for longer than a probe can be
+held (item 19).  Each is fed through its own resistor, so the ratio is built
+in: a stock U.FL-to-BNC pigtail into a **50 ohm** input reads the node /21
+through 1k.  Into 1 MOhm the pigtail's ~50-100 pF and the 1k roll a 10 MHz
+signal off; use 1 MOhm for the rails.  Unplugged, a tap costs its node under
+0.02 %% of its amplitude.  The silkscreen names each one beside it; their J
+numbers are on the assembly drawing only.
+
+%(taps)s
 
 ---
 
@@ -498,52 +588,157 @@ host off, this board makes no 3.3 V at all**, whatever is on the bench posts.
 R2026 (a DNP 0R link) bridges ENABLE back to the input for anyone who wants
 the old behaviour on a board that will never see a host.
 
+**The bench posts as an ammeter.**  With the PYNQ ON, a bench supply on the
+posts at 5.3 V, limited to 0.5 A, carries the whole board: the posts and the
+header meet at an OR-ing diode and the higher one wins.  Its display is then
+the board's current, which at the first power-up is the one number that says
+the thirteen squarers are parked and nothing is shorted.  Bench output off
+before the PYNQ goes off.
+
+%(f_posts)s
+
 Order of operations, every time:
 
-1. PYNQ-Z2 powered from **its own barrel jack J9** with the jumper at `REG`,
-   not from micro-USB alone.
-2. This board on the header.
+1. Everything off.  The shunts set -- the first time, **all thirteen on
+   PARK**.  This board onto the PYNQ-Z2's header.  Never plug it onto, or pull
+   it off, a powered PYNQ.
+2. The PYNQ-Z2 on, from **its own barrel jack J9** with the jumper at `REG`,
+   not from micro-USB alone.  This board's 3.3 V rails come up with it.
 3. `./pynq-run bringup.py` -- which writes the heater DAC's EEPROM to zero
    BEFORE anything else, because the part ships at mid-scale and that is
    1.65 V on three FET gates.
-4. Only then the 15 V jack.
+4. The sources, one at a time: the shunt to its setting FIRST (50R, or none
+   for a ZED-F9T), then the cable, then the source on.  A source that goes off
+   for long puts its shunt back on PARK.
+5. Only then the 15 V jack (the picture is in section 8, step 9).
+
+Power down in reverse: the 15 V jack, the bench supply if there is one, the
+PYNQ.  The sources may stay cabled to a board that is off: each reaches its
+squarer through a 10n, and the squarer's inputs have no diode to their supply.
 
 ---
 
 ## 8  Bring-up, in order
 
-1. **Before power.** Ohmmeter: pin 1 to pin 17 of the socket should read open
-   (this board does not use the host's 3.3 V).  5 V to GND, and each 3.3 V
-   rail to GND, should read high, not short.  **Rev B: a shunt on every JP
-   header** -- 50R on a channel with a source, PARK on every other.  With
-   none fitted all 26 squarer gates sit at their threshold, 260-390 mA on
-   +3V3_A against the TPS7A2033's 300 mA (the power sheet's budget).
-2. **Host only.** PYNQ on, board on the header, no 15 V.  Test point `5`
-   should read 4.6-5.3 V, `A` and `D` 3.25-3.35 V.
-3. **`./pynq-run bringup.py`**: the DAC made safe, the Si5351 programmed and
-   both PLLs locked, **zero helper slips**, eight thermometers read, the
-   1-Wire bus checked and its probes enumerated, and the core's selftest.
-   "Locked" is not enough: round 39's first board, with the helper output at
-   8 mA, cycle-slipped ~650 times a second with LOL clear, and at 4 mA it
-   still did whenever HO drove a 50 ohm cable (round 40).  The driver now
-   runs the helper output at 2 mA, and `bringup.py` counts the slips and
-   starts again if any.  `./pynq-run si_watch.py watch 600 12`, with HO on
-   unit 12, is the long test of both PLLs.
-4. **The helper.** Test point `X` (Si5351 XA) about 0.5-1.0 Vpp -- rev A
-   reads 0.2-0.4 Vpp, most likely why it can slip.  `HO` on a counter:
-   10.000000 MHz.  The core's helper counter: %(fh).6f MHz.
-5. **The null channel first.** Cable `HO` to the jack marked `%(nch)d`
-   (`%(nulltag)s`), then `./pynq-run bringup.py --no-heater --inputs %(nch)d`
-   and `./pynq-run beats.py record 20 %(nch)d`.  Its beat should be
-   %(fb).1f Hz and its phase reading should be flat -- that is the instrument
-   floor, and everything else is measured against it.  Judge a beat by
-   `python3 beats.py analyse` on the laptop, not by the edge count: the core
-   does not deglitch yet, so a real beat's edges chatter (round 39: 2-6
-   rising edges a transition).  An unplugged channel is quiet, chatters, or
-   oscillates at ~0.57 MHz, and none of those is a fault.
-6. **One source into two channels** through a splitter: the two readings
+Rev B's first board.  Each step says what to read and what it should be; stop
+at the first one that is not.
+
+Every picture here is cut from the board's own 3D render
+(`gen/handbook_figs.py`), drawn as the board sits behind the PYNQ-Z2: **the
+2x20 socket's edge nearest you**, the screw terminals and the 15 V jack
+furthest away.  On the left, the whole board and a red box; on the right, that
+box: the red circle is the part or pin, the yellow box the words the board
+prints for it.  The build checks every one of them: those words must be beside
+that part, and nearer it than any other part of its kind -- another test
+point, U.FL, jack or pin.
+
+1. **Before power, on the bench.**  Ohmmeter on the socket's pads from the
+   top, where each pin's name is printed.  Pins 1 and 17 (`nc`) connect to
+   nothing on this board: each reads open to pin 2 (`5V`) and to pin 6
+   (`GND`).  Then the rails: the `+5V` post, test point `A` and test point
+   `D` each to the `GND` post (pictures in step 2 and section 7) read high,
+   not a short.
+
+   %(f_socket_pins)s
+
+   **All thirteen shunts on PARK**: pins 2-3, the end of each header with
+   `PARK` printed beside it -- on every unit the end AWAY from its SMA.
+   Thirteen shunts a board ship loose in the bag, plus spares.
+
+   %(f_jp_left)s
+   %(f_jp_right)s
+
+2. **First power.**  Board on the header, PYNQ off; a bench supply on the
+   posts at 5.3 V, 0.5 A limit, output off.  The PYNQ on, then the bench
+   output on.
+   * The bench display: **0.25-0.35 A** with every channel parked (+3V3_A
+     160-220 mA, +3V3_D ~100 mA, both through their LDOs).  Over 0.45 A:
+     everything off, and look for a channel that is not parked, or a short.
+   * Test point `5` 4.9-5.3 V; `A` and `D` 3.25-3.35 V; the `+3V3_A` U.FL,
+     at the far end of the plane, a few tens of mV below `A` at most (rev A
+     lost 110 mV in its tracks; rev B's is a plane).
+
+     %(f_rails)s
+     %(f_rail_taps)s
+
+   * `S` on every unit: **~0.14 V DC, still** -- parked.  The left-hand units
+     (odd numbers) all look like unit 1, the right-hand ones like unit 2.
+
+     %(f_unit1)s
+     %(f_unit2)s
+
+   * `X`: 25 MHz, 0/3.3 V.
+
+     %(f_ref)s
+
+3. **`./pynq-run bringup.py`.**  In order: every address in section 3
+   answering; the DAC made safe; "reference seen on: CLKIN (rev B)"; both
+   PLLs LOCKED; **zero helper slips**; eight thermometers within a few
+   kelvin of each other; the 1-Wire bus idle high with no short; and the
+   selftest with all thirteen channels quiet -- a parked squarer makes no
+   beat, and that is a pass.  "Locked" is not enough on its own: round 39's
+   first board cycle-slipped ~650 times a second with LOL clear, so
+   `bringup.py` counts the slips and reprograms if it sees any.  It reads the
+   board off the chip (`--rev auto`); if it says the reference is on NEITHER
+   input, the TCXO is not running: look at `X`.
+4. **The reference and the helper.**
+   * `REF` U.FL into 50 ohm (beside `X`, picture in step 2): 25 MHz,
+     ~0.15 Vpp; on a counter 25 MHz +/- 62 Hz (the TCXO's 2.5 ppm).
+   * `HCLK` U.FL: the helper as every channel gets it, 10.0012344 MHz; the
+     core's helper counter %(fh).6f MHz.  For a long look use HCLK, not CLK0
+     (section 6).
+
+     %(f_hclk)s
+     %(f_clk0)s
+
+   * `HO` on a counter: 10.000000 MHz.
+
+     %(f_ho)s
+
+5. **The null channel first.**  Unit %(nch)d's header from PARK to 50R, then a
+   short SMA cable from `HO` to the jack marked `%(nch)d` (`%(nulltag)s`).
+   `./pynq-run bringup.py --no-heater --inputs %(nch)d`, then
+   `./pynq-run beats.py record 20 %(nch)d`.  Its beat should be %(fb).1f Hz and
+   its phase reading flat: that is the instrument floor, and everything else
+   is measured against it.  On unit %(nch)d, `S` shows the square about the
+   threshold and the `SQ` U.FL a 0/3.3 V square /21 near 50 %% duty.  Judge a
+   beat by `python3 beats.py analyse` on the laptop, not by the edge count:
+   the core does not deglitch yet, so a real beat's edges chatter (round 39:
+   2-6 rising edges a transition).  `./pynq-run si_watch.py watch 600 %(nch)d`
+   is the long test of both PLLs.
+
+   %(f_null)s
+
+   *One comparison worth making*: the same with unit %(nch)d's shunt OFF
+   instead of 50R.  HO's 33 R already back-terminates the cable, so its far
+   end may be left open: the null input then sees 3.3 Vpp with twice the
+   slew, and the buffer stops sourcing its ~35 mA peaks from +3V3_D.  If the
+   floor is no worse, run the null channel that way.
+6. **The sources, one at a time** (section 5's table, and the header's three
+   rules): the shunt first, then the cable, then the source on.  For each,
+   on that unit (pictures of units 1 and 2 in step 2): the board's current up
+   by a few mA, not 10-15 (a driven gate is out of its linear region most of
+   each cycle); the `IN` U.FL the source as it arrives, /21 (the levels
+   table's last column; not on units 2 and 3); `S` the sine or triangle
+   about the threshold; `SQ` a square near 50 %% duty; a beat.  A channel
+   left on 50R with its source off is quiet, chatters, or oscillates at
+   ~0.57 MHz, and draws its 10-15 mA: park it.
+7. **One source into two channels** through a splitter: the two readings
    should differ by a constant, not a drift (`beats.py`, "pairs").
-7. **Each unit's own pps** against its own 10 MHz edge.
+8. **Each unit's own pps** against its own 10 MHz edge.  The `P` jacks are
+   the outer column on each side; `P` is the test point.
+
+   %(f_pps)s
+
+9. **The heater, last.**  With the DAC made safe by step 3, the 15 V jack;
+   then `./pynq-run heater.py on`: ~9.6 W, and every thermometer rises.
+   U5007 (0x4E), beside the fan-out and marked `T`, is the sensor rev B's
+   thermostat will hold (item 20); the loop is still to be written
+   (`Heater.duty_cycle` is its helper).  `heater.py off` before the jack
+   comes out.
+
+   %(f_jack15)s
+   %(f_u5007)s
 
 ---
 
@@ -608,9 +803,10 @@ Two things KiCad does not check and this project therefore does itself:
 %(edge)s
 
 Everything nearer the edge than that is through hole -- the SMA jacks, the
-five screw terminals, the barrel jack, the two bench posts and the 2x20
-socket -- and is hand soldered after assembly, not placed.  Bottom side: the
-socket, and nothing else.
+five screw terminals, the barrel jack and the two bench posts -- and JLCPCB
+fits it on the top side.  Bottom side: the 2x20 socket, J4001, and nothing
+else; it is the one part soldered by hand (`hand_solder_bom.csv`).  The
+thirteen jumper shunts ship loose.
 """ % dict(
         rev=D.REV, date=D.DATE, revnote=_rev_note(),
         fh=D.F_HELPER / 1e6, gain=D.N_GAIN, tres=D.T_RES_PS,
@@ -630,6 +826,8 @@ socket, and nothing else.
         wrap=(C.WRAP_PS if C else 100000.0),
         bw=G.BW, bh=G.BH, ride=G.HDR_PIN_H, overlap=G.PZ_H - G.PZ_BOTTOM,
         mount=mount_table(), silkmin=jlc.SILK_LINE_MIN, edge=_edge_text(),
+        taps=tap_table(),
+        **figs(),
         npads=npads,
     )
 
