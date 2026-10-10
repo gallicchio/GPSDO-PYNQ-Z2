@@ -15907,3 +15907,37 @@ Checked before the upload (2026-10-10).
   0.
 - **Before the boards arrive:** the handbook's bring-up and jumper sections
   are still rev A's.
+
+### 45.29 A U.FL on every channel's squared signal, and the router at its limit
+
+**Jason:** "Is the U.FL tap on the most useful debug signal? ... If I would
+have to hold something for more than a few seconds, make them U.FL."
+
+- **No, it was not.** The input tap shows a node that a tee at the channel's
+  own SMA already shows. The edge FF1 actually samples, the squarer's 1Y, had
+  no access at all; the handbook said "The squared signal has no test point".
+- **Now every channel has a second U.FL, `SQ`.** It is R?23 (1 kΩ) on the
+  1Y-D track and J?04, in the empty strip on the far side of the spine from
+  JP01. It sits 2.5 mm from the helper clock and 6 mm from the squarer's
+  input, and gives /21 into a 50 Ω scope.
+- **The taps are named by what they carry**, `IN` and `SQ`, and the legend
+  explains both.
+- **The rest stay pads, being brief checks:**
+  - `In`: the same node as `IN`;
+  - `S`: a DC level, and the node not to load;
+  - `B` and `P`: the FPGA logs every edge;
+  - `W`;
+  - the rails and `X`, which have U.FLs beside them.
+- **Routing the 26 new parts.** Every variant left one long return
+  unrouted, and which one moved with each change.
+  - More attempts (16, 32) did not help, and neither did a 209 mm board.
+  - What did, in `pcb/build_pcb.py`:
+    - terminal protection in the two-point router;
+    - the helper clocks exempt from it, with a 1.2 mm keep-away from I2C;
+    - the PYNQ's I2C pair as late hand routes;
+    - the rail taps' links and R2029's +3V3_D drawn by hand.
+  - **DRC 0 errors, 0 unconnected; every helper clock 49-98 mm with 2-4
+    vias; no clock beside I2C; 0 labels in another unit's box.**
+- **Release:** 2 boards, $107.13 parts + ~$88 fees = $195.09. The board stays
+  207 × 180 mm.
+- `CLAUDE_PCB.md` has the lessons (Jason: "Write to CLAUDE_PCB").

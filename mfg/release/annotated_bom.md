@@ -1,6 +1,6 @@
 # Annotated BOM - GPSDO DDMTD front end
 
-Generated 2026-10-10T11:35:12-07:00 for **2 board(s)**.  Prices and stock come from JLCPCB's parts API; each row carries the timestamp of its own query.  JLCPCB's quote at checkout is authoritative -- the fee model below is an estimate stated so it can be checked.
+Generated 2026-10-10T11:47:10-07:00 for **2 board(s)**.  Prices and stock come from JLCPCB's parts API; each row carries the timestamp of its own query.  JLCPCB's quote at checkout is authoritative -- the fee model below is an estimate stated so it can be checked.
 
 ## What it costs
 

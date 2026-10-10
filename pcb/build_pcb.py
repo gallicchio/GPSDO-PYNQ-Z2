@@ -1963,17 +1963,37 @@ def build():
                                 i, j = ci + di, cj + dj
                                 if 0 <= i < g.nx and 0 <= j < g.ny:
                                     pend.setdefault(pnm, set()).add(j * g.nx + i)
+        # The helper clocks route first and are exempt: protecting every
+        # pending return's terminal from THEM sent them round the returns
+        # (61-149 mm and up to 8 vias, against 49-98 mm and 2-4 without).
+        # Instead they keep 1.2 mm clear of the I2C copper laid by hand
+        # (U5007's pair runs the right corridor on F.Cu): I2C edges are not
+        # synchronous with the helper, and a first build ran HCLK_01 beside
+        # SCL for 55 mm at 0.55 mm.
+        def _clock(n):
+            return n.startswith("HCLK_") or n == "HELPER_CLK"
+        i2c_keep = set()
+        for x0, y0, x1, y1, lyr, n2, w in base_tracks:
+            if n2 in ("I2C_SCL", "I2C_SDA"):
+                i2c_keep |= g.cells_seg(x0, y0, x1, y1, w / 2.0 + 1.2 + T.W_SIG / 2.0,
+                                        IN2 if lyr == "In2.Cu" else FCU)
         for nm, aa, bb, _k in order:
             mine = pend.pop(nm, set())
             setcells = []
-            for _other, cells in pend.items():
-                for idx in cells:
-                    if idx in mine:
-                        continue
-                    for L in (IN2, FCU):
-                        if not g.blocked[L][idx]:
-                            g.blocked[L][idx] = 1
-                            setcells.append((L, idx))
+            if _clock(nm):
+                for L, idx in i2c_keep:
+                    if not g.blocked[L][idx]:
+                        g.blocked[L][idx] = 1
+                        setcells.append((L, idx))
+            else:
+                for _other, cells in pend.items():
+                    for idx in cells:
+                        if idx in mine:
+                            continue
+                        for L in (IN2, FCU):
+                            if not g.blocked[L][idx]:
+                                g.blocked[L][idx] = 1
+                                setcells.append((L, idx))
             g.free_disc(aa[0], aa[1], 0.3, IN2)
             g.free_disc(bb[0], bb[1], 0.3, IN2)
             path = g.route(aa, bb, layers=(IN2, FCU), start_layer=IN2, cap=CAP)
