@@ -93,9 +93,10 @@ def gather(boards=1, refresh=False):
     rows = bomdata.components()
     groups = collections.defaultdict(list)
     for r in rows:
-        # Rev B: JLCPCB fits the through-hole parts, so they price as
-        # assembly lines -- since 2026-10-10 the bottom socket J4001 too.
-        if r["cls"] == "tht":
+        # Rev B: JLCPCB fits the top-side through-hole parts, so they price
+        # as assembly lines; the bottom socket J4001 stays "tht": Jason
+        # solders it (45.32), which keeps the order one-sided.
+        if r["cls"] == "tht" and r["side"] == "top":
             r = dict(r, cls="smt")
         if r["cls"] in ("smt", "tht"):
             # ROUND 32.  An SMT line is keyed on the PART, not on the value
@@ -143,7 +144,8 @@ def gather(boards=1, refresh=False):
         if libtype == "Extended":
             notes.append("Extended: one-off setup fee applies to this part")
         if cls == "tht":
-            notes.append("through hole -- NOT in the assembly order, order loose")
+            notes.append("through hole, bottom side -- NOT in the assembly order: "
+                         "fitted by hand, order loose")
         # JLCPCB names every through-hole package "Plugin", which no name
         # comparison can match; the land-pattern fit (PLACEMENT_CHECKS.txt)
         # is the real check for those.  Rev B re-classed them as placements,
@@ -263,7 +265,7 @@ def write(outdir, boards=1, refresh=False):
                     "unfound, or in a package that disagrees with its "
                     "footprint.\n\n")
         for title, rows_ in (("SMT - in the assembly order", smt),
-                             ("Through hole, NOT in the assembly order", tht),
+                             ("Fitted by hand, NOT in the assembly order (J4001)", tht),
                              ("Extras - not on the board", extras)):
             if not rows_:
                 continue

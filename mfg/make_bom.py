@@ -4,8 +4,8 @@ list of what ships loose for everything it does not fit.
 
   <out>/GPSDO-PYNQ-Z2_bom.csv   Comment, Designator, Footprint, LCSC
   <out>/GPSDO-PYNQ-Z2_cpl_kicad_native.csv   Designator, Mid X, Mid Y, Layer, Rotation
-  <out>/hand_solder_bom.csv     what ships loose (the jumper shunts); no part
-                                of the board is on it since 2026-10-10
+  <out>/hand_solder_bom.csv     what Jason fits himself (J4001, the bottom
+                                socket) and what ships loose (the shunts)
 
 Rev B: every non-DNP part with a part number goes into the first two,
 THROUGH-HOLE INCLUDED -- JLCPCB fits the SMAs, headers, socket, jack and
@@ -110,13 +110,17 @@ def write(outdir, rows=None, quiet=False):
     rows = rows or bomdata.components()
     os.makedirs(outdir, exist_ok=True)
     # Rev B: through-hole parts are assembled too; `smt` is now "placed".
-    # 2026-10-10 (Jason: "Have JLCPCB solder the headers and SMAs"): the one
-    # through-hole part on the BOTTOM, the Raspberry Pi socket J4001, goes in
-    # as well.  It makes the order a two-sided Standard PCBA (about $39 more
-    # per order, annotate_bom.py), and its CPL row is a bottom row: mirrored,
-    # then corrected, with the datum footprint_check fitted.
-    smt = [r for r in rows if r["cls"] in ("smt", "tht")]
-    tht = []
+    # Except the one through-hole part on the BOTTOM, the Raspberry Pi socket
+    # J4001.  45.31 put it in, and it made the order two-sided: ~$39 more per
+    # order for a $0.32 part, almost all of it the second side's setup and
+    # stencil.  Jason (2026-10-10): "I will solder the socket myself."  So it
+    # is on the hand-solder list, NOT marked DNP: DNP would say "never fit",
+    # and this part is fitted, by him.  If it ever goes back in, the bottom
+    # CPL row is ready: mirrored, corrected, with the datum footprint_check
+    # fitted (45.31).
+    smt = [r for r in rows if r["cls"] == "smt"
+           or (r["cls"] == "tht" and r["side"] == "top")]
+    tht = [r for r in rows if r["cls"] == "tht" and r["side"] == "bottom"]
     dnp = [r for r in rows if r["cls"] == "dnp"]
 
     # ---- BOM: one line per distinct part, designators joined --------------

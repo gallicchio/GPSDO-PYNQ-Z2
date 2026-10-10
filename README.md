@@ -16168,3 +16168,39 @@ unless you need fancier ones for accurate 10 MHz."
   comparison matches; their real check is the land-pattern fit. The U.FL
   was flagged because JLCPCB says "SMD" for a footprint KiCad names
   "SMT-1". The release now flags nothing.
+
+### 45.32 The socket back to Jason; where the money goes
+
+**Jason:** "I will solder the socket myself, so mark it as DNI or DNP or
+whatever."
+
+- **J4001 is out of JLCPCB's order again.** It is not marked DNP: DNP means
+  "never fitted", and the release would then tell whoever reads it to leave
+  it off. It is on `hand_solder_bom.csv` (C2977589, $0.32): fitted by you,
+  in neither the BOM nor the CPL.
+- FABRICATION_NOTES: Top Side assembly, and keep J4001's 40 holes clear of
+  solder.
+- The 45.31 bottom-side CPL row stays in the code, ready if it ever goes
+  back in.
+- **Estimate for 2 boards: $245.93** (parts $107.13, assembly $138.80),
+  bare boards excluded.
+
+Where the $138.80 of assembly goes, and what doing it yourself would save:
+
+| item | cost | saved by doing it yourself |
+|---|---:|---|
+| 26 Extended part codes at $2.70 | $70.20 | only the 6 through-hole codes, and only if JLCPCB solders no through-hole part |
+| Standard PCBA setup and stencil, one side | $34.02 | ~$24 if JLCPCB solders no through-hole part and Economic PCBA takes the order |
+| through-hole fixture and hand labour | $20.15 | all of it, but only if JLCPCB solders no through-hole part |
+| SMT pads (2768) and $1.50 a board | $7.71 | nothing: this is the board itself |
+| through-hole joints (428) | $6.72 | all of it, same condition |
+
+- The through-hole saving is all or nothing. With JLCPCB doing the SMAs
+  and jumper headers, the fixed charges stay. Taking the easy parts back
+  (terminals, barrel jack, debug header, bench pins) saves their 4 codes
+  and joints: about $12 an order.
+- All through-hole by hand would save about $43, or about $67 with
+  Economic PCBA. Against that: 27 SMAs and 13 headers to seat square on
+  each board, and a loose-parts order with its own shipping.
+- The fixed per-order charges are most of the fees. A third assembled
+  board would cost about $57 more (its parts, pads and joints).

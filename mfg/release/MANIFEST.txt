@@ -1,17 +1,17 @@
 GPSDO DDMTD front end -- manufacturing release, rev B, 2026-10-10
-generated 2026-10-10T13:52:28-07:00 for 2 board(s)
+generated 2026-10-10T15:04:20-07:00 for 2 board(s)
 
-board 207.0 x 180.0 mm, 4 layers, 578 SMT placements, 46 distinct parts
+board 207.0 x 180.0 mm, 4 layers, 577 SMT placements, 45 distinct parts
 
-FABRICATION_NOTES.txt                        11835 bytes  sha256:8afd85360b85
-GPSDO-PYNQ-Z2_assembly_bottom.pdf           362473 bytes  sha256:64c498ed9246
-GPSDO-PYNQ-Z2_assembly_top.pdf              431749 bytes  sha256:97787ec36f95
-GPSDO-PYNQ-Z2_bom.csv                         5027 bytes  sha256:fe4ae1c54b16
-GPSDO-PYNQ-Z2_cpl_jlcpcb_upload.csv          21214 bytes  sha256:9079725cb682
-GPSDO-PYNQ-Z2_cpl_kicad_native.csv           21194 bytes  sha256:021660ae11fd
-GPSDO-PYNQ-Z2_gerbers.zip                  1337127 bytes  sha256:01cb125f63b1
-PLACEMENT_CHECKS.txt                          5184 bytes  sha256:5d97ef336db4
-annotated_bom.csv                            14113 bytes  sha256:01fce6bd874b
-annotated_bom.md                              8883 bytes  sha256:35744ae94108
+FABRICATION_NOTES.txt                        11766 bytes  sha256:bd18da4b4618
+GPSDO-PYNQ-Z2_assembly_bottom.pdf           362473 bytes  sha256:54599269c16e
+GPSDO-PYNQ-Z2_assembly_top.pdf              431749 bytes  sha256:9124fb190b78
+GPSDO-PYNQ-Z2_bom.csv                         4960 bytes  sha256:89e38b1dd8f5
+GPSDO-PYNQ-Z2_cpl_jlcpcb_upload.csv          21172 bytes  sha256:457b81637fa6
+GPSDO-PYNQ-Z2_cpl_kicad_native.csv           21154 bytes  sha256:68c1f46ce54b
+GPSDO-PYNQ-Z2_gerbers.zip                  1337132 bytes  sha256:cc48cb950ff9
+PLACEMENT_CHECKS.txt                          4746 bytes  sha256:4ff1ed809628
+annotated_bom.csv                            14200 bytes  sha256:53852dd49289
+annotated_bom.md                              9208 bytes  sha256:03193fa1a6eb
 excluded_from_assembly.csv                    8380 bytes  sha256:5211789fcbb4
-hand_solder_bom.csv                            537 bytes  sha256:af6864e8314a
+hand_solder_bom.csv                            607 bytes  sha256:7f47301a7cc7

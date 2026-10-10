@@ -1,21 +1,22 @@
 # Annotated BOM - GPSDO DDMTD front end
 
-Generated 2026-10-10T13:52:27-07:00 for **2 board(s)**.  Prices and stock come from JLCPCB's parts API; each row carries the timestamp of its own query.  JLCPCB's quote at checkout is authoritative -- the fee model below is an estimate stated so it can be checked.
+Generated 2026-10-10T15:04:20-07:00 for **2 board(s)**.  Prices and stock come from JLCPCB's parts API; each row carries the timestamp of its own query.  JLCPCB's quote at checkout is authoritative -- the fee model below is an estimate stated so it can be checked.
 
 ## What it costs
 
 | | |
 |---|---|
-| Parts in the assembly order, 46 distinct (SMT and through hole) | **$107.77** |
+| Parts in the assembly order, 45 distinct (SMT and through hole) | **$107.13** |
 | Basic / Preferred parts (no setup fee) | 19 |
-| Extended parts (setup fee each) | 27 |
-| Estimated assembly fees | $176.77 |
-|   - Standard PCBA setup and stencil, 2 sides | $68.04 |
-|   - 27 extended codes at $2.70 | $72.90 |
+| Extended parts (setup fee each) | 26 |
+| Estimated assembly fees | $138.80 |
+|   - Standard PCBA setup and stencil, 1 side | $34.02 |
+|   - 26 extended codes at $2.70 | $70.20 |
 |   - 2768 SMT pads at $0.0017, and $1.50 a board | $7.71 |
-|   - 508 through-hole joints at $0.0157 | $7.98 |
+|   - 428 through-hole joints at $0.0157 | $6.72 |
 |   - assembly fixture and hand-soldering labour | $20.15 |
-| **Parts + assembly, excluding the bare boards** | **$284.54** |
+| **Parts + assembly, excluding the bare boards** | **$245.93** |
+| Through-hole parts to order loose | $0.64 |
 | Extras (jumper shunts) | $0.30 |
 
 **Consigned parts required: none.**  Every part in the assembly order has a JLCPCB part number and is in their library.
@@ -65,7 +66,6 @@ No part is out of stock, unfound, or in a package that disagrees with its footpr
 | C19108403 | nSMD110-24V | 1.1A PPTC | 1206 | Extended | 2 | 6 | $0.0481 | $0.2886 | 3,176 | 2026-10-10 06:30 | Extended: one-off setup fee applies to this part |
 | C1017 | GZ2012D601TF | 600R@100MHz | 0805 | Basic | 2 | 12 | $0.0201 | $0.2412 | 311,736 | 2026-10-10 06:13 |  |
 | C720557 | DC-005-A200 | 15V 1A DC IN | Plugin | Extended | 2 | 2 | $0.1461 | $0.2922 | 44,526 | 2026-10-10 06:13 | Extended: one-off setup fee applies to this part |
-| C2977589 | 2.54-2*20 | 2x20 socket 2.54mm | Plugin,P=2.54mm | Extended | 2 | 2 | $0.3185 | $0.6370 | 32,545 | 2026-10-10 06:13 | Extended: one-off setup fee applies to this part |
 | C492427 | PZ254V-12-20P | debug 2x10 | Plugin,P=2.54mm | Extended | 2 | 2 | $0.1273 | $0.2546 | 70,826 | 2026-10-10 06:13 | Extended: one-off setup fee applies to this part |
 | C17408 | 0805W8F1000T5E | 100R | 0805 | Basic | 2 | 12 | $0.0042 | $0.0504 | 9,034,654 | 2026-10-10 06:13 |  |
 | C17561 | 0805W8F220JT5E | 22R | 0805 | Basic | 2 | 12 | $0.0045 | $0.0540 | 1,632,281 | 2026-10-10 06:13 |  |
@@ -74,6 +74,12 @@ No part is out of stock, unfound, or in a package that disagrees with its footpr
 | C144198 | MCP4725A0T-E/CH | MCP4725A0T-E/CH | SOT-23-6 | Extended | 2 | 2 | $0.9463 | $1.89 | 19,952 | 2026-10-10 06:13 | Extended: one-off setup fee applies to this part |
 | C143306 | DS2482S-100+T&R | DS2482S-100 | SOIC-8 | Extended | 2 | 2 | $2.93 | $5.86 | 925 | 2026-10-10 06:13 | Extended: one-off setup fee applies to this part |
 | C5742665 | FT5HNBPK25.0-T1 | FT5HNBPK25.0-T1 | SMD5032-4P | Extended | 2 | 2 | $3.58 | $7.16 | 1,514 | 2026-10-10 06:13 | Extended: one-off setup fee applies to this part |
+
+## Fitted by hand, NOT in the assembly order (J4001)
+
+| LCSC | MPN | Value | Pkg | Type | Qty | Order | Unit | Line | Stock | Queried | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| C2977589 | 2.54-2*20 | 2x20 socket 2.54mm | Plugin,P=2.54mm | Extended | 2 | 2 | $0.3185 | $0.6370 | 32,545 | 2026-10-10 06:13 | Extended: one-off setup fee applies to this part; through hole, bottom side -- NOT in the assembly order: fitted by hand, order loose |
 
 ## Extras - not on the board
 

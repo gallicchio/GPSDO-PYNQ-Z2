@@ -40,9 +40,10 @@ def sha(path, n=12):
 def check(outdir, rows, res):
     """Every assertion that has to hold before this is worth uploading."""
     bad = []
-    # rev B: the through-hole parts are assembled too (make_bom.py), and
-    # since 2026-10-10 the bottom socket J4001 as well
-    smt = {r["ref"] for r in rows if r["cls"] in ("smt", "tht")}
+    # rev B: the top-side through-hole parts are assembled too (make_bom.py);
+    # the bottom socket J4001 is fitted by hand
+    smt = {r["ref"] for r in rows if r["cls"] == "smt"
+           or (r["cls"] == "tht" and r["side"] == "top")}
     dnp = {r["ref"] for r in rows if r["cls"] == "dnp"}
     nop = {r["ref"] for r in rows if r["cls"] == "nopart"}
 
@@ -124,7 +125,8 @@ def placement_checks(outdir, rows):
     import parts_map
     fps, drills = FC.read_board(bomdata.PCB)
     by_ref = {f["ref"]: f for f in fps}
-    placed = [r for r in rows if r["cls"] in ("smt", "tht")]
+    placed = [r for r in rows if r["cls"] == "smt"
+              or (r["cls"] == "tht" and r["side"] == "top")]
     groups = collections.defaultdict(list)
     for r in placed:
         groups[(r["lcsc"], r["fpshort"], r["side"])].append(r["ref"])
@@ -134,7 +136,7 @@ def placement_checks(outdir, rows):
     lines.append("'predicted' is the CPL correction the fit implies (minus its turn);")
     lines.append("'CPL' is what the upload file applies.  Read every PREDICTED row in")
     lines.append("JLCPCB's placement preview: pin 1 where 'look' says.  Nothing is on the")
-    lines.append("back but J4001, the through-hole socket, which is in the CPL as Bottom.")
+    lines.append("back but J4001, the through-hole socket, fitted by hand: not in the CPL.")
     lines.append("")
     lines.append("%-9s %-34s %4s %5s %5s  %-9s %s" % ("code", "footprint", "n", "pred", "CPL", "status", "refs / look"))
     for (code, fp, side), refs in sorted(groups.items(), key=lambda kv: (kv[0][1], kv[0][0])):

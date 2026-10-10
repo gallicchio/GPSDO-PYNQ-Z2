@@ -805,10 +805,9 @@ Two things KiCad does not check and this project therefore does itself:
 Everything nearer the edge than that is through hole -- the SMA jacks, the
 five screw terminals, the barrel jack and the two bench posts -- and JLCPCB
 fits it, with every header and the 27 SMAs.  Bottom side: the 2x20 socket,
-J4001, and nothing else; JLCPCB fits it too (since 2026-10-10), which makes
-the order a two-sided Standard PCBA: about $39 more per order, most of it the
-second side's setup and stencil.  Nothing is
-soldered by hand; only the thirteen jumper shunts ship loose.
+J4001, and nothing else, and you solder it (`hand_solder_bom.csv`): on JLCPCB's
+order it made the job two-sided, about $39 more per order for a $0.32 part.
+The thirteen jumper shunts ship loose.
 """ % dict(
         rev=D.REV, date=D.DATE, revnote=_rev_note(),
         fh=D.F_HELPER / 1e6, gain=D.N_GAIN, tres=D.T_RES_PS,
