@@ -19,10 +19,21 @@ import bomdata, jlc_api, parts_map                     # noqa: E402
 # JLCPCB's published assembly charges.  These move; the quote at checkout is
 # authoritative and the report says so.  Recorded here so the estimate can be
 # re-derived rather than guessed at.
-FEE_EXTENDED_PART = 3.00      # per DISTINCT extended part, one-off
+# 2026-10-10: calibrated on Jason's own JLCPCB cart for ECP5-2ADC-2DAC
+# (CLAUDE_PCB.md section 12: 5 PCBs, 2 assembled, through-hole parts, both
+# sides; the model there matched the cart to the cent).  Until today this was
+# an $8 Economic setup with through-hole pins priced as SMT placements, and
+# Economic cannot take through-hole parts at all.  J4001 on the bottom makes
+# this a two-sided Standard order.
+FEE_EXTENDED_PART = 2.70      # feeder loading, per DISTINCT extended code
 FEE_BASIC_PART = 0.00
-FEE_SETUP = 8.00              # per order
-FEE_PER_JOINT = 0.0017        # beyond the free allowance
+FEE_SETUP_SIDE = 51.50 / 2    # Standard PCBA setup, per assembled side
+FEE_STENCIL_SIDE = 16.54 / 2  # stencil, per side (the cart charged both sides)
+FEE_FIXTURE = 16.54           # PCB assembly fixture, with through-hole parts
+FEE_HAND_LABOUR = 3.61        # hand-soldering labour, with through-hole parts
+FEE_PER_JOINT = 0.0017        # per SMT PAD
+FEE_SMT_BOARD = 1.50          # per assembled board
+FEE_THT_PIN = 0.0157          # per through-hole joint
 FREE_JOINTS = 0               # conservative: charge for all of them
 
 
@@ -37,6 +48,8 @@ PKG_ALIASES = {
     "sod323": "sod323", "sod123": "sod123",
     "sot233": "sot223", "sot235": "sot235", "sot236": "sot236",
     "msop10": "msop10", "soic8": "soic8",
+    # JLCPCB files the Hirose U.FL-R-SMT-1 under package "SMD"
+    "smt": "smd",
 }
 
 
@@ -80,9 +93,9 @@ def gather(boards=1, refresh=False):
     rows = bomdata.components()
     groups = collections.defaultdict(list)
     for r in rows:
-        # Rev B: JLCPCB fits the top-side through-hole parts, so they price as
-        # assembly lines; only the bottom socket stays "tht" (hand soldered).
-        if r["cls"] == "tht" and r["side"] == "top":
+        # Rev B: JLCPCB fits the through-hole parts, so they price as
+        # assembly lines -- since 2026-10-10 the bottom socket J4001 too.
+        if r["cls"] == "tht":
             r = dict(r, cls="smt")
         if r["cls"] in ("smt", "tht"):
             # ROUND 32.  An SMT line is keyed on the PART, not on the value
@@ -110,6 +123,9 @@ def gather(boards=1, refresh=False):
                             refs=[m["ref"] for m in members], per_board=len(members),
                             need=need, order=need, mpn="", brand="", pkg="",
                             libtype="NOT FOUND", stock=0, unit=0.0, line=0.0,
+                            thpins=sum(m.get("thpins", 0) for m in members),
+                            smdpads=sum(m.get("smdpads", 0) for m in members),
+                            bottom=any(m["side"] == "bottom" for m in members),
                             ts=ts, why=members[0]["why"],
                             notes=["LCSC code not found in JLCPCB's library -- "
                                    "this part would have to be CONSIGNED"]))
@@ -128,13 +144,21 @@ def gather(boards=1, refresh=False):
             notes.append("Extended: one-off setup fee applies to this part")
         if cls == "tht":
             notes.append("through hole -- NOT in the assembly order, order loose")
-        if cls != "tht" and not package_agrees(pkg, fp):
+        # JLCPCB names every through-hole package "Plugin", which no name
+        # comparison can match; the land-pattern fit (PLACEMENT_CHECKS.txt)
+        # is the real check for those.  Rev B re-classed them as placements,
+        # and seven had been flagged here as noise since.
+        thru = any(m.get("thpins") for m in members)
+        if cls != "tht" and not thru and not package_agrees(pkg, fp):
             notes.append("check package: JLCPCB says %r, we drew %r" % (pkg, fp))
         out.append(dict(cls=cls, lcsc=lcsc, value=value, fp=fp,
                         refs=[m["ref"] for m in members], per_board=len(members),
                         need=need, order=oq, mpn=part.get("componentModelEn") or "",
                         brand=part.get("componentBrandEn") or "", pkg=pkg,
                         libtype=libtype, stock=stock, unit=unit,
+                        thpins=sum(m.get("thpins", 0) for m in members),
+                        smdpads=sum(m.get("smdpads", 0) for m in members),
+                        bottom=any(m["side"] == "bottom" for m in members),
                         line=unit * oq, ts=ts, why=members[0]["why"], notes=notes))
     return out
 
@@ -175,11 +199,16 @@ def write(outdir, boards=1, refresh=False):
 
     # ---- totals ------------------------------------------------------------
     parts_smt = sum(d["line"] for d in smt)
-    joints = sum(d["need"] for d in smt)
+    joints = sum(d["smdpads"] for d in smt) * boards                # SMT pads
+    tht_pins = sum(d["thpins"] for d in smt) * boards
+    sides = 2 if any(d["bottom"] for d in smt) else 1
     n_ext = sum(1 for d in smt if d["libtype"] == "Extended")
     n_basic = sum(1 for d in smt if d["libtype"] in ("Basic", "Preferred"))
-    fees = FEE_SETUP + n_ext * FEE_EXTENDED_PART + \
-        max(0, joints - FREE_JOINTS) * FEE_PER_JOINT
+    tht_fixed = (FEE_FIXTURE + FEE_HAND_LABOUR) if tht_pins else 0.0
+    fees = (FEE_SETUP_SIDE * sides + FEE_STENCIL_SIDE * sides
+            + n_ext * FEE_EXTENDED_PART
+            + max(0, joints - FREE_JOINTS) * FEE_PER_JOINT + FEE_SMT_BOARD * boards
+            + tht_pins * FEE_THT_PIN + tht_fixed)
     problems = [(d, n) for d in smt + tht + extras for n in d["notes"]
                 if n.startswith(("OUT OF STOCK", "LCSC code not found",
                                  "check package"))]
@@ -195,20 +224,29 @@ def write(outdir, boards=1, refresh=False):
                 % (stamp, boards))
         f.write("## What it costs\n\n")
         f.write("| | |\n|---|---|\n")
-        f.write("| SMT parts, %d distinct, %d placements | **$%.2f** |\n"
-                % (len(smt), joints, parts_smt))
+        f.write("| Parts in the assembly order, %d distinct (SMT and through hole) "
+                "| **$%.2f** |\n" % (len(smt), parts_smt))
         f.write("| Basic / Preferred parts (no setup fee) | %d |\n" % n_basic)
         f.write("| Extended parts (setup fee each) | %d |\n" % n_ext)
         f.write("| Estimated assembly fees | $%.2f |\n" % fees)
-        f.write("|   - order setup | $%.2f |\n" % FEE_SETUP)
-        f.write("|   - %d extended parts at $%.2f | $%.2f |\n"
+        f.write("|   - Standard PCBA setup and stencil, %d side%s | $%.2f |\n"
+                % (sides, "s" if sides > 1 else "",
+                   (FEE_SETUP_SIDE + FEE_STENCIL_SIDE) * sides))
+        f.write("|   - %d extended codes at $%.2f | $%.2f |\n"
                 % (n_ext, FEE_EXTENDED_PART, n_ext * FEE_EXTENDED_PART))
-        f.write("|   - %d joints at $%.4f | $%.2f |\n"
-                % (joints, FEE_PER_JOINT, joints * FEE_PER_JOINT))
+        f.write("|   - %d SMT pads at $%.4f, and $%.2f a board | $%.2f |\n"
+                % (joints, FEE_PER_JOINT, FEE_SMT_BOARD,
+                   joints * FEE_PER_JOINT + FEE_SMT_BOARD * boards))
+        f.write("|   - %d through-hole joints at $%.4f | $%.2f |\n"
+                % (tht_pins, FEE_THT_PIN, tht_pins * FEE_THT_PIN))
+        if tht_fixed:
+            f.write("|   - assembly fixture and hand-soldering labour | $%.2f |\n"
+                    % tht_fixed)
         f.write("| **Parts + assembly, excluding the bare boards** | "
                 "**$%.2f** |\n" % (parts_smt + fees))
-        f.write("| Through-hole parts to order loose | $%.2f |\n"
-                % sum(d["line"] for d in tht))
+        if tht:
+            f.write("| Through-hole parts to order loose | $%.2f |\n"
+                    % sum(d["line"] for d in tht))
         f.write("| Extras (jumper shunts) | $%.2f |\n"
                 % sum(d["line"] for d in extras))
         f.write("\n**Consigned parts required: none.**  Every part in the "
@@ -225,7 +263,7 @@ def write(outdir, boards=1, refresh=False):
                     "unfound, or in a package that disagrees with its "
                     "footprint.\n\n")
         for title, rows_ in (("SMT - in the assembly order", smt),
-                             ("Hand soldered afterwards (J4001), order loose", tht),
+                             ("Through hole, NOT in the assembly order", tht),
                              ("Extras - not on the board", extras)):
             if not rows_:
                 continue
@@ -245,8 +283,9 @@ def write(outdir, boards=1, refresh=False):
     print("  %-34s %d rows" % (os.path.basename(csvp), len(smt + tht + extras)))
     print("  %-34s" % os.path.basename(mdp))
     print("  parts $%.2f + est. fees $%.2f = $%.2f   (%d basic, %d extended, "
-          "%d joints)" % (parts_smt, fees, parts_smt + fees, n_basic, n_ext,
-                          joints))
+          "%d SMT pads, %d THT joints, %d side%s)"
+          % (parts_smt, fees, parts_smt + fees, n_basic, n_ext, joints, tht_pins,
+             sides, "s" if sides > 1 else ""))
     if problems:
         print("  %d item(s) flagged for review" % len(problems))
     return dict(parts=parts_smt, fees=fees, problems=len(problems))

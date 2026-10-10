@@ -17,7 +17,8 @@ parts and no part numbers.
 Each component comes back classified:
 
   smt    surface mount, to be populated, has a part number  -> JLCPCB assembles
-  tht    through hole, to be populated                      -> hand soldered
+  tht    through hole, to be populated                      -> JLCPCB assembles
+                                                               too (rev B), either side
   dnp    marked do-not-populate in the schematic            -> excluded
   nopart a bare pad (test points)                           -> excluded
 """
@@ -95,6 +96,11 @@ def from_board():
                         side="bottom" if layer.startswith("B.") else "top",
                         smd="smd" in attrs,
                         tht="through_hole" in attrs,
+                        # plated holes JLCPCB solders: their per-pin THT fee
+                        thpins=sum(1 for p in kids(f, "pad")
+                                   if len(p) > 2 and val(p[2]) == "thru_hole"),
+                        smdpads=sum(1 for p in kids(f, "pad")
+                                    if len(p) > 2 and val(p[2]) == "smd"),
                         name=val(f[1]))
     return out
 

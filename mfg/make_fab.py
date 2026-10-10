@@ -70,7 +70,7 @@ def measure():
     for f in kids(doc, "footprint"):
         attrs = [val(a) for a in (kid(f, "attr") or [])[1:]]
         if "smd" not in attrs:
-            continue                      # through hole is hand soldered
+            continue                      # through hole: no nozzle reaches for it
         fref = ([val(pr[2]) for pr in kids(f, "property")
                  if val(pr[1]) == "Reference"] or [""])[0]
         at = kid(f, "at")
@@ -332,7 +332,7 @@ MINIMUMS ACTUALLY USED  (all well inside JLCPCB's 4-layer capability)
       needs a break-away rail -- PLEASE SAY SO RATHER THAN SHIFTING THE PART.
       Everything nearer the edge than this is through hole (the SMA jacks, the
       screw terminals, the barrel jack, the two bench posts and the 2x20
-      socket), fitted by hand at JLCPCB or, for the socket, afterwards.
+      socket), all fitted by JLCPCB, by hand or selective solder.
 
 IMPEDANCE
   No controlled-impedance service is required.  The helper traces on In2.Cu
@@ -346,10 +346,12 @@ ASSEMBLY  (rev B: JLCPCB fits the through-hole parts too)
   the 27 SMA jacks, the 13 three-pin 50R/PARK headers, the 2x10 debug header,
   the two bench pins, the barrel jack and the five screw terminals.  Each
   header is ordered at its own length (XFCN PZ254V), not as a strip.
-  The ONE bottom-side part, the Raspberry Pi 2x20 socket J4001 (through hole),
-  is NOT in the BOM or CPL: it is on hand_solder_bom.csv and is soldered
-  afterwards, as on rev A -- unless JLCPCB will fit a bottom through-hole part
-  on a top-side order, in which case add it back.
+  BOTTOM SIDE: one part, the Raspberry Pi 2x20 socket J4001 (through hole,
+  ZHOURI 2.54-2*20, C2977589), IN the BOM and the CPL (Layer: Bottom).  Its
+  pins come through to the top, among the top-side parts: solder them by
+  hand or selectively, not on a wave.  The socket must sit flat and square
+  on the board: it mates with the PYNQ-Z2's header pins.  It is unkeyed, so
+  either way round fits; the CPL turns it as the preview shows.
   See GPSDO-PYNQ-Z2_bom.csv and GPSDO-PYNQ-Z2_cpl_jlcpcb_upload.csv.
   Parts NOT to be fitted are listed in excluded_from_assembly.csv and appear
   in neither file -- please do not add them back.
@@ -384,9 +386,8 @@ stays at its default)
     Mark on PCB .............. Remove Mark
     Electrical Test .......... Flying Probe Fully Test (default)
   PCB Assembly
-    PCBA Type ................ Economic, if the form keeps the through-hole
-                               parts under it; otherwise Standard
-    Assembly Side ............ Top Side
+    PCBA Type ................ Standard (through-hole parts, and two sides)
+    Assembly Side ............ Both Sides: J4001 is the only bottom part
     PCBA Qty ................. %(qty)s
     Tooling holes ............ Added by JLCPCB
     Confirm Parts Placement .. YES -- NOT OPTIONAL, see ROTATION below
@@ -428,8 +429,8 @@ FILES
   %(name)s_cpl_jlcpcb_upload.csv  the same with JLCPCB rotation corrections
   %(name)s_assembly_top.pdf ... placement drawing, top
   %(name)s_assembly_bottom.pdf  placement drawing, bottom
-  hand_solder_bom.csv ......... J4001 (the bottom socket) and the jumper
-                                shunts: NOT for assembly
+  hand_solder_bom.csv ......... the 13 jumper shunts per board, shipped
+                                loose: NOT for assembly
   excluded_from_assembly.csv .. DNP parts and bare test pads
   annotated_bom.md / .csv ..... prices, stock and notes (for the buyer, not
                                 for the fab)

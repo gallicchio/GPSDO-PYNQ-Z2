@@ -3,7 +3,7 @@ JLCPCB's land pattern of each code, fitted to our pads by pin number.
 'predicted' is the CPL correction the fit implies (minus its turn);
 'CPL' is what the upload file applies.  Read every PREDICTED row in
 JLCPCB's placement preview: pin 1 where 'look' says.  Nothing is on the
-back except J4001, which is hand soldered and not in the CPL.
+back but J4001, the through-hole socket, which is in the CPL as Bottom.
 
 code      footprint                             n  pred   CPL  status    refs / look
 C720557   BarrelJack_Horizontal                 1     0     0  PREDICTED J2003  -- barrel jack opening at the edge
@@ -24,6 +24,9 @@ C2937625  PinHeader_1x03_P2.54mm_Vertical      13   270   270  PREDICTED JP101,J
 C492427   PinHeader_2x10_P2.54mm_Vertical       1   270   270  PREDICTED J5001  -- 2x10 debug header along the edge
           datum: their origin sits at (+1.270, +11.430) mm in our footprint; the JLCPCB CPL is moved there
 C3608122  QFN-20-1EP_4x4mm_P0.5mm_EP2.7x2.7m    1   270   270  PREDICTED U3001  -- Si5351C QFN-20: pin 1 = XA
+C2977589  RPiHeader_2x20_Socket_Underside       1     0     0  PREDICTED J4001  -- RPi 2x20 socket, UNDERSIDE: unkeyed
+          names: the land pattern fits to 0.000 mm but the two libraries number the pins differently -- by name the worst miss is 2.54 mm at pad 40.  Placement is fine; the NET on each pin is the thing to look at
+          datum: their origin sits at (-24.130, +1.270) mm in our footprint; the JLCPCB CPL is moved there
 C496549   SMA_Vertical_THT_Universal           27     0     0  PREDICTED J101,J102,J201,J202,J301,J302...  -- SMA: round, five holes
           names: the land pattern fits to 0.014 mm but the two libraries number the pins differently -- by name the worst miss is 1.80 mm at pad 1.  Placement is fine; the NET on each pin is the thing to look at
 C143306   SOIC-8_3.9x4.9mm_P1.27mm              1   270   270  read      U6001  -- pin 1 dot

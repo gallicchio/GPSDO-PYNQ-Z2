@@ -16117,3 +16117,54 @@ is actually next to the component or probe point you want me to probe."
   are the headers' own (deliberately). The rest are coupling caps and 330Rs
   on some units, a 51R on units 10-13, and R3025 beside the new `X`. All
   are still on the assembly drawing.
+
+### 45.31 JLCPCB solders everything, and the SMA stays
+
+**Jason:** "Have JLCPCB solder the headers and SMAs. Select inexpensive SMAs
+unless you need fancier ones for accurate 10 MHz."
+
+- **The SMAs and top-side headers were already JLCPCB's** in rev B's
+  release: the 27 SMAs, the 13 three-pin jumper headers, the 2x10 debug
+  header, the two bench pins, the barrel jack and the five screw terminals.
+  All are in the BOM and CPL as plug-ins.
+- **The one part that was not, the underside 2x20 socket J4001, now is.**
+  - It is in the BOM and in the CPL as a Bottom row: the middle of its 40
+    pins, mirrored by the bottom-side rule.
+  - Its land pattern was fitted against JLCPCB's own drawing of C2977589 and
+    needs no correction; it is unkeyed in any case.
+  - `hand_solder_bom.csv` now lists no part of the board, only the loose
+    jumper shunts.
+  - FABRICATION_NOTES now says PCBA Type **Standard**, Assembly Side **Both
+    Sides**. It tells JLCPCB the socket's pins come up among the top-side
+    parts (hand or selective soldering, not a wave) and must sit square,
+    because the socket mates with the PYNQ's pins.
+- **The SMA is already the inexpensive choice.** At 10 MHz any 50 Ω SMA is
+  transparent: the jack is a few thousandths of a wavelength long, and a
+  6 GHz rating is irrelevant at 10 MHz.
+  - Of 29 vertical through-hole SMA jacks in stock at JLCPCB (13:46
+    query), one is cheaper: HenryTech HL-SMA-KE-02, $0.2623 against
+    $0.2672. That saves $0.26 on the whole order.
+  - Ours, BAT WIRELESS BWSMA-KE-Z001 (C496549), has 128,900 in stock and
+    was already fitted hole-for-hole against JLCPCB's drawing (0.014 mm).
+    It stays.
+- **The cost model now matches the order.** It had an $8 Economic setup
+  and priced through-hole pins as SMT placements, though Economic cannot
+  take through-hole parts at all. It now uses the fees calibrated on your
+  ECP5 cart (CLAUDE_PCB.md section 12):
+  - Standard setup $25.75 and stencil $8.27 per side;
+  - $2.70 per extended code;
+  - SMT $0.0017 per pad plus $1.50 a board;
+  - through-hole $0.0157 per joint, plus the $16.54 fixture and $3.61
+    hand-soldering labour.
+
+  Parts and assembly for 2 boards: **$284.54**, bare boards excluded (the
+  old model said $195.09). About $39 of it is J4001: the second side's setup
+  and stencil ($34; the stencil may not be charged with no SMT on the
+  bottom), its extended code, 80 joints and the part. The rest is the old
+  model's error. JLCPCB's quote at checkout is the authority.
+- **Release check noise removed.** Seven "check package" warnings had been
+  flagged on every release since rev B started assembling through-hole
+  parts. JLCPCB calls every through-hole package "Plugin", which no name
+  comparison matches; their real check is the land-pattern fit. The U.FL
+  was flagged because JLCPCB says "SMD" for a footprint KiCad names
+  "SMT-1". The release now flags nothing.

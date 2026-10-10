@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Write the two files JLCPCB's assembly service actually reads, plus the
-hand-solder list for everything it will not fit.
+list of what ships loose for everything it does not fit.
 
   <out>/GPSDO-PYNQ-Z2_bom.csv   Comment, Designator, Footprint, LCSC
   <out>/GPSDO-PYNQ-Z2_cpl_kicad_native.csv   Designator, Mid X, Mid Y, Layer, Rotation
-  <out>/hand_solder_bom.csv     the through-hole parts, to order loose
+  <out>/hand_solder_bom.csv     what ships loose (the jumper shunts); no part
+                                of the board is on it since 2026-10-10
 
 Rev B: every non-DNP part with a part number goes into the first two,
 THROUGH-HOLE INCLUDED -- JLCPCB fits the SMAs, headers, socket, jack and
@@ -109,14 +110,13 @@ def write(outdir, rows=None, quiet=False):
     rows = rows or bomdata.components()
     os.makedirs(outdir, exist_ok=True)
     # Rev B: through-hole parts are assembled too; `smt` is now "placed".
-    # Except the one through-hole part on the BOTTOM, the Raspberry Pi socket:
-    # whether JLCPCB fits a bottom-side through-hole part on a top-side
-    # assembly order, or needs the dearer both-sides service, is not
-    # established, so it stays on the hand-solder list (as on rev A) until
-    # somebody asks them.  FABRICATION_NOTES says so.
-    smt = [r for r in rows if r["cls"] == "smt"
-           or (r["cls"] == "tht" and r["side"] == "top")]
-    tht = [r for r in rows if r["cls"] == "tht" and r["side"] == "bottom"]
+    # 2026-10-10 (Jason: "Have JLCPCB solder the headers and SMAs"): the one
+    # through-hole part on the BOTTOM, the Raspberry Pi socket J4001, goes in
+    # as well.  It makes the order a two-sided Standard PCBA (about $39 more
+    # per order, annotate_bom.py), and its CPL row is a bottom row: mirrored,
+    # then corrected, with the datum footprint_check fitted.
+    smt = [r for r in rows if r["cls"] in ("smt", "tht")]
+    tht = []
     dnp = [r for r in rows if r["cls"] == "dnp"]
 
     # ---- BOM: one line per distinct part, designators joined --------------
