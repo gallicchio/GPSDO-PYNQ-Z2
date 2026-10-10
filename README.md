@@ -15848,3 +15848,25 @@ order it met them. Each footprint item now gets its own deterministic uuid.
 - **Known:** PPS_09 runs 317 mm round the right and bottom edges (rev A:
   135 mm). A 1 pps line, so the cost is a fixed ~2 ns.
 - To order on another day, set `DATE` to that day and rebuild.
+
+### 45.27 N3b, the quiet night, at the long end of the floor comparison
+
+N3b ran 14 h, from 2026-10-09 17:14Z to 10-10 07:13Z, after the L1 strap.
+The heater was not stepped, and the board drifted 21.5-23.7 °C with the
+room. It replaces N1 (the heater stepped four times) as the DDMTD's long-τ
+curve in `analysis/floor_compare/`.
+- **The same-buffer pair 2 − 1:**
+  - TDEV 0.19 ps at 1000 s, 0.30 ps at 1 h and 0.46 ps at 3 h (N1: 0.31,
+    0.88, 2.2);
+  - ADEV at 50 Hz: 2.8e-15 at 1000 s (still the white phase noise), 7.9e-16
+    at 1 h, and 3.0e-16 at 3 h. The RFSoC's outdoor null gives 3.2e-16 at 3 h.
+- **Across helper buffers (10 − 1, rev A's problem):** 0.6-0.7 ps TDEV from
+  1000 s to 3 h. N1 gave 3.5 ps at 1000 s and 8 ps at 1 h. The buffer-group
+  wander is thermal; in a quiet room it is small.
+- **Correction to 45.25:** the analog DMTD estimate does gain at long τ.
+  - A careful build: 11x lower ADEV at 1000 s, 5x at 3 h, and about 2x in
+    TDEV.
+  - A typical first build: 1.6-4x in ADEV, and nothing in TDEV.
+  - Both rest on an assumed thermal term. The GPSDOs sit 10⁵ above all of
+    it.
+- `floor_plot.py --table` now prints both tables from the plotted curves.
