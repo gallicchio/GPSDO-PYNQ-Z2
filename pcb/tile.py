@@ -80,6 +80,15 @@ PARTS_10M = {
                                     # this puts its edge on the box's, x = -8.4)
     "R21":  (-6.6, 12.4, 270),      # 1k into the tap
     "R22":  (-6.6, 16.4, 270),      # 100k, gate to JP01 pin 3 (PARK)
+    # rev B, 2026-10-10: the squarer-output tap, in the empty strip on the
+    # far side of the spine from JP01, between TP02 (y 17.4) and R52 (29.3).
+    # 1k with pad 1 on the 1Y-D track, the U.FL just outboard: 2.5 mm from
+    # the helper clock (which enters U02 from the other side, at y 25.5), 6 mm
+    # from the squarer's input node, courtyards 0.07 mm apart, the U.FL's
+    # outer edge 0.1 mm inside the box.
+    "R23":  (2.2, 23.0, 180),       # 1k into the tap: pad 2 (the node, as on
+                                    # the sheet and as R21) inboard on 1Y-D
+    "J04":  (6.5, 23.0, 0),         # U.FL, TAP SQ, its pin toward the 1k
 }
 # Rev B: the squarer is a 74LVC2GU04 in SC-70-6, whose VCC (pin 5) sits
 # BETWEEN its two outputs on the bottom row: 2Y (the replica, pin 4) on the
@@ -217,6 +226,13 @@ def routes_10m(head=RAIL_HEAD):
     # --- squarer output 1Y (pin 6, bottom right) straight down to U02's D
     R.append((("U01", "6"), W_SIG, [(0.65, 21.0375), (0.65, 22.4), (0.95, 22.7),
                                     (0.95, Y_U2 - 1.1375)]))
+    # --- and off it, the squarer-output tap: 1k (pad 2 on the node, pad 1
+    #     outboard), then the U.FL's pin
+    R.append((("U01", "6"), W_SIG, [(0.95, 23.0), (1.2875, 23.0)]))
+    R.append((("J04", "1"), W_SIG, [(3.1125, 23.0), (4.975, 23.0)]))
+    # its ground pads to their own vias, inboard (PLAIN_VIAS_10M)
+    R.append((("J04", "2"), 0.3, [(4.9, 21.525), (5.6, 21.525)]))
+    R.append((("J04", "2"), 0.3, [(4.9, 24.475), (5.6, 24.475)]))
     # --- flip-flop to flip-flop, down the left and across below U02
     R.append((("U02", "4"), W_SIG, [(-0.95, Y_U2 + 1.1375), (-0.95, Y_U2 + 4.2),
                                     (0.95, Y_U2 + 4.2), (0.95, Y_U3 - 1.1375)]))
@@ -277,4 +293,9 @@ VIAS_PPS = [("U04", "4") + PPS_VIA + (ESC_Y,)]
 # which lands on the +3V3_A plane (item 5; until the plane exists it is an
 # unconnected via).
 PLAIN_VIAS_10M = [("U01", "2", 1.6, 20.2),
-                  ("R51", "1", -7.3125, Y_VCC1 + 1.35)]
+                  ("R51", "1", -7.3125, Y_VCC1 + 1.35),
+                  # the squarer-output U.FL's ground, on its INBOARD side: at
+                  # its outboard end the plane-via search put the vias on the
+                  # box edge, where the right-hand units' returns leave the
+                  # tile on In2, and PPS_05 and PPS_11 failed (2026-10-10)
+                  ("J04", "2", 4.9, 21.525), ("J04", "2", 4.9, 24.475)]

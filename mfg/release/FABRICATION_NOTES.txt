@@ -21,7 +21,7 @@ WHAT IS ON EACH LAYER
 MINIMUMS ACTUALLY USED  (all well inside JLCPCB's 4-layer capability)
   Minimum track ...... 0.2 mm
   Track widths used .. 0.20, 0.25, 0.30, 0.35, 0.50
-  Via pad/drill ...... 0.60/0.30 mm      (674 vias)
+  Via pad/drill ...... 0.60/0.30 mm      (732 vias)
   Minimum via drill .. 0.3 mm
   Pad drill sizes .... 1.00, 1.20, 1.50, 1.70, 3.20
   Minimum pad drill .. 1.0 mm
@@ -152,7 +152,7 @@ ROTATION  (round 33)
         predicted: fit at 0, 0.335 mm on pad 3 (a slot)
     C880555     +0  x5    1-Wire terminal: wire entry at the board edge; CPL point moved (+3.50, +0.00) mm to their origin
         predicted: fit at 0 by pin number
-    C88374    +270  x19   U.FL: the centre pad toward the 1k; CPL point moved (-0.76, +0.00) mm to their origin
+    C88374    +270  x32   U.FL: the centre pad toward the 1k; CPL point moved (-0.76, +0.00) mm to their origin
         predicted: fit at 90, 0.001 mm
   Still confirm them in the preview before approving.  Two footprints on this
   board have never been checked against a preview at all, both polarised:

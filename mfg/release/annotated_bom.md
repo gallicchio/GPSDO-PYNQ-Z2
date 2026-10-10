@@ -1,19 +1,19 @@
 # Annotated BOM - GPSDO DDMTD front end
 
-Generated 2026-10-10T07:23:14-07:00 for **2 board(s)**.  Prices and stock come from JLCPCB's parts API; each row carries the timestamp of its own query.  JLCPCB's quote at checkout is authoritative -- the fee model below is an estimate stated so it can be checked.
+Generated 2026-10-10T11:35:12-07:00 for **2 board(s)**.  Prices and stock come from JLCPCB's parts API; each row carries the timestamp of its own query.  JLCPCB's quote at checkout is authoritative -- the fee model below is an estimate stated so it can be checked.
 
 ## What it costs
 
 | | |
 |---|---|
-| SMT parts, 45 distinct, 1102 placements | **$105.51** |
+| SMT parts, 45 distinct, 1154 placements | **$107.13** |
 | Basic / Preferred parts (no setup fee) | 19 |
 | Extended parts (setup fee each) | 26 |
-| Estimated assembly fees | $87.87 |
+| Estimated assembly fees | $87.96 |
 |   - order setup | $8.00 |
 |   - 26 extended parts at $3.00 | $78.00 |
-|   - 1102 joints at $0.0017 | $1.87 |
-| **Parts + assembly, excluding the bare boards** | **$193.38** |
+|   - 1154 joints at $0.0017 | $1.96 |
+| **Parts + assembly, excluding the bare boards** | **$195.09** |
 | Through-hole parts to order loose | $0.64 |
 | Extras (jumper shunts) | $0.30 |
 
@@ -21,8 +21,8 @@ Generated 2026-10-10T07:23:14-07:00 for **2 board(s)**.  Prices and stock come f
 
 ## Look at these before paying
 
-* **C496549** (HO OUT 10.000000MHz, SMA_Vertical_THT_Universal) - check package: JLCPCB says 'Plugin', we drew 'SMA_Vertical_THT_Universal'
 * **C88374** (TAP +3V3_A far, U.FL_Hirose_U.FL-R-SMT-1_Vertical) - check package: JLCPCB says 'SMD', we drew 'U.FL_Hirose_U.FL-R-SMT-1_Vertical'
+* **C496549** (HO OUT 10.000000MHz, SMA_Vertical_THT_Universal) - check package: JLCPCB says 'Plugin', we drew 'SMA_Vertical_THT_Universal'
 * **C2937625** (50R/PARK, PinHeader_1x03_P2.54mm_Vertical) - check package: JLCPCB says 'Plugin,P=2.54mm', we drew 'PinHeader_1x03_P2.54mm_Vertical'
 * **C880555** (PROBE 1, TerminalBlock_Phoenix_PT-1,5-3-3.5-H_1x03_P3.50mm_Horizontal) - check package: JLCPCB says 'Plugin,P=3.5mm', we drew 'TerminalBlock_Phoenix_PT-1,5-3-3.5-H_1x03_P3.50mm_Horizontal'
 * **C492400** (BENCH +5V, PinHeader_1x01_P2.54mm_Vertical) - check package: JLCPCB says 'Plugin,P=2.54mm', we drew 'PinHeader_1x01_P2.54mm_Vertical'
@@ -36,11 +36,11 @@ Generated 2026-10-10T07:23:14-07:00 for **2 board(s)**.  Prices and stock come f
 | C49678 | CC0805KRX7R9BB104 | 100n | 0805 | Basic | 144 | 154 | $0.0189 | $2.91 | 19,829,829 | 2026-10-10 06:12 |  |
 | C17675 | 0805W8F470KT5E | 4R7 | 0805 | Basic | 134 | 144 | $0.0051 | $0.7344 | 70,153 | 2026-10-10 06:12 |  |
 | C1710 | CL21B103KBANNNC | 10n | 0805 | Basic | 130 | 140 | $0.0115 | $1.61 | 1,866,650 | 2026-10-10 06:12 |  |
-| C17513 | 0805W8F1001T5E | 1k | 0805 | Basic | 60 | 70 | $0.0035 | $0.2450 | 45,447,537 | 2026-10-10 06:12 |  |
+| C17513 | 0805W8F1001T5E | 1k | 0805 | Basic | 86 | 96 | $0.0035 | $0.3360 | 45,447,537 | 2026-10-10 06:12 |  |
+| C88374 | U.FL-R-SMT-1(80) | TAP +3V3_A far | SMD | Extended | 64 | 66 | $0.0922 | $6.09 | 103,255 | 2026-10-10 06:12 | Extended: one-off setup fee applies to this part; check package: JLCPCB says 'SMD', we drew 'U.FL_Hirose_U.FL-R-SMT-1_Vertical' |
 | C496549 | BWSMA-KE-Z001 | HO OUT 10.000000MHz | Plugin | Extended | 54 | 54 | $0.2672 | $14.43 | 128,945 | 2026-10-10 06:12 | Extended: one-off setup fee applies to this part; check package: JLCPCB says 'Plugin', we drew 'SMA_Vertical_THT_Universal' |
 | C42879 | SN74LVC1G80DBVR | 74LVC1G80 | SOT-23-5 | Extended | 52 | 54 | $0.1872 | $10.11 | 8,529 | 2026-10-10 06:12 | Extended: one-off setup fee applies to this part |
 | C48997026 | CL2010FN560RB | 560R | 2010 | Extended | 48 | 50 | $0.0075 | $0.3750 | 3,234 | 2026-10-10 06:12 | Extended: one-off setup fee applies to this part |
-| C88374 | U.FL-R-SMT-1(80) | TAP +3V3_A far | SMD | Extended | 38 | 40 | $0.1139 | $4.56 | 103,255 | 2026-10-10 06:12 | Extended: one-off setup fee applies to this part; check package: JLCPCB says 'SMD', we drew 'U.FL_Hirose_U.FL-R-SMT-1_Vertical' |
 | C17634 | 0805W8F330JT5E | 33R | 0805 | Basic | 34 | 44 | $0.0047 | $0.2068 | 1,516,041 | 2026-10-10 06:12 |  |
 | C17414 | 0805W8F1002T5E | 10k | 0805 | Basic | 30 | 40 | $0.0033 | $0.1320 | 58,514,544 | 2026-10-10 06:12 |  |
 | C237168 | 0805N103J500CT | 10n C0G | 0805 | Extended | 28 | 36 | $0.0300 | $1.08 | 50,106 | 2026-10-10 06:12 | Extended: one-off setup fee applies to this part |

@@ -155,7 +155,8 @@ def main():
                                     "courtyard", "bonded", "FAILED",
                                     "silkscreen:", "silkscreen boxes:",
                                     "look split", "SILK:",
-                                    "two-point pass left", "dropped"))]
+                                    "two-point pass left", "dropped",
+                                    "late hand route"))]
     # Round 41: every unit-tile part and designator inside its own silkscreen
     # box, checked again on the file actually written (build_pcb.py already
     # refuses to write one that fails; this reads it back independently).

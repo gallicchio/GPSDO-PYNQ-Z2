@@ -46,8 +46,8 @@ TEST_POINTS = [
     ("S",  "TP_SQ",    "10 MHz box, at the squarer's input",
      "a sine or a rounded triangle, NOT a square: this is the squarer's "
      "INPUT, AC coupled about the gate's own threshold (%.2f V by design; "
-     "rev A's sit near 1.4 V); 0.6-3.3 Vpp.  The squared signal has no test "
-     "point.  This is the node whose slew rate sets the channel's noise "
+     "rev A's sit near 1.4 V); 0.6-3.3 Vpp.  The squared signal is on the "
+     "U.FL marked SQ (rev B; 1k, so /21 into a 50 ohm scope).  This is the node whose slew rate sets the channel's noise "
      "floor, and a 10x probe's ~20 pF through the 330 R rounds what you see "
      "(round 41: a 10x probe divides the resistance by ten, not the "
      "capacitance)" % D.VTH),
@@ -76,11 +76,13 @@ def legend_columns():
              "S  squarer  0.6-3.3 Vpp",
              "B  beat  0/3.3 V, %.1f-%.1f kHz"
              % (D.F_BEAT * 0.9e-3, D.F_BEAT * 1.15e-3),
-             "5  +5 V  4.6-5.3 V"],
+             "5  +5 V  4.6-5.3 V",
+             "IN  U.FL: the input, /21 in 50R"],
             ["P  pps  0/3.3 V, 1 Hz",
              "X  TCXO at CLKIN  0/3.3 V",
              "W  1-Wire bus",
-             "A/D  +3V3  3.25-3.35 V"])
+             "A/D  +3V3  3.25-3.35 V",
+             "SQ  U.FL: squared, /21 in 50R"])
 
 
 # The two lines under the key that explain the JACK names, not the test

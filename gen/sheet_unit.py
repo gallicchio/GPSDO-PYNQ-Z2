@@ -237,6 +237,19 @@ def _ten_mhz(s, R, beat, hclk, rser, rsh2, term, L):
            size=1.4, color=INFO, cols=44)
     dx, dy = ff1.pin(D.FF_D_PIN)
     s.wires((b[0], y), (dx - 12.7, y), (dx - 12.7, dy), (dx, dy))
+    # item 19 (2026-10-10): a U.FL on the SQUARED signal, the edge FF1 samples.
+    # The input can be watched for as long as you like through a tee at its
+    # SMA; this node could not be watched at all without holding a probe on
+    # an SC-70 pin.  1k at the node: /21 into a 50 ohm scope.
+    xt = 246.38
+    s.junction(xt, y)
+    s.wire(xt, y, xt, y - 5.08)
+    r_v(s, xt, y - 8.89, "R%d23" % R.block, "1k", left=True)
+    tq = s.sym(pu["lib"], xt, y - 15.24, 90, ref="J%d04" % R.block, value="TAP SQ",
+               footprint=pu["fp"], lcsc=pu["lcsc"], ref_dxy=(5.08, -2.54),
+               val_dxy=(5.08, 0.0))
+    s.wire(xt, y - 12.7, *tq.pin(1))
+    gnd(s, *tq.pin(2), drop=3.81, R=R)
     qx, qy = ff1.pin(4); d2x, d2y = ff2.pin(D.FF_D_PIN)
     s.wires((qx, qy), (d2x - 12.7, qy), (d2x - 12.7, d2y), (d2x, d2y))
     for ff in (ff1, ff2):

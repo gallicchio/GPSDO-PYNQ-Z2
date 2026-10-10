@@ -354,7 +354,7 @@ this board has jacks called `1`.
 | letter | net / node | where | what you should see |
 |:---|:---|:---|:---|
 | **In** | `TP_IN` | 10 MHz box, beside the SMA | the input as it arrives: 0.7-3.3 Vpp AC, 10 MHz.  4.1 Vpp is the board's ceiling; a 50 ohm source's OPEN-CIRCUIT rating is a different number and is not what arrives here -- see the jumper note |
-| **S** | `TP_SQ` | 10 MHz box, at the squarer's input | a sine or a rounded triangle, NOT a square: this is the squarer's INPUT, AC coupled about the gate's own threshold (1.65 V by design; rev A's sit near 1.4 V); 0.6-3.3 Vpp.  The squared signal has no test point.  This is the node whose slew rate sets the channel's noise floor, and a 10x probe's ~20 pF through the 330 R rounds what you see (round 41: a 10x probe divides the resistance by ten, not the capacitance) |
+| **S** | `TP_SQ` | 10 MHz box, at the squarer's input | a sine or a rounded triangle, NOT a square: this is the squarer's INPUT, AC coupled about the gate's own threshold (1.65 V by design; rev A's sit near 1.4 V); 0.6-3.3 Vpp.  The squared signal is on the U.FL marked SQ (rev B; 1k, so /21 into a 50 ohm scope).  This is the node whose slew rate sets the channel's noise floor, and a 10x probe's ~20 pF through the 330 R rounds what you see (round 41: a 10x probe divides the resistance by ten, not the capacitance) |
 | **B** | `TP_BEAT` | 10 MHz box, at the far end | 0/3.3 V square at the beat frequency, 1234.4 Hz |
 | **P** | `TP_PPS` | 1 pps box | 0/3.3 V, one rising edge a second |
 | **5** | `TP_5V` | power block, by the 5 V fuse | 4.6-5.3 V |

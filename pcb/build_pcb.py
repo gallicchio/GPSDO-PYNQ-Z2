@@ -1292,6 +1292,34 @@ def build():
             for qa, qb in zip(pts, pts[1:]):
                 tracks.append(qa + qb + ("In2.Cu", net, T.W_SIG))
 
+    # The three rail taps (item 19), drawn rather than routed (2026-10-10).
+    # The router ignores a U.FL's keep-out: one build it brought J2006's own
+    # track in from the right, under the jack's mask opening (a real mask
+    # bridge), and it lost R2028-J2005 altogether.  Each 1k's far pad goes
+    # left, down the 2 mm gap beside the jack, and into its pin from outside.
+    for ref, pn, ax, ay, _t, net, _hd, _rc in allpads:
+        if re.fullmatch(r"R202[789]", ref) and pn == "2":
+            jx, jy = ax - 1.525, 170.0                  # the jack's pin, rot 0
+            pts = [(ax, ay), (ax - 2.0, ay), (ax - 2.0, jy), (jx, jy)]
+            for qa, qb in zip(pts, pts[1:]):
+                tracks.append(qa + qb + ("F.Cu", net, T.W_SIG))
+    # ...and R2029's +3V3_D, which is 50 mm from the nearest +3V3_D pad
+    # (R5059's, in the housekeeping block).  The router found a way on one
+    # build and not the next.  F.Cu only, so nothing on In2 -- where the left
+    # column's returns cross to the socket -- is in its way: down past J2006's
+    # ground pads to the board's bottom strip, and along it, under the socket
+    # labels and above the edge, into R5059's pad (2026-10-10).
+    for ref, pn, ax, ay, _t, net, _hd, _rc in allpads:
+        if ref == "R2029" and pn == "1" and net == "+3V3_D":
+            tx = [(r_, p_, x_, y_) for r_, p_, x_, y_, _t2, n_, _h2, _c2 in allpads
+                  if r_ == "R5059" and p_ == "1" and n_ == "+3V3_D"]
+            if tx:
+                _r, _p, ex, ey = tx[0]
+                yb = G.BH - 1.8
+                pts = [(ax, ay), (ax + 1.6, ay), (ax + 1.6, yb), (ex, yb), (ex, ey)]
+                for qa, qb in zip(pts, pts[1:]):
+                    tracks.append(qa + qb + ("F.Cu", net, W_LANE))
+
     # ---- the heater rails down the tile columns ---------------------------
     # Each in-tile heater is a 2010 lying across the tile's outboard strip with
     # its +15 V pad inboard and its drain pad outboard, and the thirteen of them
@@ -1914,7 +1942,38 @@ def build():
             g.block_seg(x0, y0, x1, y1, w / 2.0 + 0.3,
                         IN2 if lyr == "In2.Cu" else FCU)
         newt, newv, fail = [], [], []
+        # TERMINAL PROTECTION (2026-10-10).  A net routed early may run past a
+        # later net's hand-over point half a millimetre away and seal it in:
+        # BEAT_07 came down In2 at x 120.5, beside the column of right-hand
+        # units' terminals at x 121, and PPS_09 could not take its first step.
+        # So while net N routes, the cells round every OTHER pending net's
+        # terminals that are free are blocked, and exactly those cells are
+        # given back as soon as N's search is done -- before N's own copper
+        # goes into the grid, so nothing real is ever freed (round 18).
+        prot_r = float(os.environ.get("PROT_R", "0.75"))
+        pend = {}
+        if prot_r > 0:
+            pn_ = int(math.ceil(prot_r / MZ.PITCH))
+            for pnm, paa, pbb, _pk in order:
+                for q in (paa, pbb):
+                    ci, cj = g.cell(*q)
+                    for di in range(-pn_, pn_ + 1):
+                        for dj in range(-pn_, pn_ + 1):
+                            if (di * di + dj * dj) * MZ.PITCH ** 2 <= prot_r ** 2:
+                                i, j = ci + di, cj + dj
+                                if 0 <= i < g.nx and 0 <= j < g.ny:
+                                    pend.setdefault(pnm, set()).add(j * g.nx + i)
         for nm, aa, bb, _k in order:
+            mine = pend.pop(nm, set())
+            setcells = []
+            for _other, cells in pend.items():
+                for idx in cells:
+                    if idx in mine:
+                        continue
+                    for L in (IN2, FCU):
+                        if not g.blocked[L][idx]:
+                            g.blocked[L][idx] = 1
+                            setcells.append((L, idx))
             g.free_disc(aa[0], aa[1], 0.3, IN2)
             g.free_disc(bb[0], bb[1], 0.3, IN2)
             path = g.route(aa, bb, layers=(IN2, FCU), start_layer=IN2, cap=CAP)
@@ -1926,6 +1985,8 @@ def build():
                                end_layer=FCU, turn=0.4, cap=CAP)
                 if path:
                     path = path + [(bb[0], bb[1], IN2)]
+            for L, idx in setcells:
+                g.blocked[L][idx] = 0
             if path:
                 pts = ([(aa[0], aa[1], IN2)] + path[1:-1] +
                        [(bb[0], bb[1], path[-1][2])])
@@ -2428,6 +2489,67 @@ def build():
         for i in range(NP):
             comps.add(find(i))
         return len(comps)
+
+    # LATE hand routes (2026-10-10).  Drawn only if the net is still in pieces
+    # after every router, and only where the real geometry is clear, so they
+    # can add a connection and never change what the router did.  The board's
+    # routing is at the edge where any copper laid EARLY moves the outcome:
+    # drawn first, the PYNQ's I2C pair below cost unit 0 both its returns.
+    #   J4001 pins 5 (SCL) and 3 (SDA) to the foot of their right-margin lanes,
+    #   on In2: out of the pin diagonally, down between the even row's pins
+    #   (0.3 mm clear of each), and along the strip below the socket -- under
+    #   the other lanes, which stop at BH - 4 -- SDA above SCL, never crossing.
+    if not _NOROUTE:
+        _pin = {p_: (x_, y_) for r_, p_, x_, y_, _t, n_, _h, _c in allpads
+                if r_ == "J4001" and p_ in ("3", "5")}
+
+        def _late(nm, candidates):
+            """The first candidate whose tracks and vias are all clear.  Each is
+            a list of runs, (layer, [points]); a via goes where layers change."""
+            for runs in candidates:
+                segs, vv = [], []
+                for k, (lyr, pts) in enumerate(runs):
+                    segs += [(a[0], a[1], b[0], b[1], lyr, T.W_SIG)
+                             for a, b in zip(pts, pts[1:])]
+                    if k:
+                        vv.append(pts[0])
+                if path_clear(segs, nm) and vias_clear(vv, nm):
+                    for x0, y0, x1, y1, lyr, w0 in segs:
+                        tracks.append((x0, y0, x1, y1,
+                                       "In2.Cu" if lyr == IN2 else "F.Cu", nm, w0))
+                    for vx, vy in vv:
+                        tile_vias.append((vx, vy, nm))
+                    return True
+            return False
+
+        # above the socket SCL (the pin further from the lanes) runs ABOVE SDA,
+        # so it passes over SDA's riser instead of through it
+        for pn, nm, yb, ya, vxa in (("3", "I2C_SDA", G.BH - 1.8, 170.0, G.BW - 10.0),
+                                    ("5", "I2C_SCL", G.BH - 1.0, 169.2, G.BW - 11.0)):
+            if pn not in _pin or nm not in numof or net_pieces(nm) < 2:
+                continue
+            px_, py_ = _pin[pn]
+            lx = LANE_RX[nm]
+            cands = []
+            # below the socket, through the gap on either side of the pin, on
+            # In2 -- or on F.Cu, where a return may already own In2 there
+            # (BEAT_00 does, 2026-10-10), with a via onto the lane's foot
+            for gx in (px_ + 1.27, px_ - 1.27):
+                cands.append([(IN2, [(px_, py_), (gx, py_ + 1.27), (gx, yb), (lx, yb),
+                                     (lx, G.BH - 4.0)])])
+            for gx in (px_ + 1.27, px_ - 1.27):
+                cands.append([(FCU, [(px_, py_), (gx, py_ + 1.27), (gx, yb), (lx, yb),
+                                     (lx, G.BH - 4.0)]),
+                              (IN2, [(lx, G.BH - 4.0)])])
+            # or above it: up out of the pin, In2 to short of the margin lanes,
+            # F.Cu over them, and a via onto this net's own lane
+            for yy in (ya, ya - 1.6, ya - 3.2):
+                cands.append([(IN2, [(px_, py_), (px_, yy), (vxa, yy)]),
+                              (FCU, [(vxa, yy), (lx, yy)]),
+                              (IN2, [(lx, yy)])])
+            ok = _late(nm, cands)
+            print("late hand route: %s %s" % (nm, "from J4001.%s to its lane" % pn
+                                               if ok else "BLOCKED"), file=_s.stderr)
 
     split = [] if _NOROUTE else sorted(
         nm for nm in numof
@@ -3040,11 +3162,23 @@ def build():
     # carried no label at all (2026-10-10).
     TAP_NAME = {"TAP +5V": "+5V", "TAP +3V3_A far": "+3V3_A", "TAP +3V3_D": "+3V3_D",
                 "TAP REF": "REF", "TAP CLK0": "CLK0", "TAP HELPER": "HCLK",
-                "TAP IN": "TAP"}
+                "TAP IN": "IN", "TAP SQ": "SQ"}
+    # Each tile's two U.FLs, named by what they carry.  Where to try, in the
+    # TILE's frame (tile y runs along the chain, across the board): offset,
+    # text angle on the board, and whether ink may cross a tented via.
+    TILE_TAPS = {
+        # IN: upright against the jack on its SMA side, as rev B first had it
+        "TAP IN": ((0.0, -3.2, 90, ALL), (0.0, -3.2, 90, PROSE), (0.0, 3.2, 90, ALL)),
+        # SQ: level with the jack, toward U02's 4R7 -- over a tented via if
+        # need be -- before the TP02 side, where it would sit beside the S
+        # pad's letter (S is the squarer's input, SQ its output)
+        "TAP SQ": ((0.0, 3.5, 0, ALL), (0.0, 3.5, 0, PROSE),
+                   (0.0, -3.4, 0, ALL), (0.0, -3.4, 0, PROSE)),
+    }
     _tapless = []
     for r in sorted(placed):
         L = TAP_NAME.get(vals.get(r, "")) if r.startswith("J") else None
-        if L == "TAP":
+        if L and vals.get(r, "") in TILE_TAPS:
             # Small, upright, and tight against the jack on its SMA side --
             # the same side in the TILE's frame on both columns, and away from
             # JP01.  A first try let part_text range 8 mm, and on the
@@ -3062,13 +3196,16 @@ def build():
             # 0.8 x 0.16: JLCPCB's minimum height and the board's minimum silk
             # stroke (0.155), the same as a designator.
             w_ = len(L) * adv(L, 0.8) + 0.16
-            for ty, kinds in ((-3.2, ALL), (-3.2, PROSE), (3.2, ALL)):
-                bx, by = to_board(prot_, *to_local(_rot, 0.0, ty))
+            for tx, ty, ang, kinds in TILE_TAPS[vals.get(r, "")]:
+                bx, by = to_board(prot_, *to_local(_rot, tx, ty))
                 for ddx, ddy in spiral(0.15, 0.6):
-                    ax_, ay_ = px_ + bx + ddx, py_ + by + ddy + w_ / 2.0
-                    bb = ink(ax_, ay_, L, 0.8, 0.16, "left", 90)
+                    if ang:
+                        ax_, ay_ = px_ + bx + ddx, py_ + by + ddy + w_ / 2.0
+                    else:
+                        ax_, ay_ = px_ + bx + ddx - w_ / 2.0, py_ + by + ddy
+                    bb = ink(ax_, ay_, L, 0.8, 0.16, "left", ang)
                     if not blocked(bb, kinds=kinds) and inside_home(r, bb):
-                        silk(ax_, ay_, L, 0.8, 0.16, angle=90)
+                        silk(ax_, ay_, L, 0.8, 0.16, angle=ang)
                         _owned.append((r, L, bb))
                         at = (ax_, ay_)
                         break
@@ -3202,8 +3339,9 @@ def build():
               ("TEST POINTS - the letter beside each pad", 1.1, 0.18)], gap=0.35)
     ca, cb = LB.legend_columns()
     for lx, col in ((LX1, ca), (LX2, cb)):
+        # five lines since rev B's U.FL key (2026-10-10): 0.2 mm apart, not 0.35
         stack_in(lx, LY0 + 6.6, lx + 33.0, LY0 + 13.4,
-                 [(s, 1.0, 0.17) for s in col], gap=0.35)
+                 [(s, 1.0, 0.17) for s in col], gap=0.2)
     stack_in(LX1, LY0 + 13.4, 196.0, LY0 + 18.4,
              [(s, 0.95, 0.17) for s in LB.jack_key() + LB.helper_key()],
              gap=0.3)
@@ -3475,7 +3613,7 @@ def build():
     print("silkscreen: %d designators placed, %d moved to F.Fab %s"
           % (len(refat), len(_nlost), sorted(_nlost)[:40]), file=_sl.stderr)
     if _tapless:
-        print("silkscreen: no room for TAP beside %s" % sorted(_tapless), file=_sl.stderr)
+        print("silkscreen: no room for a tap's name beside %s" % sorted(_tapless), file=_sl.stderr)
 
     # ---- round 41: nothing that belongs to a box may print outside it -----
     # Every part of a unit tile inside its own box, and every designator and

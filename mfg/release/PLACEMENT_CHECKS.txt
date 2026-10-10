@@ -41,5 +41,5 @@ C116660   SOT-363_SC-70-6                      14   270   270  PREDICTED U101,U2
 C2868241  TSSOP-16_4.4x5mm_P0.65mm              2   270   270  PREDICTED U3004,U3005  -- LMK1C1108 TSSOP-16: pin 1 = CLKIN
 C880555   TerminalBlock_Phoenix_PT-1,5-3-3.5    5     0     0  PREDICTED J6001,J6002,J6003,J6004,J6005  -- 1-Wire terminal: wire entry at the board edge
           datum: their origin sits at (+3.500, +0.000) mm in our footprint; the JLCPCB CPL is moved there
-C88374    U.FL_Hirose_U.FL-R-SMT-1_Vertical    19   270   270  PREDICTED J103,J203,J303,J403,J503,J603...  -- U.FL: the centre pad toward the 1k
+C88374    U.FL_Hirose_U.FL-R-SMT-1_Vertical    32   270   270  PREDICTED J103,J104,J203,J204,J303,J304...  -- U.FL: the centre pad toward the 1k
           datum: their origin sits at (-0.763, +0.000) mm in our footprint; the JLCPCB CPL is moved there
