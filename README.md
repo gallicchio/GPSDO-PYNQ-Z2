@@ -1,5 +1,9 @@
 # GPSDO DMTD PCB
 
+![The board](docs/images/render-iso.png)
+
+<p><img src="docs/images/render-top.png" alt="top" width="49%"> <img src="docs/images/render-bottom.png" alt="bottom" width="49%"></p>
+
 A 13-channel Digital DMTD front end that plugs onto a PYNQ-Z2's Raspberry Pi
 40-pin header and compares thirteen GPSDOs' 10 MHz and 1 pps outputs at about
 12 ps single-shot resolution. This file is the design log and the tutorial:
@@ -1203,7 +1207,6 @@ Not edited — flagged here per your instruction. In rough order of how much the
     pull-ups to 3.3 V** (R305–R308) — the standard Pi I2C arrangement. Useful to know before
     assigning those pins to anything that dislikes a pull-up.
 
-
 ## Prompt 2
 
 I downloaded TUL_PYNQ_Schematic_R12.pdf and the other datasheets you said you wanted. Make sure they are sufficient. Can you confirm though this and/or through online forums that the "5 V, 3.3 V and the pin-1 trap" is really there and not a problem with the manual? I can check this and other things on a real PYNQ-Z2 board tomorrow. Make a list of such things I should check.
@@ -1243,11 +1246,6 @@ Choice points:
 5. No Digital step attenuators for v1.
 6. through-hole SMA for robustness. If having JLCPCB solder them adds less than 10% to the cost, have them do it.
 7. Yes, LTC6957-3 DNP footprint. How would I select it? Change a 0 ohm on the board?
-
-
-
-
-
 
 ## Round 2
 
@@ -2081,7 +2079,6 @@ is the pin-1 hazard, which never existed on either board.
 relative library paths, draw the three non-standard symbols and footprints, and generate the
 hierarchical schematic — in that order, committing after each so nothing is lost.
 
-
 ## Prompt 3
 
 If I have a high-voltage sine input and fail to put in the 50 ohm jumper, would the voltage be too high for the 74LVC1GU04?
@@ -2542,7 +2539,6 @@ socket rectangle is drawn slightly taller than the true 2×20 body; the jack lab
 properly centred; and the row-1/row-2 unit ordering starts at unit 7 on the upper row rather
 than unit 1. None of them affect the dimensions you would measure.
 
-
 ## Prompt 4
 
 If you are not using any KiCAD 10 features, including any of the new 3D features, target KiCAD 9 and make a note at the top of this document to that effect. If any of the new features help, keep KiCAD 10. If you can write the python and the KiCAD output in such a way that it is almost compatible with both, do that.
@@ -2564,8 +2560,6 @@ If a circuit block is repeated 12 times, it would be good to have 12 nearly iden
 Nets should have sensible names. This is especially true for longer traces and anything that goes off of a page.
 
 When a signal goes off of a page or comes onto a page, it should be easy to find. Ideally, there would be a comment about where to find incoming and outgoing signals without having to flip through all of the pages.
-
-
 
 ---
 
@@ -2795,7 +2789,6 @@ Still to come, unchanged from [R28](#r28-the-schematic-what-exists-now): the **P
 **Helper**, **RPi header** and **Housekeeping** sheets, and the footprint library for the SMA
 jack. Those four sheets are what will retire the remaining 92 ERC violations.
 
-
 ## Prompt 6
 
 If any component is different betwen different units (other than whether jumpers are pushed into place or not), flag this. I'd rather not have this. The R303 1k to ground (and similar ones on other schematics), for example, is annoying to have populated for some, but not for others. What would be the disadvantage of populating it for all units? Also, why is its label right under the horizontal resistor instead of close to it? I'd much prefer a design that was generic and identical for all units except jumpers. If this is not possible without violating the "only jumper to ground through a low resistance" rule, I guess I can live with it.
@@ -2809,7 +2802,6 @@ The 1M feedback resistor is too low. It can go right below the GND of the 74LVC1
 There is still text that overlaps with things. Other text like the comment that starts with "into FF1" is right around the GND. You could move that comment down. Have you exported these pages and looked as a PDF or PNG?
 
 Are all Rs and Cs 0805 for easy soldering and probing, at least the ones likeley to be probed? Are all chips a reasonably solderable package? If not, they should be as long as that package is common and in stock everywhere.
-
 
 ---
 
@@ -4090,7 +4082,6 @@ anchor and the direction of growth have to be reasoned about together, because t
 
 `HELPER_SRC` still nets `U3001.10` (CLK0) to `R3005.1`, the Si5351 branch of the source selector.
 ERC 0 violations; all three checkers clean; 572 parts placed with no courtyard overlaps.
-
 
 ## Prompt 11
 
@@ -6009,7 +6000,6 @@ against only the goals that live there.
 
 That last one alone took the count from 101 to 46.
 
-
 ### 18.8 Three blocks that were never placed, only gridded
 
 With the routers fixed the count went to 20, and thirteen of those twenty were
@@ -6657,7 +6647,6 @@ seven signals on the debug header.
 
 No new entries for [Errors to fix in README.md](#errors-to-fix-in-readmemd) this
 round.
-
 
 ## Prompt 21
 
@@ -7833,7 +7822,6 @@ on the same layer, with 78 % of the helper buried between ground planes
   and the same spiral placer would clear them on request.
 
 No new entries for [Errors to fix in README.md]
-
 
 ## Prompt 22
 
@@ -10008,7 +9996,6 @@ Five was the number before a beat had ever been seen.
 | 3.3 V rails with the host off | present (abs-max violation) | **absent** (interlock) |
 | board builds this round | | 3 (one discarded), 1188 + 2037 + 1496 s |
 
-
 ## Prompt 29
 
 I have a Si5351 module that I can wire onto the Raspberry Pi connector of the PYNQ-Z2 that will be plugged at the next prompt. Is there easilly-readable documentation on which pin of the Raspberry Pi connector gets mapped to which signal on this board? Ideally, it would be auto-generated from the source of truth rahter than live in a way that can drift. Have build.py also generate a document that contains this in ASCII art form, along with anything else that would help in the preliminary work now, the bring-up work once we have boards in hand, and the eventual end-user use.
@@ -10674,7 +10661,6 @@ is.
 | does the build stop on an unconnected net? | no | yes |
 | closest SMT pad to the board edge | 1.19 mm, unmeasured | 1.19 mm, measured and in the fab notes |
 
-
 ## Prompt 30
 
 I now have the Si5351 module hooked up. It's CLK0 goes to the the Raspberry Pi header's pin 18 HELPER_CLK. I did `ssh xilinx@192.168.1.142` and `./pynq-run bringup.py --scan` and it found the Si5351. However, `./pynq-run bringup.py --no-heater` failed. Make it work. Feel free to rebuild with vivado and run it and your python on the PYNQ-Z2.
@@ -10944,7 +10930,6 @@ Not tested, and not testable until boards arrive: every one of the thirteen
 front ends, the heater, the thermometers, the 1-Wire bridge, and the pps path.
 The gateware's beat and pps counters have still only ever seen a testbench.
 
-
 ## Prompt 31
 
 minor silkscreen updates:
@@ -10953,7 +10938,6 @@ minor silkscreen updates:
 * Some of the "T" labels will end up under the ICs. Others, like the one next to "P2" make it seem like it's part of P2.
 * "DEBUG 2x10" looks like it refers to the mounting hole. It should be moved so that it ends up around 20,161.5.
 * Is "In  10 MHz at the SMA  0.7-8.0 Vpp" actually correct? Can the circuit take 8 Vpp? I thought that for the TM-4, you need the 50 ohms or need an attenuator or something to bring it down to a safe voltage.
-
 
 ## Round 31
 
@@ -11204,11 +11188,9 @@ from round 29 before it: it counts designators touching each other's ink, which
 is a warning and not a fault, and it is the reason `SILK: DROPPED` exists as a
 separate and much louder check for the lines that carry information.
 
-
 ## Prompt 32
 
 I got the following error on two rows of the BOM. For "R101,R201,R301,R401,R501,R601,etc" and "R3003", I got "Multiple lines in the BOM have been matched to the same part. Please check if the matching is correct." Right now these are listed as as a Qty of 0, but if I check the "Select" boxes these two total to 28. I might be that their values are "51R1%" and "51R".  They both match to MFR.Part # 0805W8F510JT5E / JLCPCB Part # C17738 / Package 0805. If this is correct, I'll select both boxes, but in the future we should avoid this error and potential issue where something might go wrong if I forget to select the boxes. Should I select the boxes and go on? Or should you correct the code that generates this issue in the BOM and I upload a new BOM?
-
 
 ## Round 32
 
@@ -11331,7 +11313,6 @@ too.  One-code-one-line is a rule about the file a machine matches.
 The board was never touched, so the gerbers you have already uploaded are
 still exactly right.  Replace `GPSDO-PYNQ-Z2_bom.csv` and leave the rest.
 
-
 ## Prompt 33
 
 Looking at the Component Placements starting with GPSDO-PYNQ-Z2_cpl.csv,
@@ -11345,7 +11326,6 @@ Looking at the Component Placements starting with GPSDO-PYNQ-Z2_cpl.csv,
 * U5009 need to rotate by 90 clockwise
 
 Record this information in the README.md as the next prompt. Record this in your source of truth. use it to generate the jcl_corrected. When I did the jcl_corrected, most were still wrong, but Q2001 and U5001 were ok and D2001 was the same as without the correction. Generate a new jcl_corrected file along with anything else that you might think might fall out of sync.
-
 
 ## Round 33
 
@@ -11462,11 +11442,9 @@ correction the file does not apply. Verified after regenerating:
 no entry at all.  **Re-upload the corrected CPL.  The gerbers and the BOM you
 have already uploaded are unchanged.**
 
-
 ## Prompt 34
 
 Everything looks good now except maybe X3001. With the corrected CPL, its pin 1 is south west. If the little white 90 degree silkscreen tails mean pin 1, those tails are north east. If pin 1 should be north east, X3001 needs an additional 180 degrees.
-
 
 ## Round 34
 
@@ -11573,7 +11551,6 @@ a cosmetic error.
 
 **Nothing to re-upload.**  X3001's corrected rotation is 0.0000, the same
 number round 33 generated.
-
 
 ## Prompt 35
 
@@ -11721,11 +11698,9 @@ And the prediction, so it is falsifiable: after the re-upload, **X3001's purple
 pin-1 dot should sit north-east**, on the new white dot.  If it does not, the
 correction is wrong again -- tell me rather than trusting me twice.
 
-
 ## Prompt 36
 
 D003 is correct. D6001 is correct, but I think it's symmetric under 180 rotation, so it's not obvious which pin should go toward the filled-in bar. If it doesn't matter (and only 90 degree rotations could screw things up), consider it good. I flipped through all of the components and they all seem fine, including X3001. The only one I could not really confirm was R2001, which has a small checkerboard pattern rather than a component model (as in the screenshot).
-
 
 ## Round 36
 
@@ -11820,11 +11795,9 @@ including X3001, D2003 and every SOT-23.  That is the whole assembly checked
 against the thing that actually builds it, which is the first time that has
 been true on this board.
 
-
 ## Prompt 37
 
 Make sure that everything relevant to GPSDO-PYNQ-Z2 is checked in. I just ordered 2 assembled boards. Unless they come back to me with complaints or changes, I'd like to keep a record of this so I can easily open it up and compare to a version with changes. Having two copies of the git repo open to different hashes might work, but would be a pain. Make a zip file with revA in the title. Include the kicad project, schematic, PCB, gerbers, BOM, GPSDO-PYNQ-Z2_cpl_jlc_corrected.csv. Basically everything in release plus the kicad stuff.
-
 
 ## Round 37
 
@@ -11901,11 +11874,9 @@ are what was uploaded.  Regenerating for 2 would move the notes and the
 manifest out from under the tag for a cosmetic gain, so it is recorded here
 instead.
 
-
 ## Prompt 38
 
 Make sure the README.md file reflects what you learned about the component rotations and the latest information about GPSDO-PYNQ-Z2-revA.zip. It serves as a chronological log of what we did and why (in addition to comments in the code and on the schematic and silkscreen.) When that is up to date, check that in and push.
-
 
 ## Round 38
 
@@ -12070,7 +12041,6 @@ that builds it.
   carries these rules in reusable form, including the bottom-side mirror, and
   cites this board's 59-placement mistake as its reason for existing.
 
-
 ## Prompt 39
 
 The GPSDO-PYNQ-Z2 boards have been made by JLCPCB. One is connected to a PYNQ-Z2 at `192.168.8.200` with the default login and password. The PYNQ-Z2 is being powered by an external 12V barrel connector. I checked that all of the voltages are correct, with +3V3_A being a little low at 3.15V.
@@ -12078,7 +12048,6 @@ The GPSDO-PYNQ-Z2 boards have been made by JLCPCB. One is connected to a PYNQ-Z2
 Follow the `HANDBOOK.md` section `## 8  Bring-up, in order` as far as you can and test as much as you can without anything plugged in. Later, I'll plug in 10 MHz inputs.
 
 10 MHz Channels 1 and 2 are connected to the same 10 MHz function generator output. Channel 11 is connected to another 10 MHz function generator output, not phase locked.
-
 
 ## Round 39
 
@@ -12480,7 +12449,6 @@ measured beat period should set it.
 The board is left with the Si5351 programmed and clean, CLK0 at 4 mA, and the
 heater DAC's EEPROM at 0.
 
-
 ## Prompt 40
 
 I only soldered SMAs onto HI, HO, and Channels 1, 2, 11, and 12 (both PPS and 10 MHz). I cannot put HO into Channel 13 without soldering another SMA. I put HO into Channel 12 with the 50 ohm jumper.
@@ -12507,7 +12475,6 @@ Start making a list of changes that we'll do for the next JLCPCB run, revB:
 * Fixing the Si5351 problem. If Si5351C is in stock at JLCPCB, maybe that's easiest. The TCXO and Si5351 need to work reliably.
 * An idea to fix the unplugged squarer chattering. Since these are AC coupled before the self-bias, I cannot stop it from chattering by grounding the input.
 * An idea to make sure the LDOs are not overloaded (maybe fixed when unplugged channels are addressed).
-
 
 ## Round 40
 
@@ -12882,7 +12849,6 @@ Then I drive the header 5V in with around 5.4V, I see about 230 mA out of the su
 
 That's all I can do for now. I'll do the rest of the "Four readings would settle it:" list later, unless you add or subtract test ideas.
 
-
 ## Round 41
 
 Your measurements settle +3V3_A:
@@ -13243,7 +13209,6 @@ SI5351C-B-GMR has 148
 Can you not check their inventory? You were able to last week or two weeks ago.
 
 I am not at the bench, but leave me with a list of tests to do before rework and after rework.
-
 
 ## Round 42
 
@@ -13636,8 +13601,6 @@ read them from there.
 I have plugged USB cables from this computer to the Siglent SDG1032X function generator and Siglent SDS2104X Plus oscilloscope. Output 1 of the function generator is split and goes to input 1 of the oscilloscope and also input 1 of the GPSDO-PYNQ-Z2 PCB's 10 MHz SMA input. Similarly for 2. I have also plugged these instruments into the Ethernet 192.168.8.X internal network. The Siglent SDG1032X function generator is at 192.168.8.246 and the SDS2104X oscilloscope is at 192.168.8.203.
 
 Safely try to read their settings through both methods. Safely change parameters. Aquire oscilloscope data and data from the PYNQ and check for consistency. Do any additional tests that would be useful to do with this setup. Once everything is working, we can go through "42.4 The bench list: before any rework".
-
-
 
 ## Round 43
 
@@ -14082,7 +14045,6 @@ I spent time with a different agent extracting all of your instrument control co
 
 Then, be very explicit about listing tests I should run, explicitly mapping out what I should hook up to what. I have been away from this board for a while, and everything got unplugged to develop lab-instrument-control​. I can use scope inputs from Siglent and my 10 idle Syscomp devices to probe more channels and to probe DC voltages (like various supplies), so that you can do experiments on your own while I teach and go to boring professor meetings.
 
-
 ## Round 44
 
 - **My instrument code has left this repository.** Everything goes through
@@ -14270,7 +14232,6 @@ I hooked up the hardware as suggested. I also gave you two bonus connections:
 * CG-2 output into Ch9 without 50 ohm termintion, which I also happened to have an SMA connector on.
 
 On the new GPSDO silk screen, "blk", "red", nad "yel" are not right next to their pins. I'd rather you move the "J6001" label somewhere else, maybe move R60002 down, and put the labels right up next to the pins, just outside of the silkscreen box for the screw terminal. Actually look at this region. There are a whole new set of suggestions and pointers to tools in OpticsPCBs/CLAUDE_PCB.md, which you should contribute to if you find something useful going forward.
-
 
 ## Round 45
 
@@ -15807,7 +15768,6 @@ the cost table (its README).
     the mixers out of stock at LCSC;
   - it would only matter for references better than ~3e-12 at 1 s, which
     the GPSDOs here are not.
-
 
 ### 45.26 Rev B routed, DRC clean, and dated for the order
 
