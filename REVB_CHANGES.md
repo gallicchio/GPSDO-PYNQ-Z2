@@ -1297,3 +1297,5 @@ with a 0-3 V square.
   silkscreen limits at each pps jack: `pps: ≥ 2.3 V`. That is the
   datasheet's worst-case VT+ (2.08 V at 3.3 V) through the divider, against
   1.98 V measured. Move the Schmitts onto +3V3_D, as item 13 already says.
+
+**Pin audit 2026-11-16, HIGH (rev A and rev B):** the 13 DNP BAV99 clamps D?01 have pin 1 (the anode) on +3V3_A and pin 2 (the cathode) on GND, so a fitted one is two forward diodes across +3V3_A. Never fit them as drawn; swap pins 1/2 in the next revision. See `PIN_AUDIT.md`.
