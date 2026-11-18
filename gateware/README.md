@@ -25,7 +25,7 @@ files and `gen/design.py`, so the result is a diff rather than a screenshot.
 | `gen_constants.py` | generates `driver/dmtd_constants.py` from `gen/design.py` |
 | `driver/` | the PYNQ driver, the I2C device drivers, and host-side tests that need no board |
 | `board/bringup.py` | first power-up of a front-end board, in the safe order (DAC EEPROM first) |
-| `board_files/pynq-z2/` | vendored board files, so no network and no install |
+| `board_files/pynq-z2/` | TUL's board files for the PYNQ-Z2. **Not in this repository** (they are TUL's): download them (the PYNQ documentation's PYNQ-Z2 setup guide links them) and unpack them here, so that `board_files/pynq-z2/A.0/board.xml` exists |
 
 Two things are generated from `gen/design.py`, which is the same file the
 schematic and the PCB come from: the pin constraints and the driver's

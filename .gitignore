@@ -1,3 +1,25 @@
+# ---- Other people's material: on the bench PC, never committed (added for the public repository) ------------
+# Vendor datasheets, manuals, schematics and product photos.
+/datasheets/
+# TUL's board files for the PYNQ-Z2 and its product photo.  gateware/build.tcl looks for them in
+# gateware/board_files/pynq-z2/A.0/ (gateware/README.md says where they come from).
+/gateware/board_files/
+# JLCPCB's and EasyEDA's land patterns, cached by mfg/footprint_check.py: theirs, and fetched again when stale.
+/mfg/jlc_footprint_cache.json
+# the phone's originals of photos/ are in build/photos_revA/ (build/ is ignored below)
+
+# ---- Tools' droppings
+__pycache__/
+*.pyc
+fp-info-cache
+*-backups
+*.lck
+.history/
+.DS_Store
+# working notes exchanged with Claude
+/QUESTIONS.md
+/ANSWERS.md
+
 # Everything build.py regenerates.  Its header says "Everything below is
 # REGENERATED", and `python3 build.py --clean` deletes exactly this.  A clean
 # rebuild reproduces every fab output byte for byte (the board file itself
@@ -34,13 +56,13 @@ mfg/jlc_cache.json
 
 # Attachments generated FOR an LLM design review: board renders, sheet PDFs,
 # DRC dumps and a zone-filled copy of the board.  14 MB, all of it derived
-# from whatever the board was on the day, and design_review_Gemini3.8Flash/
-# and design_review_Grok4.6/ set the pattern -- the review's MARKDOWN is
+# from whatever the board was on the day, and design_review/Gemini3.8Flash/
+# and design_review/Grok4.6/ set the pattern -- the review's MARKDOWN is
 # tracked, and so is any code written by hand for it, but not the renders.
-design_review_*/*.png
-design_review_*/*.pdf
-design_review_*/drc-*.json
-design_review_*/filled.kicad_p*
+design_review/*/*.png
+design_review/*/*.pdf
+design_review/*/drc-*.json
+design_review/*/filled.kicad_p*
 
 # The netlist the release scripts export and re-read every run (mfg/bomdata.py).
 # KiCad writes the schematic's ABSOLUTE path into it, and nothing committed may

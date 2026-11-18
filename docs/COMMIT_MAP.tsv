@@ -1,0 +1,107 @@
+# The commits of this repository that came from the private repository the board was developed in.
+# The documents and the design log quote the old hashes (first column, usually its first 7 characters);
+# the same commit is here under the hash in the second column.  Newest first.
+old_hash	new_hash	date	subject
+712a7b6b41	7f617a53b3	2026-11-16	Pin audit of every board (2026-11-16): power pins and pairs against the data sheets, connectors against their 
+75d7cce257	95ca30ab3d	2026-10-22	GPSDO-PYNQ-Z2: JLCPCB's top and bottom previews of rev B order SMT026101160736, in mfg/jlcpcb_order/
+db12393d4d	cf310dbc43	2026-10-18	Every board's README opens with its title, 3D renders and a short description; tools/render_boards.py renders 
+cdd69479cb	f267c592ee	2026-10-10	GPSDO-PYNQ-Z2: 45.32 -- J4001 back to Jason's hands; one-sided order, $245.93 for 2
+7078f14eb5	d86d1db681	2026-10-10	GPSDO-PYNQ-Z2: 45.31 -- JLCPCB fits the underside 2x20 socket too; the SMA stays; the fee model calibrated
+126aaae83c	648b9b28a1	2026-10-10	GPSDO-PYNQ-Z2: 45.30 -- the bring-up written for rev B, with a picture of every place it names; what writing i
+d0c6a74ee9	4036f362a5	2026-10-10	GPSDO-PYNQ-Z2: 45.29 -- helper clocks exempt from terminal protection and kept 1.2 mm from I2C; the SQ taps ro
+2585bce47a	c8f7122e47	2026-10-10	GPSDO-PYNQ-Z2: rev B -- a U.FL on every channel's squared signal (SQ); terminal protection in the router; late
+40d557a8b9	e159b63fd6	2026-10-10	GPSDO-PYNQ-Z2: 45.28 order day -- F2002 really 1.1 A, the rev B +3V3_A budget, every label in its own unit's b
+507392c207	6190b2e67a	2026-10-10	GPSDO-PYNQ-Z2: 45.27 -- N3b, the 14 h quiet night, as the floor comparison's long end
+e49d3f5513	27aa6de2fe	2026-10-09	GPSDO-PYNQ-Z2: FABRICATION_NOTES -- rotation rows only for footprints rev B uses, and marked as read on rev A
+b0fea61511	45330423e2	2026-10-09	GPSDO-PYNQ-Z2: rev B routed, DRC clean, dated 2026-10-10 -- the right-hand branches leave on the right; unique
+31fcc0a641	5fe2cd7f77	2026-10-09	GPSDO-PYNQ-Z2: 45.24-45.25 -- the measurement-floor comparison: this board vs the RFSoC 4x2 vs an analog DMTD 
+4cc4d45511	789bf477b2	2026-10-09	GPSDO-PYNQ-Z2: rev B -- plane vias kept out of the tile gutters; U5007's I2C hand-routed into the Si5351's
+5b80dfc5df	cab21b46da	2026-10-09	GPSDO-PYNQ-Z2: rev B helper -- I2C and +3V3_D hand-routed onto the margin lanes; U5007's I2C out past the HCLK
+fa43875e4c	be93985db5	2026-10-09	GPSDO-PYNQ-Z2: REVB_CHANGES -- status at 09:50 (helper hand-routed, crystal gone, U5007, keep-outs, release pi
+0dbe97294d	ac91790e04	2026-10-09	GPSDO-PYNQ-Z2: rev B helper block placed for routing and every track drawn by hand
+e503a18281	3ed47bca0e	2026-10-09	GPSDO-PYNQ-Z2: rev B helper -- the DNP crystal goes; XA/XB float (Si5351 datasheet 7.5)
+df42d4b2cc	d48965f954	2026-10-09	GPSDO-PYNQ-Z2: rev B -- keep the B.Cu +3V3_A pour 3.6 mm clear of every mounting hole and the PYNQ slot
+4e50f341f8	975ee74f5f	2026-10-09	GPSDO-PYNQ-Z2: FABRICATION_NOTES -- the board section agrees with the form (ENIG, green)
+86d95fba31	bda4604ca7	2026-10-09	GPSDO-PYNQ-Z2: untrack mfg/_netlist.net -- a scratch export carrying KiCad's absolute schematic path
+1f14f51e52	8422052921	2026-10-09	GPSDO-PYNQ-Z2: rev B release pipeline -- JLCPCB fits the through-hole parts; per-part rotations and origins pr
+dadbcdb5a4	e5a597369f	2026-10-09	GPSDO-PYNQ-Z2: 45.23 -- N3's start from its log's name
+03b9b00fd9	7d6b39fc77	2026-10-09	GPSDO-PYNQ-Z2: 45.23 -- the times corrected (N3 started 08:39)
+b2e3bb144b	ac5ec48dd0	2026-10-09	GPSDO-PYNQ-Z2: 45.23 -- L1 strap in; O7 again: cross-group coupling roughly halved; N2's first 1.8 h; the heat
+f7a528214e	092164b151	2026-10-09	GPSDO-PYNQ-Z2: rev B item 5 -- B.Cu is the +3V3_A plane; every +3V3_A pad gets its own via; rails and spines g
+b5b9685eac	2988ad9108	2026-10-09	GPSDO-PYNQ-Z2: REVB_CHANGES -- Jason's decisions: 4 layers with B.Cu as +3V3_A, keep 207x180, whole-board ther
+7f1783734e	6d6cf86cfe	2026-10-09	GPSDO-PYNQ-Z2: REVB_CHANGES -- rev A's B.Cu has no tracks, so a 4-layer B.Cu +3V3_A plane is free
+cd3dbc253b	7ea31ba256	2026-10-09	GPSDO-PYNQ-Z2: rev B tile silk -- the new parts' names beside them (offsets in the tile's frame); the tap's na
+aabc62ee8d	d20abc3838	2026-10-09	GPSDO-PYNQ-Z2: REVB_CHANGES -- the new parts' pins checked against their datasheet figures (2GU04, LMK1C1108, 
+529fc8eea8	ff7500ec06	2026-10-09	GPSDO-PYNQ-Z2: rev B tile tracks -- the SC-70-6 squarer fed from the left, replica tied, tap and park lanes th
+f11caac09d	25cac2cf7b	2026-10-09	GPSDO-PYNQ-Z2: REVB_CHANGES -- rev B status at 07:15 (taps, silk, driver, parts_map done; the +3V3_A plane wai
+1fac7a92a6	0d6124d394	2026-10-09	GPSDO-PYNQ-Z2: rev B silk -- each monitor-tap U.FL named (+5V, +3V3_A, +3V3_D, REF, CLK0, HCLK)
+008f9ef674	a03b9b68a9	2026-10-09	GPSDO-PYNQ-Z2: rev B monitor taps (item 19) -- +5V, +3V3_A far, +3V3_D on the power sheet; REF at CLKIN and CL
+3fcdeefd81	9db80f0d4d	2026-10-09	GPSDO-PYNQ-Z2: driver -- Si5351Config(rev='B'): both PLLs from CLKIN (reg 15 = 0x0C), HO on CLK2 at 2 mA, CLK1
+0001dad3b2	9fc45a9566	2026-10-09	GPSDO-PYNQ-Z2: parts_map for rev B -- 4R7 0805 (C17675, Basic), the 1x03 50R/PARK header
+d1f9bad48b	72bde0bc05	2026-10-09	GPSDO-PYNQ-Z2: revB_progress -- close-ups of a rev B tile and the helper block (placement preview)
+2f971bfb3a	1da56cabb6	2026-10-09	GPSDO-PYNQ-Z2: rev B silkscreen legend -- JP 1-2 = 50R, 2-3 = PARK; HO = CLK2 OUT, buffered; X = the TCXO at C
+0437c5dd8e	b532cfa8a2	2026-10-09	GPSDO-PYNQ-Z2: REVB_CHANGES -- where rev B stands in the generator
+933842d644	18c579096b	2026-10-09	GPSDO-PYNQ-Z2: rev B, placement preview -- tile slots for the new parts (tap, park, Rx5x supply resistors), th
+0d7edeae03	979886e21d	2026-10-09	GPSDO-PYNQ-Z2: rev B keeps rev A's reference numbers -- supply resistors from Rx51 (where the beads were), the
+67e0ef29e8	cbd3091790	2026-10-09	GPSDO-PYNQ-Z2: rev B, the helper sheet -- Si5351C with the TCXO on CLKIN (item 9), HO on CLK2 / VDDOB through 
+7ebd5a12bc	1120cd5f3a	2026-10-09	GPSDO-PYNQ-Z2: rev B, the channel sheet -- replica-biased squarer (74LVC2GU04, item 18), 3-pin 50R/PARK header
+a4b8d0f8b5	1260212d21	2026-10-09	GPSDO-PYNQ-Z2: item 14 -- the build on KiCad 10 (gen/kicad_env.py; sheets saved in KiCad 10's format); rev A's
+8148e121ff	51814b1505	2026-10-09	GPSDO-PYNQ-Z2: round 45.22 -- day 2: O10 (more helper drive is worse), O11b (the heater's step is fast local h
+ef2000ef16	d29ea753b2	2026-10-09	GPSDO-PYNQ-Z2: round 45.21 -- N1 (RA7): the drift is the helper tree's (4-4.5 ps/K between buffer groups, < 0.
+e3d188efd7	8ae9156d6d	2026-10-08	GPSDO-PYNQ-Z2: REVB item 19 -- an unplugged U.FL tap in numbers (well under 1 %; no antenna), and its layout r
+ee4b94d370	0f29aeee60	2026-10-08	GPSDO-PYNQ-Z2: L1 strap instructions with pictures (test pad A to FB201 pad 1); ra7_analyse.py for N1
+c16f483fa9	652b7e8fd6	2026-10-08	CPL file names: <board>_cpl_jlcpcb_upload.csv and <board>_cpl_kicad_native.csv in GPSDO-PYNQ-Z2, IcepiZeroADCD
+bf402b2661	3b10c794b2	2026-10-08	GPSDO-PYNQ-Z2: BENCH_WIRING_OCXO -- day 2's tests (A1, O10-O12, N2; L1 optional)
+16233c7c3c	102304e6e5	2026-10-08	GPSDO-PYNQ-Z2: 45.20 -- O8 puts the cross-group noise on the board (new rev B item 22, the helper's fan-out); 
+a6af78e289	be81037e28	2026-10-08	GPSDO-PYNQ-Z2: 45.20 -- O4: AM-to-PM 176 ps/dB on unit 4, 23 ps/dB on unit 9; the 33120A's range boundary
+46ac257025	a0dc743166	2026-10-08	GPSDO-PYNQ-Z2: 45.20 -- O5 (no crosstalk tone above 0.2 ps on quiet pairs) and O7 (a neighbour's state moves i
+620112adc4	c82d5b61a8	2026-10-08	GPSDO-PYNQ-Z2: round 45.20 -- the OCXO bench, day one: O0-O3, O1/O6
+597427c075	cecfc28547	2026-10-08	GPSDO-PYNQ-Z2: REVB_CHANGES -- today's reworks logged; RA1 confirms item 9's mechanism; O6's HO numbers for it
+de16ff21bc	60f75050a0	2026-10-08	GPSDO-PYNQ-Z2: OCXO bench up -- bench_setup.py for the HPs on units 4 and 9; O2 finds unit 13 oscillating, S2b
+6c34ebeeda	3fb78cc619	2026-10-08	GPSDO-PYNQ-Z2: BENCH_WIRING_OCXO S5 -- no AUP part on the board to harvest; which chip is which
+5cef77e043	decf880106	2026-10-08	GPSDO-PYNQ-Z2: T8 back as the optional S5; README 45.19 addendum
+5ddeaadd2c	57150a2c4a	2026-10-08	GPSDO-PYNQ-Z2: BENCH_WIRING_OCXO.md for the soldering station -- the soldering table, parts list, S5 (a 74AUP1
+c470f12103	bfa3580ae7	2026-10-08	GPSDO-PYNQ-Z2: round 45.19 -- BENCH_WIRING_OCXO.md, the rework, wiring and test plan for the OCXO bench; all f
+bd2624ef81	0f4676812c	2026-10-08	GPSDO-PYNQ-Z2: 45.18 -- the top 33120A locked to the OCXO
+aa89210037	2024e893c7	2026-10-08	GPSDO-PYNQ-Z2: 45.18 -- the four generators' power-on state
+e2244c901d	817d23b4f5	2026-10-08	GPSDO-PYNQ-Z2: 45.18 -- the top 33120A answers on RS-232 after its INTERFACE setting
+cc9c9f33cb	7b3f21fc3a	2026-10-08	GPSDO-PYNQ-Z2: round 45.18 -- the OCXO measured (35 ohm, 3.5 Vpp into 50 ohm, port 3 at 180 deg), the bottom 3
+6e20b39751	91797b2dd5	2026-10-08	GPSDO-PYNQ-Z2: round 45.17 -- the OCXO as the bench's one reference: SDG 10MOut and SDS 10 MHz out turned off,
+a3587d1b7a	daee893694	2026-10-08	GPSDO-PYNQ-Z2: REVB_CHANGES -- RA2 done (the board's own +2.6 ps/K), RA7 (the OCXO on four units) added
+c96eb8f076	0ae55a7cc2	2026-10-08	GPSDO-PYNQ-Z2: round 45.16 -- the heated night: the board's own +2.6 ps/K, an OCXO plan
+cbe9068dc1	de6d24fbc1	2026-10-07	GPSDO-PYNQ-Z2: rev B builds in KiCad 10 (item 14); no absolute paths in xcheck's records
+582b4d7890	b4ffb9ae21	2026-10-07	GPSDO-PYNQ-Z2: T1's data after the FB401 bridge (toggle_20261007T2146Z), RA3's comparison
+c343d112cc	52b682557c	2026-10-07	GPSDO-PYNQ-Z2: REVB_CHANGES.md brought up to date -- a plan at a glance, the rework log, tests RA1-RA6
+32ccc850e7	ab8e9f2da0	2026-10-07	GPSDO-PYNQ-Z2: round 45.14 -- T1 after the FB401 bridge: the neighbour still moves 1.4 ps
+f9504afa6c	3082e52a0e	2026-10-07	GPSDO-PYNQ-Z2: round 45.14 -- reworks M1-M3 checked, the heater adds no noise, the night started
+e2c1a76cc2	61751fac72	2026-10-07	GPSDO-PYNQ-Z2.kicad_prl: KiCad's UI state, from the GUI left open on the project
+6a4a2ccb0e	8546ade57f	2026-10-07	GPSDO-PYNQ-Z2: round 45.13 -- T2 (crosstalk as phase), T3 (AM-to-PM), and the next night's reworks
+1f489d63b3	a12b37e449	2026-10-07	GPSDO-PYNQ-Z2: round 45.12 -- the whole night, and a squarer's oscillation moves its neighbour 1.9 ps
+68fcdc6a29	7fb3ef03b6	2026-10-06	GPSDO-PYNQ-Z2: round 45.11 -- the night's first 5.6 h, and four changes to its logging
+e1ff1fd45b	59a07ab73b	2026-10-06	GPSDO-PYNQ-Z2.kicad_pro: KiCad 10's rewrite when the project was opened
+1597fbfadd	706d2c112f	2026-10-06	GPSDO-PYNQ-Z2: rounds 44-45 -- the bench on lab-instrument-control, mapped and run
+c99f630ffb	96fb01e5da	2026-10-06	ECP5-2ADC-2DAC: the project is on master (PR #2 merged); Prompts 22-23 logged
+0d84d2a242	1b6dd74684	2026-10-04	GPSDO-PYNQ-Z2: rounds 39-43, bring-up of the fabricated rev A boards and the rev B list
+9236b8ad85	4dca9a766a	2026-09-15	Rounds 37 and 38: rev A ordered and archived, and the rotation lessons in one place
+9a2dd9fff3	b1a690b8ca	2026-09-15	Rev A archive: the ordered design as a standalone zip
+0f9a4dd08c	d4ee2a3cf4	2026-09-15	Check in the project file, and stop tracking stale reports and review renders
+6fc66f43e5	5c6688cb12	2026-09-14	Round 36: D6001 is a bidirectional TVS with no cathode, and round 35 asserted otherwise
+e305aa2b39	38f091e52a	2026-09-14	Round 35: X3001 did need the extra 180 -- my round-34 check was a transposed rotation
+fb6ead5955	7bd62d78c0	2026-09-14	Round 34: X3001 is correct -- its pin-1 tails and its pad 1 are the same corner
+7e13a5820f	b8755d375b	2026-09-14	Round 33: the rotation table rebuilt from a real placement preview, exact footprints not prefixes
+e393ddf090	f4f42db123	2026-09-14	Round 32: one BOM line per LCSC code, because a value string is a label and the code is the part
+1a2ef48234	90674b1557	2026-09-14	Round 31: the SMA ceiling was a source's open-circuit rating, and four labels that pointed at the wrong thing
+424f82d8b2	7482e8f3b8	2026-09-14	Provenance check: the release is built from the committed sources, and the one thing that did not reproduce
+b9df5dc879	5cdeddce4c	2026-09-14	DESIGN_REVIEW_RESPONSE.md: addendum for rounds 29 and 30
+6423d21522	8207054a41	2026-09-14	Round 30: point the handbook and the board README at the two bench tools
+76e8b2d53f	4f190875dd	2026-09-14	Round 30: bringup.py works on silicon, and the 1234.4 Hz beat measured with an ADALM2000
+460c5d6dc3	806982569d	2026-09-14	Round 29: the handbook, the silkscreen rewritten from the placement, real mounting holes, and a DRC set from J
+fe07e29e1e	0ce8ba0d46	2026-09-14	Round 29 way-point 1: the silkscreen rewritten, real mounting holes, and a DRC set from JLCPCB's own capabilit
+43f3aca500	2192bba857	2026-09-14	Round 28: README round 28 and the final design review response
+6d1391a011	523f4d2999	2026-09-14	Round 28 way-point 3: board build 3 -- no-via zone applied to a net's own through-hole pads (hole-to-hole clea
+9d24e8353d	f1dfbd4b67	2026-09-14	Round 28 way-point 2: board build 1 (rev A silkscreen, corrected notes, two CPL files, one-board release), gat
+dfe5616db5	7e37ff51fe	2026-09-14	Round 28 way-point 1: router no-via zone round PTH drills, notes corrected at the source, I2C device drivers a
+45cf75bb46	6c6d744a1a	2026-09-14	Round 28 way-point 0: design review response, plan and log; nothing in the sources changed yet
+bff5f6da57	3bca0547ef	2026-09-13	GPSDO-PYNQ-Z2: adopt the design log as README.md
+b27575bd3a	f2e6beee29	2026-09-13	GPSDO-PYNQ-Z2: finished board, manufacturing release, and the gateware
+b40dae42ef	4cc89bf1b0	2026-09-11	Add GPSDO-PYNQ-Z2 DDMTD front end and IcepiZeroADCDAC
