@@ -1,0 +1,173 @@
+{
+  "board": {
+    "design_settings": {
+      "rules": {
+        "min_clearance": 0.15,
+        "min_track_width": 0.2,
+        "min_via_diameter": 0.6,
+        "min_via_annular_width": 0.15,
+        "min_through_hole_diameter": 0.3,
+        "min_hole_clearance": 0.254,
+        "min_hole_to_hole": 0.5,
+        "min_copper_edge_clearance": 0.3,
+        "min_silk_clearance": 0.15,
+        "min_text_height": 0.8,
+        "min_text_thickness": 0.155,
+        "solder_mask_min_width": 0.1
+      },
+      "rule_severities": {
+        "clearance": "error",
+        "copper_edge_clearance": "error",
+        "hole_clearance": "error",
+        "hole_to_hole": "error",
+        "annular_width": "error",
+        "drill_out_of_range": "error",
+        "track_width": "error",
+        "shorting_items": "error",
+        "tracks_crossing": "error",
+        "solder_mask_bridge": "error",
+        "unconnected_items": "error",
+        "silk_over_copper": "error",
+        "text_height": "error",
+        "text_thickness": "error",
+        "silk_edge_clearance": "error",
+        "courtyards_overlap": "error",
+        "malformed_courtyard": "error",
+        "footprint_type_mismatch": "error",
+        "silk_overlap": "warning",
+        "track_dangling": "warning",
+        "via_dangling": "warning",
+        "isolated_copper": "warning",
+        "starved_thermal": "warning",
+        "lib_footprint_mismatch": "ignore",
+        "lib_footprint_issues": "ignore"
+      }
+    }
+  },
+  "boards": [],
+  "cvpcb": {
+    "equivalence_files": []
+  },
+  "libraries": {
+    "pinned_footprint_libs": [],
+    "pinned_symbol_libs": []
+  },
+  "meta": {
+    "filename": "GPSDO-PYNQ-Z2.kicad_pro",
+    "version": 3
+  },
+  "net_settings": {
+    "meta": {
+      "version": 3
+    },
+    "net_colors": null,
+    "netclass_assignments": null,
+    "netclass_patterns": [],
+    "classes": [
+      {
+        "name": "Default",
+        "clearance": 0.15,
+        "track_width": 0.25,
+        "via_diameter": 0.6,
+        "via_drill": 0.3
+      }
+    ]
+  },
+  "pcbnew": {
+    "page_layout_descr_file": ""
+  },
+  "erc": {
+    "erc_exclusions": [],
+    "meta": {
+      "version": 0
+    },
+    "pin_map": [],
+    "rule_severities": {
+      "power_pin_not_driven": "ignore"
+    },
+    "rule_severity_overrides": []
+  },
+  "schematic": {
+    "legacy_lib_dir": "",
+    "legacy_lib_list": []
+  },
+  "sheets": [
+    [
+      "a19d71aa-4fa1-8ba3-bb39-2ea032d9b083",
+      "Root"
+    ],
+    [
+      "408501c7-015d-002e-74f7-54799cf27f61",
+      "Power"
+    ],
+    [
+      "08b55b1d-ac06-4eed-5dfc-a2686a75aae6",
+      "Helper"
+    ],
+    [
+      "437d6e0b-a2d1-f745-4478-bf3a2eee1097",
+      "RPi header"
+    ],
+    [
+      "df46bdf9-ab8e-76d6-6f4d-163f8d1fd9df",
+      "Housekeeping"
+    ],
+    [
+      "a8daa41d-6107-d0e2-43e6-cdfd374e2798",
+      "Probes"
+    ],
+    [
+      "984add47-a0b8-11c8-89da-40cdb9944c7f",
+      "Unit 01"
+    ],
+    [
+      "29442134-759b-15a6-d519-c4d372fabac6",
+      "Unit 02"
+    ],
+    [
+      "5f5e3124-9ecb-88d8-330f-c847d7d9dfe0",
+      "Unit 03"
+    ],
+    [
+      "6d5d9eb3-6d7c-c49e-5d25-abc99610d1ee",
+      "Unit 04"
+    ],
+    [
+      "da812ec8-5fcc-82ed-d39d-929f066f80d0",
+      "Unit 05"
+    ],
+    [
+      "f8d2df2a-986b-e0d6-190c-277a6fbf7f58",
+      "Unit 06"
+    ],
+    [
+      "1620861b-06c3-e91f-79df-8b2335d8590d",
+      "Unit 07"
+    ],
+    [
+      "3f3130df-f1fa-9ed7-1b0e-61f266d0ab94",
+      "Unit 08"
+    ],
+    [
+      "2ddfa133-8e29-f5af-2a53-551fd68f3c74",
+      "Unit 09"
+    ],
+    [
+      "def6c76d-8c3c-a16c-816e-3907c41d8f62",
+      "Unit 10"
+    ],
+    [
+      "ba5bf099-ac09-bce6-dc67-a1052e831f65",
+      "Unit 11"
+    ],
+    [
+      "2bb99594-58b4-1272-32a5-d6a35157e655",
+      "Unit 12"
+    ],
+    [
+      "e7c401ef-b7b6-ae69-49ef-eb8086691432",
+      "Unit 13"
+    ]
+  ],
+  "text_variables": {}
+}

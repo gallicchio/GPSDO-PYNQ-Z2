@@ -1,0 +1,68 @@
+{
+ "kind": "ramp",
+ "df": 0.5,
+ "ch": 2,
+ "plan": [
+  [
+   30.0,
+   {
+    "freq": 10000000.5
+   }
+  ],
+  [
+   2.0,
+   {
+    "freq": 10000000.0
+   }
+  ]
+ ],
+ "events": [
+  {
+   "t_before": 1791401612.245148,
+   "t_laptop": 1791401612.281782,
+   "t_pynq": 1791401612.281782,
+   "set": {
+    "freq": 10000000.5
+   },
+   "readback": {
+    "freq": 10000000.5,
+    "amp": 3.3,
+    "phase": 0.0
+   }
+  },
+  {
+   "t_before": 1791401642.3118188,
+   "t_laptop": 1791401642.3481877,
+   "t_pynq": 1791401642.3481877,
+   "set": {
+    "freq": 10000000.0
+   },
+   "readback": {
+    "freq": 10000000.0,
+    "amp": 3.3,
+    "phase": 0.0
+   }
+  }
+ ],
+ "clock_offset": 0.0,
+ "t_plan_end": 1791401644.3501978,
+ "recording_log": "[sudo] password for xilinx: recording from 1791401611.227\n695299 polls in 36.0 s (52 us each); updates per unit {1: 71457, 2: 72819}; helper 10001302.889 Hz -> beats_1_2_20261007T193408.npz\n",
+ "snapshot": {
+  "1": {
+   "freq": 10000000.0,
+   "amp": 3.3,
+   "offset": 0.0,
+   "phase": 0.0,
+   "type": "SINE",
+   "load": "HZ"
+  },
+  "2": {
+   "freq": 10000000.0,
+   "amp": 3.3,
+   "offset": 0.0,
+   "phase": 0.0,
+   "type": "SINE",
+   "load": "HZ"
+  }
+ }
+}

@@ -1,0 +1,12 @@
+amp, xcheck_amp_20261001T182333Z: helper 10001300.981 Hz; beat periods 8031.741 and 8031.740 helper cycles, so 12.4506 ps of input per helper cycle today (design 12.3425); 38514 pairs
+  output 1   Vpp at the scope   dB      unit1-unit2 ps   scope CH2-CH1 ns   unit 1 delay change ps   rms ps
+      3.3V              1.701     0.00             25.2            +6.1341                    -0.0     21.9
+      2.8V              1.446    -1.41           -245.0            +6.1473                   283.5     27.8
+      2.4V              1.238    -2.76           -524.4            +6.0961                   511.7     30.5
+        2V              1.036    -4.31           -886.4            +6.1267                   904.3     34.9
+      1.6V              0.819    -6.35            184.3            +7.6525                  1359.3     27.4
+        2V              1.033    -4.33           -891.6            +6.1158                   898.6     35.3
+      2.4V              1.242    -2.73           -526.9            +6.1227                   540.7     31.4
+      2.8V              1.447    -1.41           -245.2            +6.1464                   282.8     27.7
+      3.3V              1.697    -0.02             23.5            +6.1481                    15.8     21.9
+  AM-to-PM of unit 1: -211.7 ps of delay per dB of amplitude (negative: the delay grows as the input shrinks)

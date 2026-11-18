@@ -1,0 +1,921 @@
+(kicad_symbol_lib
+	(version 20241209)
+	(generator "gpsdo-pynq-z2")
+	(generator_version "9.0")
+(symbol "TPS7A2033PDBVR"
+(exclude_from_sim no)
+(in_bom yes)
+(on_board yes)
+(in_pos_files yes)
+(duplicate_pin_numbers_are_jumpers no)
+(embedded_fonts no)
+	(property "Reference" "U"
+(at -3.81 6.35 0)
+(show_name no)
+(do_not_autoplace no)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Value" "LP5907MFX-3.3"
+(at 6.35 6.35 0)
+(show_name no)
+(do_not_autoplace no)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Footprint" "Package_TO_SOT_SMD:SOT-23-5"
+(at 0 8.89 0)
+(show_name no)
+(do_not_autoplace no)
+(hide yes)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Datasheet" "http://www.ti.com/lit/ds/symlink/lp5907.pdf"
+(at 0 12.7 0)
+(show_name no)
+(do_not_autoplace no)
+(hide yes)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" "250-mA Ultra-Low-Noise Low-IQ LDO, 3.3V, SOT-23"
+(at 0 0 0)
+(show_name no)
+(do_not_autoplace no)
+(hide yes)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "ki_keywords" "Single Output LDO Low-Noise"
+(at 0 0 0)
+(show_name no)
+(do_not_autoplace no)
+(hide yes)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "ki_fp_filters" "SOT?23*"
+(at 0 0 0)
+(show_name no)
+(do_not_autoplace no)
+(hide yes)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(symbol "TPS7A2033PDBVR_0_1"
+		(rectangle
+(start -5.08 -5.08)
+(end 5.08 5.08)
+			(stroke
+(width 0.254)
+(type default)
+			)
+			(fill
+(type background)
+			)
+		)
+		(pin power_in line
+(at -7.62 2.54 0)
+(length 2.54)
+			(name "IN"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "1"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 0 -7.62 90)
+(length 2.54)
+			(name "GND"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "2"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin input line
+(at -7.62 0 0)
+(length 2.54)
+			(name "EN"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "3"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin no_connect line
+(at 5.08 0 180)
+(length 2.54)
+(hide yes)
+			(name "NC"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "4"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_out line
+(at 7.62 2.54 180)
+(length 2.54)
+			(name "OUT"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "5"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+	)
+)
+(symbol "DS2482S-100"
+(exclude_from_sim no)
+(in_bom yes)
+(on_board yes)
+	(property "Reference" "U"
+(at -7.62 8.89 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Value" "DS2482S-100"
+(at 7.62 8.89 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Footprint" ""
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "Datasheet" "datasheets/ds2482-100.pdf"
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "Description" "I2C to 1-Wire bridge, single channel, SO-8"
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(symbol "DS2482S-100_0_1"
+		(rectangle
+(start -7.62 7.62)
+(end 7.62 -7.62)
+			(stroke
+(width 0.254)
+(type default)
+			)
+			(fill
+(type background)
+			)
+		)
+	)
+	(symbol "DS2482S-100_1_1"
+		(pin input line
+(at -10.16 2.54 0)
+(length 2.54)
+			(name "SCL"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "4"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin bidirectional line
+(at -10.16 0 0)
+(length 2.54)
+			(name "SDA"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "5"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin input line
+(at -10.16 -2.54 0)
+(length 2.54)
+			(name "AD1"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "7"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin input line
+(at -10.16 -5.08 0)
+(length 2.54)
+			(name "AD0"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "8"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin bidirectional line
+(at 10.16 2.54 180)
+(length 2.54)
+			(name "IO"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "2"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 -2.54 180)
+(length 2.54)
+			(name "~{PCTLZ}"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "6"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 0 10.16 270)
+(length 2.54)
+			(name "VCC"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "1"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 0 -10.16 90)
+(length 2.54)
+			(name "GND"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "3"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+	)
+)
+(symbol "74LVC2GU04"
+(exclude_from_sim no)
+(in_bom yes)
+(on_board yes)
+	(property "Reference" "U"
+(at -7.62 8.89 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Value" "74LVC2GU04"
+(at 7.62 8.89 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Footprint" ""
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "Datasheet" "datasheets/Nexperia_74LVC2GU04.pdf"
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "Description" "Dual unbuffered inverter: half 1 squares, half 2 is its replica bias"
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(symbol "74LVC2GU04_0_1"
+		(rectangle
+(start -7.62 7.62)
+(end 7.62 -7.62)
+			(stroke
+(width 0.254)
+(type default)
+			)
+			(fill
+(type background)
+			)
+		)
+	)
+	(symbol "74LVC2GU04_1_1"
+		(pin input line
+(at -10.16 0 0)
+(length 2.54)
+			(name "1A"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "1"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin input line
+(at -10.16 -5.08 0)
+(length 2.54)
+			(name "2A"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "3"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 0 180)
+(length 2.54)
+			(name "1Y"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "6"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 -5.08 180)
+(length 2.54)
+			(name "2Y"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "4"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 0 10.16 270)
+(length 2.54)
+			(name "VCC"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "5"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 0 -10.16 90)
+(length 2.54)
+			(name "GND"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "2"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+	)
+)
+(symbol "LMK1C1108PWR"
+(exclude_from_sim no)
+(in_bom yes)
+(on_board yes)
+	(property "Reference" "U"
+(at -7.62 12.7 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Value" "LMK1C1108PWR"
+(at 7.62 12.7 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Footprint" ""
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "Datasheet" "datasheets/TI_LMK1C1108.pdf"
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(property "Description" "1:8 LVCMOS clock buffer, 20 fs additive jitter, 55 ps output skew (TI SNAS814A)"
+(at 0 0 0)
+		(effects
+			(font
+(size 1.27 1.27)
+			)
+(hide yes)
+		)
+	)
+	(symbol "LMK1C1108PWR_0_1"
+		(rectangle
+(start -7.62 11.43)
+(end 7.62 -11.43)
+			(stroke
+(width 0.254)
+(type default)
+			)
+			(fill
+(type background)
+			)
+		)
+	)
+	(symbol "LMK1C1108PWR_1_1"
+		(pin input line
+(at -10.16 5.08 0)
+(length 2.54)
+			(name "CLKIN"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "1"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin input line
+(at -10.16 -5.08 0)
+(length 2.54)
+			(name "1G"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "2"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 8.89 180)
+(length 2.54)
+			(name "Y0"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "3"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 6.35 180)
+(length 2.54)
+			(name "Y1"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "16"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 3.81 180)
+(length 2.54)
+			(name "Y2"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "13"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 1.27 180)
+(length 2.54)
+			(name "Y3"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "15"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 -1.27 180)
+(length 2.54)
+			(name "Y4"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "6"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 -3.81 180)
+(length 2.54)
+			(name "Y5"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "11"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 -6.35 180)
+(length 2.54)
+			(name "Y6"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "8"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin output line
+(at 10.16 -8.89 180)
+(length 2.54)
+			(name "Y7"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "9"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at -2.54 13.97 270)
+(length 2.54)
+			(name "VDD"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "5"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 0 13.97 270)
+(length 2.54)
+			(name "VDD"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "10"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 2.54 13.97 270)
+(length 2.54)
+			(name "VDD"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "14"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at -2.54 -13.97 90)
+(length 2.54)
+			(name "GND"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "4"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 0 -13.97 90)
+(length 2.54)
+			(name "GND"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "7"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+		(pin power_in line
+(at 2.54 -13.97 90)
+(length 2.54)
+			(name "GND"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+			(number "12"
+				(effects
+					(font
+(size 1.27 1.27)
+					)
+				)
+			)
+		)
+	)
+)
+)

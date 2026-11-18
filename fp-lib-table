@@ -1,0 +1,4 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "GPSDO-PYNQ-Z2")(type "KiCad")(uri "${KIPRJMOD}/library/GPSDO-PYNQ-Z2.pretty")(options "")(descr "footprints drawn for this board"))
+)

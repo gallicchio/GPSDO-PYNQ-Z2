@@ -1,0 +1,19 @@
+id,instrument,serial,channel,node,net,where,x_mm,y_mm,coupling,range,ground,notes
+A1,solder,,,unit 4 10 MHz input jack,Net-(J401-In),J401 SMA (jack 4),164.1,71.6,,,,the only new SMA
+A2,solder,,,1-Wire probe terminal,ONEWIRE,J6001 PROBE 1 (pin 1 at 16.0 8.0),16.0,8.0,,,,pin 1 DAT yellow; pin 2 VCC red; pin 3 GND black
+C1,SDG1032X,SDG1XCAC3R0195,out1,unit 1 input,Net-(J101-In),jack 1 via tee on scope CH1,,,,,,JP101 fitted; 10 MHz 3.3 Vpp open circuit
+C2,SDG1032X,SDG1XCAC3R0195,out2,unit 2 input,Net-(J201-In),jack 2 via tee on scope CH2,,,,,,JP201 off; 10 MHz 3.3 Vpp open circuit
+C3,Agilent 33220A,MY44054664,out,unit 4 input,Net-(J401-In),jack 4 via tee on scope CH4,,,,,,JP401 fitted; switched off to leave unit 4 undriven
+C4,HP 33120A,,out,unit 11 input,Net-(J1101-In),jack 11 (no tee),,,,,,JP1101 fitted; GPIB 10 via the Prologix adapter
+C5,board HO,,J3001,unit 12 input,Net-(J1201-In),jack 12 via tee on scope CH3,,,,,,JP1201 fitted; HO is Net-(J3001-In)
+C6,SDG1032X,SDG1XCAC3R0195,rear 10MHz In/Out,HP 33120A rear 10 MHz In,,rear panels,,,,,,SDG 10MOut on (panel); the 33220A MY44054664 has no Option 001
+D1,SDS2104X Plus,SDS2PDDX6R0722,CH1,SDG output 1 (tee),,,,,DC,1 V/div,,1 Mohm 1x
+D2,SDS2104X Plus,SDS2PDDX6R0722,CH2,SDG output 2 (tee),,,,,DC,1 V/div,,1 Mohm 1x
+D3,SDS2104X Plus,SDS2PDDX6R0722,CH3,HO (tee),,,,,DC,1 V/div,,1 Mohm 1x; the PP215 probe for F2 and F4 only
+D4,SDS2104X Plus,SDS2PDDX6R0722,CH4,33220A output (tee),,,,,DC,1 V/div,,1 Mohm 1x
+E1a,CircuitGear CG-1,C2BRGBL,A,+5V_HDR,+5V_HDR,J5001 pin 1,36.9,174.0,DC,high,J5001 pin 2,1x lead
+E1b,CircuitGear CG-1,C2BRGBL,B,+3V3_A far end,+3V3_A,J5001 pin 5,31.8,174.0,DC,high,J5001 pin 6,1x lead
+E1c,CircuitGear CG-2,C2BKO1A,A,+3V3_D,+3V3_D,J5001 pin 7,29.2,174.0,DC,high,J5001 pin 8,1x lead
+E2a,CircuitGear CG-1,C2BRGBL,generator,unit 2 pps input,Net-(J202-In),P2 SMA (teed to CG-2 B),,,,,,round 45 bonus; pps input is 1k+10k (51R DNP); 0-3 V square counts
+E2b,CircuitGear CG-2,C2BKO1A,generator,unit 9 10 MHz input,Net-(J901-In),jack 9 SMA,,,,,,round 45 bonus; JP901 off; keep off except as an aggressor (G6)
+E2c,CircuitGear CG-2,C2BKO1A,B,CG-1 generator output,,tee at P2,,,DC,high,,reads the pps drive level

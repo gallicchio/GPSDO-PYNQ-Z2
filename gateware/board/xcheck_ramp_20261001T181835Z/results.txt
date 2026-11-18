@@ -1,0 +1,3 @@
+ramp, xcheck_ramp_20261001T181835Z: helper 10001300.981 Hz; beat periods 8035.844 and 8035.525 helper cycles, so 12.4442 ps of input per helper cycle today (design 12.3425); 63395 pairs
+  ramp over 44.6 s: slope -4999.989 ps/s, expected -5000.000 (df/f): ratio 0.999998
+  residual 91.9 ps rms; a tone at df = 0.050 Hz of 2.0 ps (crosstalk between the channels, both ways, with the generator's own)

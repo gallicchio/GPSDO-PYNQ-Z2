@@ -1,0 +1,66 @@
+{
+ "kind": "ramp",
+ "df": 0.05,
+ "plan": [
+  [
+   45.0,
+   {
+    "freq": 10000000.05
+   }
+  ],
+  [
+   2.0,
+   {
+    "freq": 10000000.0
+   }
+  ]
+ ],
+ "events": [
+  {
+   "t_before": 1790878733.5209045,
+   "t_laptop": 1790878733.6832845,
+   "t_pynq": 1790878733.6832845,
+   "set": {
+    "freq": 10000000.05
+   },
+   "readback": {
+    "FRQ": "10000000.05HZ",
+    "AMP": "4V",
+    "PHSE": "0"
+   }
+  },
+  {
+   "t_before": 1790878778.6901276,
+   "t_laptop": 1790878778.8524559,
+   "t_pynq": 1790878778.8524559,
+   "set": {
+    "freq": 10000000.0
+   },
+   "readback": {
+    "FRQ": "10000000HZ",
+    "AMP": "4V",
+    "PHSE": "0"
+   }
+  }
+ ],
+ "clock_offset": 0.0,
+ "recording_log": "[sudo] password for xilinx: recording from 1790878732.502\n935977 polls in 51.0 s (54 us each); updates per unit {1: 105675, 2: 107137}; helper 10001300.981 Hz -> /home/xilinx/gpsdo-dmtd/beats_1_2_20261001T181945.npz\n",
+ "snapshot": {
+  "1": {
+   "WVTP": "SINE",
+   "FRQ": "10000000HZ",
+   "AMP": "4V",
+   "OFST": "0V",
+   "PHSE": "0",
+   "LOAD": "HZ"
+  },
+  "2": {
+   "WVTP": "SINE",
+   "FRQ": "10000000HZ",
+   "AMP": "4V",
+   "OFST": "0V",
+   "PHSE": "0",
+   "LOAD": "HZ"
+  }
+ }
+}

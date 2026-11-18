@@ -1,0 +1,48 @@
+# Everything build.py regenerates.  Its header says "Everything below is
+# REGENERATED", and `python3 build.py --clean` deletes exactly this.  A clean
+# rebuild reproduces every fab output byte for byte (the board file itself
+# differs only in uuids that pcbnew rewrites as it pours the zones -- see
+# build.py's docstring, which has the measurement).
+build/
+
+# Vivado's PS7 board-preset automation writes a summary into a directory named
+# from an unset variable, next to wherever it was launched.  Noise, not output.
+NA/
+
+# JLCPCB API responses: 5 MB, re-fetched on demand, and every entry is stamped
+# with the time of its own query so it goes stale by design.  The pricing that
+# matters is already baked into mfg/release/annotated_bom.md.
+mfg/jlc_cache.json
+
+# Pre-rewrite snapshots of the placer sources.  The three that existed were
+# byte-identical to commit b40dae4, so they were deleted rather than tracked;
+# `git show b40dae4:GPSDO-PYNQ-Z2/pcb/<file>.py` is the recovery.  The rule
+# stays as insurance in case something makes more of them.
+*.r14
+
+# gateware/ has its own .gitignore for the Vivado project and build tree.
+
+# Ad-hoc kicad-cli reports written next to the board rather than into build/.
+# build.py puts its own DRC and ERC in build/ on every run; these are whatever
+# was left behind by a one-off command or by the GUI, they carry no date in
+# their name, and the ones sitting here in round 36 were from 2026-09-13 --
+# eight rounds stale and describing a board that no longer exists.  A stale
+# report that looks current is worse than no report.
+/*-drc.rpt
+/*-erc.rpt
+/filled-drc.rpt
+
+# Attachments generated FOR an LLM design review: board renders, sheet PDFs,
+# DRC dumps and a zone-filled copy of the board.  14 MB, all of it derived
+# from whatever the board was on the day, and design_review_Gemini3.8Flash/
+# and design_review_Grok4.6/ set the pattern -- the review's MARKDOWN is
+# tracked, and so is any code written by hand for it, but not the renders.
+design_review_*/*.png
+design_review_*/*.pdf
+design_review_*/drc-*.json
+design_review_*/filled.kicad_p*
+
+# The netlist the release scripts export and re-read every run (mfg/bomdata.py).
+# KiCad writes the schematic's ABSOLUTE path into it, and nothing committed may
+# name /home (2026-10-09: it had been tracked since rev A).
+mfg/_netlist.net
