@@ -1,8 +1,8 @@
 # Photos of rev A
 
-Phone photos of the rev A bench board (Jason Gallicchio, 2026). The phone's metadata is removed. The board
-photo is cropped to the board; in the two bench photos a desk phone's screen, a note and a label on a power
-strip are blurred. The top-level README shows screen-size copies from `../docs/images/photos/`.
+Phone photos of the rev A bench board (Jason Gallicchio, 2026). The phone's metadata is removed. In the two
+bench photos a desk phone's screen, a note and a label on a power strip are blurred; the board photo is as
+taken. The top-level README shows screen-size copies from `../docs/images/photos/`.
 
 | file | what |
 |---|---|
